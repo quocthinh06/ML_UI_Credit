@@ -16,6 +16,7 @@ FEATURES = [
     *[f"BILL_AMT{i}" for i in range(1, 7)],
     *[f"PAY_AMT{i}" for i in range(1, 7)],
 ]
+TARGET = "default.payment.next.month"
 
 
 class ValidationError(ValueError):
@@ -27,8 +28,11 @@ class Thresholds:
     decision: float = 0.39
     low: float = 0.20
     high: float = 0.50
+    basis: str = "raw"
 
     def __post_init__(self):
+        if self.basis not in ("raw", "probability"):
+            raise ValidationError("Cơ sở ngưỡng phải là raw hoặc probability.")
         if not all(math.isfinite(x) for x in (self.decision, self.low, self.high)):
             raise ValidationError("Ngưỡng phải là số hữu hạn.")
         if not 0 <= self.decision <= 1 or not 0 <= self.low < self.high <= 1:
@@ -78,6 +82,34 @@ def validate_frame(frame: pd.DataFrame) -> pd.DataFrame:
     if errors:
         raise ValidationError("\n".join(errors[:20]))
     return values.astype(float).reset_index(drop=True)
+
+
+def prepare_input(frame: pd.DataFrame) -> pd.DataFrame:
+    """Only the categorical recodes explicitly used by the training notebook."""
+    frame = frame.copy()
+    frame.columns = [str(c).strip() for c in frame.columns]
+    if frame.columns.duplicated().any():
+        raise ValidationError("Tên cột bị trùng sau khi bỏ khoảng trắng.")
+    changes = {}
+    for column, mapping in [("EDUCATION", {0: 4, 5: 4, 6: 4}), ("MARRIAGE", {0: 3})]:
+        if column not in frame:
+            continue
+        original = pd.to_numeric(frame[column], errors="coerce")
+        mask = original.isin(mapping)
+        changes[column] = int(mask.sum())
+        if mask.any() and f"source_{column}" not in frame:
+            frame[f"source_{column}"] = original
+        frame[column] = original.replace(mapping)
+    values = validate_frame(frame)
+    values.insert(0, "ID", customer_ids(frame))
+    for column in (TARGET, "source_EDUCATION", "source_MARRIAGE"):
+        if column in frame:
+            extra = pd.to_numeric(frame[column], errors="coerce").reset_index(drop=True)
+            if column == TARGET:
+                extra = extra.where(extra.isin([0, 1]))
+            values[column] = extra
+    values.attrs["normalization"] = changes
+    return values
 
 
 def customer_ids(frame: pd.DataFrame) -> list[str]:

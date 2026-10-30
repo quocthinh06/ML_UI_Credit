@@ -26,7 +26,26 @@ class DataFrameModel(QAbstractTableModel):
         column = self.frame.columns[index.column()]
         if role == Qt.ItemDataRole.DisplayRole:
             if isinstance(value, float):
-                return f"{value:.2%}" if column in ("probability", "raw_score") else f"{value:,.2f}"
+                if pd.isna(value):
+                    return ""
+                if column in ("probability", "raw_score"):
+                    return f"{value:.2%}"
+                if (
+                    column in ("AGE", "SEX", "EDUCATION", "MARRIAGE")
+                    or column.startswith("PAY_")
+                    and "AMT" not in column
+                ):
+                    return f"{value:.0f}"
+                if "AUC" in column or column in (
+                    "Accuracy",
+                    "Precision",
+                    "Recall",
+                    "F1",
+                    "Brier_PD",
+                    "contribution",
+                ):
+                    return f"{value:.4f}"
+                return f"{value:,.2f}"
             return str(value)
         if role == Qt.ItemDataRole.ForegroundRole and column == "risk_level":
             return QColor(
@@ -38,9 +57,15 @@ class DataFrameModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
         if role == Qt.ItemDataRole.DisplayRole:
-            return (
-                str(self.frame.columns[section])
-                if orientation == Qt.Orientation.Horizontal
-                else str(section + 1)
-            )
+            if orientation == Qt.Orientation.Horizontal:
+                name = str(self.frame.columns[section])
+                return {
+                    "probability": "PD đã hiệu chỉnh",
+                    "raw_score": "Điểm thô",
+                    "default_label": "Cảnh báo (0/1)",
+                    "risk_level": "Mức rủi ro",
+                    "record_count": "Số hồ sơ",
+                    "processing_status": "Trạng thái xử lý",
+                }.get(name, name)
+            return str(section + 1)
         return None

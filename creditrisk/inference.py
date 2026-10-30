@@ -8,7 +8,7 @@ import joblib
 import numpy as np
 from sklearn.exceptions import InconsistentVersionWarning
 
-from .validation import FEATURES, Thresholds, validate_frame
+from .validation import FEATURES, Thresholds, validate_frame, prepare_input
 
 
 class ModelUnavailable(ValueError):
@@ -24,7 +24,14 @@ class ModelRunner:
         # Joblib executes Python: load only the trusted, locally configured handoff.
         with warnings.catch_warnings():
             warnings.simplefilter("error", InconsistentVersionWarning)
-            bundle = joblib.load(path)
+            try:
+                bundle = joblib.load(path)
+            except Exception:
+                from .xgb_compat import SOURCE_SHA256, load_portable_handoff
+
+                if self.digest != SOURCE_SHA256:
+                    raise
+                bundle = load_portable_handoff(path)
         required = {"pipeline", "threshold", "features", "calibrator", "model_name", "versions"}
         if not isinstance(bundle, dict) or not required.issubset(bundle):
             raise ModelUnavailable("Tệp không đúng cấu trúc bộ mô hình bàn giao.")
@@ -50,7 +57,7 @@ class ModelRunner:
             raise ModelUnavailable("Danh sách đặc trưng khác bộ bàn giao 38 trường.")
 
     def predict(self, frame, thresholds):
-        values = validate_frame(frame)
+        values = validate_frame(prepare_input(frame))
         from .features import add_features
 
         values = add_features(values.rename(columns={"PAY_0": "PAY_1"}))[self.features]
@@ -73,7 +80,9 @@ class ModelRunner:
             {
                 "raw_score": raw,
                 "probability": probability,
-                "default_label": (raw >= thresholds.decision).astype(int),
+                "default_label": (
+                    (raw if thresholds.basis == "raw" else probability) >= thresholds.decision
+                ).astype(int),
                 "risk_level": np.where(
                     probability < thresholds.low,
                     "Low",
@@ -81,3 +90,50 @@ class ModelRunner:
                 ),
             }
         )
+
+    def explain(self, frame):
+        """Tree SHAP on the estimator's actual transformed inputs, not on calibrated PD."""
+        import pandas as pd
+        import shap
+        from .features import add_features
+
+        if len(frame) != 1:
+            raise ValueError("Giải thích cần đúng một hồ sơ.")
+        values = add_features(validate_frame(frame).rename(columns={"PAY_0": "PAY_1"}))[self.features]
+        preprocessing = self.pipeline[:-1]
+        transformed = preprocessing.transform(values) if len(preprocessing.steps) else values.to_numpy()
+        if hasattr(transformed, "toarray"):
+            transformed = transformed.toarray()
+        estimator = self.pipeline.steps[-1][1]
+        names = list(preprocessing.get_feature_names_out()) if len(preprocessing.steps) else self.features
+        if hasattr(estimator, "coef_"):
+            contributions = np.asarray(transformed)[0] * estimator.coef_[0]
+            return pd.DataFrame({"feature": names, "contribution": contributions}).assign(
+                scale="log-odds (hệ số × giá trị chuẩn hóa)"
+            )
+        explainer = shap.TreeExplainer(estimator)
+        explanation = explainer(np.asarray(transformed), check_additivity=False)
+        contributions = explanation.values
+        if contributions.ndim == 3:
+            contributions = contributions[:, :, list(estimator.classes_).index(1)]
+        scale = "điểm thô" if self.name == "Random Forest" else "log-odds thô"
+        return pd.DataFrame({"feature": names, "contribution": contributions[0]}).assign(
+            scale=f"Tree SHAP · {scale}"
+        )
+
+
+def load_models(model_path):
+    path = Path(model_path)
+    default = ModelRunner(path)
+    available = {default.name: default}
+    errors = []
+    for name in ("model_lr_v1.pkl", "model_rf_v1.pkl", "model_xgb_v1.pkl"):
+        candidate = path.parent / name
+        if candidate.is_file():
+            try:
+                runner = ModelRunner(candidate)
+                if runner.name not in available:
+                    available[runner.name] = runner
+            except Exception as exc:
+                errors.append(f"{name}: {exc}")
+    return available, errors

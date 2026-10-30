@@ -19,6 +19,6 @@ jobs:
       - name: Verify original model examples
         run: |
           python tools/download_model.py
-          python -m pytest tests/test_real_model.py -q
+          python -m pytest tests/test_real_model.py tests/test_dashboard.py -q
         env:
           QT_QPA_PLATFORM: offscreen

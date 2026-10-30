@@ -7,3 +7,5 @@ Token trong `creditrisk/style.qss`: nền `#f7f8fc`, chữ `#182338`, chữ ph�
 Cỡ chữ nội dung 13px, tiêu đề 26px, số tổng quan 28px, PD 34px. Cửa sổ tối thiểu 1050×720, mặc định 1440×940. Nhập liệu dài cuộn độc lập; bảng cuộn ngang khi nhiều cột. Giao diện có trạng thái trống, thiếu cấu hình/mô hình, đang chạy, lỗi, đã lưu và cần dự báo lại. Khi xử lý dữ liệu, các thao tác thay đổi dữ liệu bị khóa nhưng thread giao diện vẫn chạy.
 
 Khác biệt có chủ đích với ảnh: dùng 23 trường UCI và đơn vị TWD thay DPD/DTI/VND; bỏ số liệu minh họa, khuyến nghị từ chối khoản vay và SHAP không có cơ sở tính toán.
+
+Dashboard mở rộng dùng Matplotlib nhúng Qt; biểu đồ trên tệp được chọn, số liệu danh mục theo mô hình được chọn. Chart và bảng hàng loạt có vùng cuộn ở cửa sổ nhỏ. Đã có Tree SHAP thật cho RF/XGB; không dùng phần trăm minh họa trong ảnh mẫu.

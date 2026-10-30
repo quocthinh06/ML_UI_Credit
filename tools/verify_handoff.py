@@ -12,7 +12,7 @@ from sklearn.metrics import brier_score_loss, confusion_matrix, roc_auc_score
 
 from creditrisk.config import ROOT
 from creditrisk.features import add_features
-from creditrisk.inference import ModelRunner
+from creditrisk.inference import load_models
 from creditrisk.validation import FEATURES, Thresholds
 
 
@@ -20,7 +20,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("data_dir", type=Path, help="Directory containing original X_test.csv and y_test.csv")
     args = parser.parse_args()
-    model = ModelRunner(ROOT / "models/best_model_v1.pkl")
+    models, errors = load_models(ROOT / "models/best_model_v1.pkl")
+    assert not errors, errors
+    model = models["Random Forest"]
     x = pd.read_csv(args.data_dir / "X_test.csv")
     y = pd.read_csv(args.data_dir / "y_test.csv").iloc[:, 0]
     base = x.rename(columns={"PAY_1": "PAY_0"})[FEATURES]
@@ -31,6 +33,11 @@ def main():
     assert abs(auc - model.metadata["test_auc"]) < 1e-9
     assert confusion_matrix(y, output.default_label).tolist() == [[3234, 1439], [393, 934]]
     print(f"Feature parity: PASS | AUC: {auc:.12f} | Brier: {brier_score_loss(y, output.probability):.12f}")
+    for name, runner in models.items():
+        probabilities = runner.predict(base, Thresholds(decision=runner.threshold)).raw_score
+        score = roc_auc_score(y, probabilities)
+        assert abs(score - runner.metadata["test_auc"]) < 1e-9
+        print(f"{name}: AUC {score:.12f}, original handoff parity PASS")
     large = pd.concat([base] * (10000 // len(base) + 1), ignore_index=True).iloc[:10000]
     start = time.perf_counter()
     model.predict(large, Thresholds(decision=model.threshold))

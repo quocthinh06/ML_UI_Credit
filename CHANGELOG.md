@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.0.0] - 2026-10-30
+
+### Added
+
+- Tải CSV/XLSX/JSON và tự dự báo, giữ nhãn thực tế, chuẩn hóa mã UCI theo notebook.
+- Dashboard dự báo, khám phá dữ liệu, ROC và ma trận nhầm lẫn trên nhãn hợp lệ.
+- Chọn ba mô hình, so sánh chỉ số và giải thích đặc trưng thực.
+- Xóa dòng giữ lịch sử, sửa bản sao, chuyển riêng đầu vào đơn lẻ sang hàng loạt.
+- Lọc PD/tuổi/hạn mức/trả nợ/nhãn cảnh báo, xuất metadata truy vết.
+
+### Fixed
+
+- Xử lý đúng mã UCI gốc theo bước chuẩn hóa đã huấn luyện.
+- Xóa kết quả hiện tại khi mô hình/cấu hình/dữ liệu thay đổi, giữ nguyên lịch sử.
+- Tách ngưỡng PD theo BRD và điểm thô theo notebook.
+- Đọc tương thích đúng snapshot XGBoost trên Windows, AUC khớp test gốc.
+
 ## [0.1.0.0] - 2026-10-30
 
 ### Added
