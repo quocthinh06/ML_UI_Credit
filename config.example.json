@@ -1,0 +1,11 @@
+{
+  "mysql": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "database": "Default_Credit",
+    "user": "creditrisk_app",
+    "password": "",
+    "ssl_ca": null
+  },
+  "model_path": "models/best_model_v1.pkl"
+}
