@@ -1,18 +1,7 @@
-import sys
+"""WSGI entrypoint for Flask, local development and Vercel."""
+from creditrisk.web import create_app
 
-from PyQt6.QtWidgets import QApplication
-
-from creditrisk.ui import MainWindow
-
-
-def main():
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    app.setApplicationName("CreditRisk AI")
-    window = MainWindow()
-    window.show()
-    return app.exec()
-
+app = create_app()
 
 if __name__ == "__main__":
-    sys.exit(main())
+    app.run(host="127.0.0.1", port=5000, debug=False)

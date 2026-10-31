@@ -1,87 +1,59 @@
-# CreditRisk AI · Nhóm 4
+# CreditRisk AI · Web
 
-Ứng dụng desktop **PyQt6 + MySQL** dự báo nguy cơ vỡ nợ tín dụng. Giao diện native dùng QSS theo [bốn màn hình Stitch](docs/design/stitch/README.md); nghiệp vụ dựa trên báo cáo và bộ mô hình nhóm cung cấp. Không dùng Flask/FastAPI hoặc giao diện web.
+Ứng dụng web dự báo nguy cơ vỡ nợ tín dụng, chạy trên **Vercel + Flask**. Giao diện HTML/CSS/JavaScript theo [4 màn hình Stitch](docs/design/stitch/README.md), thích ứng desktop và điện thoại. Model và xử lý dữ liệu tái sử dụng từ bản PyQt6.
 
-## Chạy trên Windows
+## Chạy local
 
-Yêu cầu Python 3.11 hoặc 3.12, MySQL Server 8.0 đang chạy. MySQL Workbench dùng để quản lý server và xem dữ liệu; Workbench không thay thế MySQL Server.
-
-1. Chạy `Setup.cmd` để cài thư viện và tải đúng mô hình từ Drive, có đối chiếu SHA256. Môi trường Python nằm ở `%USERPROFILE%\.creditrisk-ai\venv`, tránh lỗi OpenBLAS khi môi trường nằm trong đường dẫn tiếng Việt.
-2. Chạy [sql/setup.sql](sql/setup.sql) trong MySQL Workbench để tạo `Default_Credit` nếu chưa có.
-3. Điền tài khoản MySQL vào `config.local.json` (được tạo từ `config.example.json`). File này bị Git bỏ qua. Có thể truyền mật khẩu bằng biến môi trường `CREDITRISK_DB_PASSWORD`. Máy đã được cấu hình trong phiên bàn giao không cần nhập lại.
-4. Chạy `Run.cmd`.
-
-Trong Workbench: kết nối `localhost:3306`, chọn schema `Default_Credit`, Refresh All, mở Tables. Ứng dụng tự tạo 5 bảng khi kết nối: `datasets`, `dataset_versions`, `customer_records`, `prediction_runs`, `predictions`.
-
-## Tải CSV để có kết quả
-
-Bấm **Tải CSV / Excel và dự báo** ở Tổng quan, hoặc **Nhập CSV / Excel** trong Quản lý dữ liệu. Chọn file; ứng dụng tự kiểm tra → chuẩn hóa theo notebook → dự báo bằng mô hình đang chọn → lưu MySQL → mở output và cập nhật dashboard. Có thể tải CSV UTF-8, XLSX hoặc JSON dạng danh sách hồ sơ.
-
-Với `UCI_Credit_Card.csv` gốc gồm 30.000 dòng, ứng dụng chuẩn hóa `EDUCATION` 0/5/6 về 4 và `MARRIAGE` 0 về 3 đúng bước huấn luyện; thông báo số giá trị đã đổi. Các cột `source_EDUCATION`, `source_MARRIAGE` giữ mã gốc khi có chuẩn hóa. Không tự điền trường thiếu. Sai cấu trúc, giá trị không hữu hạn, mã khác ngoài miền cho phép hoặc ID trùng được báo lỗi trước dự báo.
-
-Output gồm 23 đầu vào, ID, `raw_score`, `probability` (PD), `default_label`, `risk_level`, ngưỡng và cơ sở ngưỡng, phiên bản và SHA256 mô hình, mã lần chạy, phiên bản dữ liệu, thời điểm UTC và người thực hiện (tài khoản Windows). `default.payment.next.month` được giữ nếu có để tính thống kê thực tế, **không đưa nhãn vào mô hình**. Nhãn trống/không hợp lệ không được tính là không vỡ nợ.
-
-## Các luồng sử dụng
-
-- **Tổng quan:** chọn tệp và Phân tích; biểu đồ mức rủi ro, PD, PD theo tuổi, nhãn cảnh báo; chuyển sang khám phá tuổi/hạn mức/học vấn/trả nợ, hoặc ma trận nhầm lẫn/ROC/chỉ số trên file có nhãn. Thanh công cụ biểu đồ hỗ trợ phóng to, di chuyển và lưu hình. Các chỉ số danh mục phía trên tính phiên bản hiện tại theo mô hình đang chọn; biểu đồ phía dưới chỉ thuộc tệp có tên trong phần chú thích.
-- **Quản lý dữ liệu:** xem số dòng/trạng thái/lần cập nhật; thêm, sửa, xóa dòng; chọn cập nhật dataset hiện tại (lưu bản cũ trong lịch sử) hoặc tạo bản sao rồi sửa. Có thể xem phiên bản cũ và lưu thành tệp mới để khôi phục. Xóa dòng không xóa lịch sử dự báo.
-- **Một hồ sơ đơn lẻ:** nhập đủ 23 trường và ID, dự báo và lưu kết quả đơn lẻ thành tệp riêng. Chọn tệp nhận ở danh sách và bấm **Chuyển đầu vào sang dataset** để chỉ chuyển dữ liệu đầu vào, với lựa chọn bản hiện tại/bản sao và xác nhận trùng ID. Lượt dự báo hàng loạt sẽ tính lại bằng mô hình đang chọn, không kế thừa kết quả đơn lẻ.
-- **Hàng loạt:** tự chạy khi tải file mới hoặc bấm Chạy dự báo với tệp đã lưu. Lọc ID, mức rủi ro, khoảng PD, khoảng tuổi, khoảng hạn mức, PAY_0 tối thiểu và nhãn cảnh báo. Xuất đúng các dòng sau lọc sang CSV/XLSX; đặt bộ lọc về toàn bộ để xuất tất cả.
-- **Xuất Excel:** mặc định `ket_qua_RF.xlsx`, `ket_qua_LR.xlsx` hoặc `ket_qua_XGb.xlsx` theo model đang chọn. Workbook gồm dữ liệu, insight (số dòng/cột, PD, cảnh báo, metadata/ngưỡng), dashboard và bảng số liệu biểu đồ. Biểu đồ có nhãn nhóm, tên trục và số liệu trên cột; đánh giá/ROC chỉ xuất khi có đủ nhãn thực tế. Dữ liệu nguồn chưa có dự báo được tính bằng model đang chọn; kết quả đã có phải thuộc đúng model đó.
-- **Chọn mô hình:** danh sách phía trên gồm Random Forest (mặc định theo CV AUC), Logistic Regression và XGBoost. Khi đổi, ứng dụng chạy lại hoặc mở cache phù hợp với **cùng dữ liệu, mô hình và toàn bộ ngưỡng**; không chỉ đổi tên trên kết quả cũ. Các lượt khác nhau luôn được giữ trong lịch sử.
-- **Hiệu năng mô hình:** CV AUC và test AUC gốc từ bundle; nút so sánh ba mô hình trên file đang chọn khi có nhãn. Số đo trên file tải lên được tách khỏi chỉ số test gốc: nếu file chứa dữ liệu huấn luyện thì đó không phải đánh giá độc lập.
-- **Giải thích đơn lẻ:** Random Forest/XGBoost dùng Tree SHAP thực, Logistic Regression hiển thị hệ số nhân giá trị đã biến đổi. Đây là đóng góp vào điểm thô/log-odds, không phải phần trăm PD sau isotonic.
-- **Lịch sử:** mở lại bất kỳ lượt đã lưu sau khi khởi động lại. Sửa dữ liệu hoặc cấu hình vô hiệu kết quả hiện tại, nhưng không đổi kết quả và ngưỡng cũ. Thời gian là UTC.
-
-## Ngưỡng và đơn vị
-
-Tài liệu có hai quy ước. Ứng dụng hiển thị rõ chế độ được chọn:
-
-1. **PD hiệu chỉnh (mặc định BRD):** ngưỡng nhãn 50%; nhãn 1 khi PD ≥ ngưỡng.
-2. **Điểm thô (nghiệm thu notebook):** chọn chế độ điểm thô; dùng ngưỡng của mô hình bàn giao, RF 0,39, LR 0,42, XGB 0,43. RF hồ sơ ranh giới PD 25,41% vẫn có nhãn 1 ở chế độ này.
-
-Hai ngưỡng phân nhóm PD độc lập, mặc định 20%/50%: Low < 20%, Medium từ 20% đến dưới 50%, High ≥ 50%. Thay ngưỡng không thay PD; cấu hình được lưu cùng kết quả. Nhãn 1 là cảnh báo rủi ro, không khẳng định khách hàng sẽ vỡ nợ.
-
-23 trường UCI gồm `LIMIT_BAL`, `SEX`, `EDUCATION`, `MARRIAGE`, `AGE`; `PAY_0`, `PAY_2`…`PAY_6`; `BILL_AMT1`…`BILL_AMT6`; `PAY_AMT1`…`PAY_AMT6`. Có thể dùng `PAY_1` thay `PAY_0`, không dùng đồng thời. ID không đưa vào mô hình; nếu thiếu thì sinh số thứ tự. Tiền tính bằng **TWD**, không đổi thành VND. Không tự suy ra 23 trường từ DPD/DTI của ảnh tham khảo.
-
-Ví dụ nhỏ: [examples/sample_customers.csv](examples/sample_customers.csv). Xem nguồn và hợp đồng mô hình ở [models/README.md](models/README.md).
-
-## Cấu trúc code
-
-```text
-main.py                    Khởi tạo QApplication
-creditrisk/ui.py           View và điều phối thao tác PyQt6
-creditrisk/qt_workers.py   QThread + signal, không sửa widget từ thread nền
-creditrisk/table_model.py QAbstractTableModel cho bảng dữ liệu
-creditrisk/validation.py  Hợp đồng 23 trường và ngưỡng
-creditrisk/features.py    15 đặc trưng đúng notebook
-creditrisk/inference.py   Nạp bundle thật, suy luận và hiệu chỉnh
-creditrisk/database.py    Metadata 5 bảng, khóa ngoại, ràng buộc ID
-creditrisk/service.py     Nhập/xuất, giao dịch, phiên bản và lịch sử
-creditrisk/config.py      Cấu hình riêng, kết nối SQLAlchemy/PyMySQL
-creditrisk/analytics.py   Thống kê dự báo và nhãn hợp lệ
-creditrisk/charts.py      Biểu đồ Matplotlib nhúng PyQt6
-creditrisk/xgb_compat.py  Đọc tương thích đúng snapshot XGBoost bàn giao
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python tools/download_model.py
+.venv\Scripts\python main.py
 ```
 
-Dữ liệu, mô hình và tệp đều được xử lý trong QThread; giao diện cập nhật qua signal. SQLAlchemy dùng tham số ràng buộc; mỗi lần lưu có giao dịch, phiên bản cũ không bị ghi đè. Cập nhật một tệp tạo bản chụp mới; các hồ sơ chưa được dự báo trên bản mới được đánh dấu cần dự báo lại. Chuyển đầu vào đơn lẻ sang dataset tạo phiên bản cần dự báo lại; không gán kết quả đơn lẻ thành kết quả hàng loạt. Muốn khôi phục: mở phiên bản cũ tại Quản lý dữ liệu, chọn **Lưu thành bản mới**.
+Mở http://127.0.0.1:5000. Trên Windows nên tạo venv trong đường dẫn không dấu nếu thư viện BLAS không tải được DLL.
+
+## Deploy Vercel
+
+Import repo này và chọn branch `main`. `vercel.json` cấu hình Flask, entrypoint `main:app`, Python 3.12 và build command `python tools/download_model.py`. Không cần cấu hình Output Directory. Model được tải và kiểm tra SHA256 trong bước build. Runtime web không cài PyQt6/Matplotlib/SHAP; Linux dùng XGBoost CPU để giảm kích thước bundle.
+
+Website hoạt động ngay khi chưa cấu hình database: dữ liệu, phiên bản và lịch sử lưu vào **IndexedDB của trình duyệt hiện tại**. API dự báo không lưu hồ sơ lên ổ đĩa server. Chọn **Quản lý dữ liệu → Sao lưu JSON** để tạo bản sao toàn bộ dữ liệu/lịch sử; có chức năng khôi phục.
+
+### MongoDB Atlas (tùy chọn)
+
+1. Tạo cluster Atlas, database user và cấu hình Network Access cho môi trường triển khai.
+2. Trên Vercel → project `ml_ui_credit` → Settings → Environment Variables, thêm:
+   - `MONGODB_URI`: connection string Atlas có username/password; không đưa vào GitHub hoặc mã frontend.
+   - `MONGODB_DATABASE`: tùy chọn, mặc định `creditrisk_ai`.
+3. Redeploy. Website nhận chế độ MongoDB từ API và đồng bộ các lần lưu.
+
+Nút **Kho dữ liệu** cung cấp mã truy cập riêng 256-bit; cùng mã mở cùng kho trên thiết bị khác. Mã có quyền đọc/ghi toàn bộ kho và cần giữ riêng. Server chỉ lưu hash mã, không công khai danh sách kho. Snapshot dùng GridFS để không vướng giới hạn một document MongoDB; cập nhật có kiểm tra phiên bản để tránh ghi đè đồng thời. Khi mất kết nối cloud, bản cục bộ vẫn được giữ và giao diện báo chưa đồng bộ. Website không dùng localhost MySQL từ máy cá nhân; MySQL Workbench chỉ là công cụ quản lý server.
+
+## Chức năng
+
+- Tổng quan: danh mục theo model, phân bố rủi ro/PD, thống kê theo tuổi, khám phá dữ liệu, ma trận nhầm lẫn và ROC khi đủ nhãn.
+- Dữ liệu: tải CSV/XLSX/JSON, giữ ID dạng chuỗi, chuẩn hóa UCI, xem/sửa/bổ sung/xóa hồ sơ theo phiên bản, lưu bản sao.
+- Dự báo: 23 trường UCI đơn lẻ hoặc hàng loạt, chọn RF/LR/XGBoost, tùy chỉnh ngưỡng raw/PD. Batch chia nhóm 500 dòng để phù hợp request Vercel.
+- Lịch sử: bản chụp riêng cho từng lần chạy, model, SHA256, dữ liệu và ngưỡng; mở lại kết quả lịch sử.
+- Hiệu năng: CV/test AUC từ bundle và so sánh 3 model trên nhãn hợp lệ của dataset.
+- Giải thích: LR dùng hệ số × dữ liệu chuẩn hóa; XGBoost dùng Tree SHAP tích hợp; RF dùng phân rã đóng góp theo đường đi cây và ghi rõ không phải SHAP.
+- Excel: dữ liệu sau lọc, insight, số dòng/cột, metadata, dashboard có nhãn/số liệu. Tên `ket_qua_RF.xlsx`, `ket_qua_LR.xlsx`, `ket_qua_XGb.xlsx`. Server tính lại dự báo khi xuất để không tin điểm số sửa từ client.
+
+### Giới hạn triển khai
+
+Tối đa 30.000 hồ sơ mỗi dataset, file upload 4 MB, nội dung giải nén 64 MB và file Excel tải về 4 MB. Request JSON lớn được nén gzip; bảng phân trang 25 dòng. Khi file Excel quá lớn, giao diện yêu cầu lọc nhóm nhỏ hơn. Kết quả hỗ trợ theo dõi; hệ thống không tự quyết định cấp hoặc từ chối tín dụng.
 
 ## Kiểm thử
 
 ```powershell
-$py = "$env:USERPROFILE\.creditrisk-ai\venv\Scripts\python.exe"
-& $py -m pip install -r requirements-dev.txt
-& $py -m pytest -q
-& $py -m ruff check .
-& $py tools/verify_mysql.py
-# Cần X_test.csv và y_test.csv gốc trong thư mục được chỉ định:
-& $py tools/verify_handoff.py D:\duong_dan\processed
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+python -m ruff check .
+node --check creditrisk/static/app.js
 ```
 
-`verify_mysql.py` tạo 10.000 hồ sơ có ID tổng hợp, kiểm thử nhập → dự báo → lưu MySQL → đọc lại → phiên bản → xuất Excel, sau đó xóa **chỉ dữ liệu kiểm thử do script vừa tạo**. Không chạy lên database nghiệp vụ nếu không muốn phát sinh tải kiểm thử. Bộ pytest mặc định dùng SQLite tạm, không đụng MySQL. CI Windows chạy kiểm thử và nghiệm thu mô hình mẫu.
+Bộ test có contract dữ liệu, dịch vụ phiên bản, 3 model thật, báo cáo Excel, API web, gzip, xuất file chống sửa điểm và mã kho MongoDB. CI giữ cả kiểm thử desktop và web.
 
-Xem kết quả đo thực tế tại [TESTING.md](TESTING.md), và đối chiếu chức năng với tài liệu tại [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+## Bản desktop tùy chọn
 
-## Phạm vi bàn giao
-
-Đây là ứng dụng đồ án chạy cục bộ; chưa có đăng nhập/phân quyền nhiều người dùng, mã hóa dữ liệu lưu trên đĩa hay quy trình phê duyệt khoản vay. Không hiển thị số hiệu năng hoặc giải thích AI giả từ ảnh mẫu. Kết nối server từ xa cần cấu hình TLS qua `mysql.ssl_ca`; mã hóa ổ đĩa/backup và quyền truy cập do môi trường triển khai quản lý. Không đưa thông tin đăng nhập, tệp khách hàng hoặc mô hình nhị phân vào Git.
+Bản PyQt6 vẫn ở `desktop_main.py`; `Setup.cmd` cài `requirements-desktop.txt`, `Run.cmd` mở bản desktop với MySQL như trước. Xem [hướng dẫn desktop](docs/DESKTOP.md).

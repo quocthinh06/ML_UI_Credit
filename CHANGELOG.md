@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0.0] - 2026-10-31
+
+### Added
+
+- Bản web Flask chạy trên Vercel, 5 màn hình HTML/CSS/JavaScript theo Stitch, hỗ trợ desktop và điện thoại.
+- API model thật, upload CSV/XLSX/JSON, dự báo batch 500 dòng, đánh giá/giải thích và xuất Excel tính lại ở server.
+- IndexedDB giữ dataset/phiên bản/lịch sử; sao lưu và khôi phục JSON; MongoDB Atlas tùy chọn theo mã kho riêng, GridFS và kiểm tra xung đột khi đồng bộ.
+- Kiểm thử API, gzip, mã kho và giải thích cả 3 model; nghiệm thu trình duyệt cho dự báo, lọc/xuất, so sánh và phiên bản dữ liệu.
+
+### Changed
+
+- `main.py` trở thành WSGI entrypoint `app`; bản PyQt6 chuyển sang `desktop_main.py`, bộ cài desktop tách riêng.
+- Vercel tải model có SHA256 trong build, loại PyQt/Matplotlib/SHAP khỏi runtime web và dùng XGBoost CPU trên Linux.
+
 ## [0.2.1.0] - 2026-10-31
 
 ### Changed

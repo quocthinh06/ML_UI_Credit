@@ -1,4 +1,10 @@
-# Thiết kế PyQt6
+# Thiết kế web · Vercel
+
+Giao diện chính tại `creditrisk/templates/index.html` và `creditrisk/static/`. Web chuyển từ 4 màn hình Stitch theo yêu cầu mới ngày 2026-10-31; dùng bảng màu xanh đen/xanh dương và bề mặt sáng bo góc của mẫu. Sidebar cố định 238px trên desktop, menu thu gọn trên điện thoại; trang điều hướng theo hash. Bảng cuộn ngang riêng và phân trang; form 23 trường chia nhóm; kết quả đơn lẻ bên phải trên desktop, xếp dưới form trên mobile.
+
+Token CSS: nền `#f8f9fe`, chữ `#15233b`, chữ phụ `#617088`, viền `#e5eaf3`, primary `#2563eb`, teal `#087f83`, đỏ `#bb2745`. Font hệ thống Segoe UI/system-ui; không cần tải font/CDN. SVG icon nét đồng nhất. Biểu đồ SVG có tên trục, nhãn nhóm và giá trị, dùng dữ liệu thực từ model; nhãn thực tế tách khỏi dự báo. Hiện rõ chế độ lưu dữ liệu, trạng thái tải, lỗi, chưa dự báo, cấu hình thay đổi và chưa đồng bộ. Có focus bàn phím, skip link, nhãn input, reduced-motion và CSP chỉ cho tài nguyên cùng origin.
+
+## Bản desktop giữ tương thích
 
 Giữ bố cục ảnh tham khảo: sidebar xanh đen, nội dung nền sáng, nhấn xanh dương, bảng dữ liệu và hai khu nhập/kết quả. Dùng widget PyQt6 native và Segoe UI để tiếng Việt rõ trên Windows. Không dựng trang HTML bên trong Qt.
 

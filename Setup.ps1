@@ -6,7 +6,7 @@ if (-not (Test-Path -LiteralPath $pythonPath)) {
     python -m venv $runtimePath
     if ($LASTEXITCODE -ne 0) { throw 'Python 3.11/3.12 is required.' }
 }
-& $pythonPath -m pip install -r requirements.txt
+& $pythonPath -m pip install -r requirements-desktop.txt
 if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
 & $pythonPath tools/download_model.py
 if ($LASTEXITCODE -ne 0) { throw 'Model download failed.' }

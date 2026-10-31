@@ -16,3 +16,7 @@ dist/
 
 .test-tmp/
 .impeccable/
+.vercel/
+.env
+.env.*
+!.env.example

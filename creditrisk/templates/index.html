@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1626"><meta name="description" content="Dự báo và phân tích rủi ro tín dụng với Random Forest, Logistic Regression và XGBoost.">
+  <title>CreditRisk AI · Dự báo rủi ro tín dụng</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Đến nội dung chính</a>
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="#overview"><span class="brand-icon" data-icon="shield"></span><span>CreditRisk AI<small>QUẢN LÝ RỦI RO TÍN DỤNG</small></span></a>
+    <nav aria-label="Điều hướng chính">
+      <a href="#overview" data-page="overview"><span data-icon="overview"></span><span>Tổng quan<small>Giám sát danh mục</small></span></a>
+      <a href="#datasets" data-page="datasets"><span data-icon="database"></span><span>Quản lý dữ liệu<small>Tập hồ sơ & phiên bản</small></span></a>
+      <a href="#predict" data-page="predict"><span data-icon="predict"></span><span>Dự báo rủi ro<small>Đơn lẻ & hàng loạt</small></span></a>
+      <a href="#history" data-page="history"><span data-icon="history"></span><span>Kết quả & Lịch sử<small>Tra cứu lần dự báo</small></span></a>
+      <a href="#models" data-page="models"><span data-icon="performance"></span><span>Hiệu năng mô hình<small>Đối chiếu chỉ số</small></span></a>
+    </nav>
+    <div class="sidebar-footer"><strong>Mô hình UCI · 23 trường</strong><p>Kết quả hỗ trợ theo dõi rủi ro. Quyết định thuộc chuyên viên.</p><span class="storage-dot"></span> Lưu riêng trên trình duyệt</div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Mở điều hướng" aria-expanded="false" data-icon="menu"></button>
+      <span class="connection" id="connection"><span class="status-dot"></span> Đang kết nối API</span>
+      <label class="model-select">Mô hình <select id="model-choice" aria-label="Mô hình dự báo" disabled><option>Đang tải…</option></select></label>
+      <span class="threshold-badge" id="model-meta">—</span>
+      <button class="button secondary compact" id="workspace-settings">Kho dữ liệu</button>
+      <button class="button secondary compact" id="sample-top"><span data-icon="file"></span> Dùng dữ liệu mẫu</button>
+    </header>
+    <main id="main" tabindex="-1">
+      <div id="alert" class="alert" role="alert" hidden></div>
+      <section id="page-overview" class="page">
+        <div class="page-heading"><div><h1>Tổng quan rủi ro tín dụng</h1><p>Hiểu danh mục. Nhận diện rủi ro. Theo dõi từng lần dự báo.</p></div><div class="actions"><button class="button secondary" data-action="export"><span data-icon="download"></span> Xuất báo cáo</button><button class="button" data-action="upload"><span data-icon="plus"></span> Tải tệp & dự báo</button></div></div>
+        <div id="portfolio-metrics" class="metrics"></div>
+        <div class="panel selection-bar"><label>Tập hồ sơ đang phân tích<select id="overview-dataset" class="dataset-select"></select></label><div class="selection-info" id="overview-context">Chưa có dữ liệu</div><button class="button secondary" id="analyze-selected">Phân tích tệp đã chọn</button></div>
+        <div id="dashboard-empty" class="empty panel"><span data-icon="performance"></span><h2>Bắt đầu từ dữ liệu của bạn</h2><p>Tải CSV, Excel hoặc JSON để dự báo bằng model đang chọn.<br>Hoặc khám phá 3 hồ sơ mẫu UCI với kết quả tính thật.</p><div class="actions"><button class="button" data-action="upload">Tải tệp dữ liệu</button><button class="button secondary" data-action="sample">Khám phá dữ liệu mẫu</button></div></div>
+        <div id="dashboard-content" hidden>
+          <div class="section-heading"><div><h2>Dashboard của tập hồ sơ</h2><p id="dashboard-caption"></p></div><select id="chart-mode" aria-label="Chế độ biểu đồ"><option value="risk">Rủi ro dự báo</option><option value="data">Khám phá dữ liệu</option><option value="evaluation">Đánh giá với nhãn thực tế</option></select></div>
+          <div class="chart-grid" id="charts"></div>
+          <div class="panel insight-panel"><span data-icon="shield"></span><div><h3>Insight từ model đã chọn</h3><p id="insight-text"></p></div></div>
+        </div>
+        <div class="section-heading"><h2>Hoạt động dự báo gần đây</h2><a href="#history">Xem toàn bộ lịch sử →</a></div><div class="panel table-wrap" id="recent-runs"></div>
+      </section>
+      <section id="page-datasets" class="page" hidden>
+        <div class="page-heading"><div><h1>Quản lý dữ liệu</h1><p>Tập hồ sơ, phiên bản dữ liệu và lịch sử cập nhật.</p></div><button class="button" data-action="upload"><span data-icon="plus"></span> Tải lên tệp mới</button></div>
+        <div class="notice"><span data-icon="shield"></span><p>Dữ liệu lưu trong trình duyệt trên thiết bị này, không đồng bộ giữa các thiết bị. Xuất bản sao JSON để giữ dữ liệu trước khi xóa dữ liệu trình duyệt.</p><button class="button secondary compact" id="backup">Sao lưu JSON</button><button class="button secondary compact" id="restore">Khôi phục</button></div>
+        <div class="panel"><div class="panel-heading"><h2>Tập hồ sơ đã lưu</h2><input id="dataset-search" type="search" placeholder="Tìm theo tên tệp…" aria-label="Tìm tập hồ sơ"></div><div class="table-wrap" id="datasets-table"></div></div>
+        <div class="panel data-detail"><div class="panel-heading"><div><h2 id="data-title">Nội dung tập hồ sơ</h2><p id="data-caption">Chọn một tập hồ sơ để xem.</p></div><select id="version-choice" aria-label="Phiên bản dữ liệu"></select></div>
+          <div class="action-toolbar"><button class="button" id="predict-dataset">Chạy dự báo</button><button class="button secondary" id="add-customer">Bổ sung hồ sơ</button><button class="button secondary" id="edit-customer">Sửa hồ sơ đã chọn</button><button class="button secondary" id="clone-dataset">Lưu thành bản mới</button><button class="button danger" id="delete-customer">Xóa dòng đã chọn</button></div>
+          <div class="table-wrap" id="data-table"></div><div class="table-footer" id="data-footer"></div>
+        </div>
+      </section>
+      <section id="page-predict" class="page" hidden>
+        <div class="page-heading"><div><h1>Dự báo nguy cơ vỡ nợ</h1><p>Chấm điểm một hồ sơ hoặc phân tích hàng loạt bằng model thực.</p></div><button class="button secondary" id="goto-models">So sánh mô hình →</button></div>
+        <div class="panel model-banner"><span class="model-symbol" data-icon="predict"></span><div><h2 id="predict-model-title">Đang tải mô hình…</h2><p id="predict-model-detail"></p></div><span class="tag primary">23 trường UCI · TWD</span></div>
+        <div class="panel threshold-settings"><label>Cơ sở ngưỡng<select id="decision-basis"><option value="raw">Điểm thô · notebook</option><option value="probability">PD đã hiệu chỉnh</option></select></label><label>Ngưỡng nhãn (%)<input id="decision" type="number" min="0" max="100" step="0.01" value="39"></label><label>PD thấp (%)<input id="low" type="number" min="0" max="100" step="0.01" value="20"></label><label>PD cao (%)<input id="high" type="number" min="0" max="100" step="0.01" value="50"></label></div>
+        <div class="tabs" role="tablist" aria-label="Loại dự báo"><button class="tab active" id="tab-single" role="tab" aria-selected="true" aria-controls="single-panel">Một hồ sơ đơn lẻ</button><button class="tab" id="tab-batch" role="tab" aria-selected="false" aria-controls="batch-panel">Hàng loạt CSV / Excel</button></div>
+        <div id="single-panel" role="tabpanel" aria-labelledby="tab-single" class="single-layout">
+          <form id="single-form" class="panel profile-panel"><div class="panel-heading"><div><h2>Dữ liệu đầu vào chấm điểm</h2><p>Nhập đủ 23 trường; không tự thay thế dữ liệu thiếu.</p></div><button type="button" class="button secondary compact" id="fill-sample">Điền mẫu</button></div><div id="single-fields"></div><div class="form-footer"><button type="reset" class="button secondary">Xóa dữ liệu nhập</button><button type="submit" class="button"><span data-icon="predict"></span> Chạy dự báo</button></div></form>
+          <aside class="panel result-panel"><div class="panel-heading"><h2>Kết quả dự báo</h2><span class="tag" id="result-status">Chưa dự báo</span></div><div id="single-result" class="result-placeholder"><span data-icon="shield"></span><p>Kết quả sẽ hiển thị sau khi chạy model.</p></div><div class="result-actions"><button class="button" id="save-single" disabled>Lưu hồ sơ & kết quả</button><button class="button secondary" id="export-single" disabled>Xuất Excel</button><button class="button secondary" id="explain-single" disabled>Giải thích kết quả</button><label>Chuyển riêng đầu vào sang dataset<select id="transfer-dataset" class="dataset-select"></select></label><button class="button secondary" id="transfer-single" disabled>Chuyển đầu vào</button></div><div id="explanation" hidden></div><p class="fine-print">Nhãn 1 là cảnh báo rủi ro. Hệ thống không tự phê duyệt hoặc từ chối tín dụng.</p></aside>
+        </div>
+        <div id="batch-panel" role="tabpanel" aria-labelledby="tab-batch" hidden>
+          <div class="panel"><div class="panel-heading"><div><h2>Dự báo tập hồ sơ</h2><p>Chọn dữ liệu → chạy model → lọc và xuất kết quả.</p></div><button class="button secondary" data-action="upload">Tải tệp mới</button></div><div class="action-toolbar"><select id="batch-dataset" class="dataset-select" aria-label="Dataset dự báo"></select><button class="button" id="run-batch">Chạy dự báo & lưu</button><button class="button secondary" data-action="export"><span data-icon="download"></span> Xuất kết quả đã lọc</button></div>
+          <div class="filters"><input type="search" id="result-search" placeholder="Tìm ID khách hàng…" aria-label="Tìm ID khách hàng"><select id="risk-filter" aria-label="Mức rủi ro"><option value="">Tất cả mức rủi ro</option value="Low">Thấp</option><option value="Medium">Trung bình</option><option value="High">Cao</option></select><label>PD từ (%)<input id="min-pd" type="number" min="0" max="100" value="0"></label><label>PD đến (%)<input id="max-pd" type="number" min="0" max="100" value="100"></label></div>
+          <details class="advanced-filters"><summary>Bộ lọc nâng cao</summary><div class="filters"><label>Tuổi từ<input id="min-age" type="number" value="18" min="18" max="100"></label><label>Tuổi đến<input id="max-age" type="number" value="100" min="18" max="100"></label><label>Hạn mức từ (TWD)<input id="min-limit" type="number" value="0" min="0"></label><label>Hạn mức đến<input id="max-limit" type="number" value="10000000" min="0"></label><label>PAY_0 tối thiểu<input id="min-delay" type="number" value="-2" min="-2" max="8"></label><label>Nhãn cảnh báo<select id="warning-filter"><option value="">Tất cả</option><option value="0">Nhãn 0</option><option value="1">Nhãn 1</option></select></label></div><button class="button secondary compact" id="reset-filters">Xóa bộ lọc</button></details>
+          <div id="results-caption" class="results-caption">Chưa có kết quả phù hợp với cấu hình hiện tại.</div><div class="table-wrap" id="results-table"></div><div class="table-footer" id="results-footer"></div></div>
+        </div>
+      </section>
+      <section id="page-history" class="page" hidden><div class="page-heading"><div><h1>Kết quả & Lịch sử</h1><p>Lưu vết phiên bản dữ liệu, model, ngưỡng và thời điểm của mỗi lần chạy.</p></div><button class="button secondary" id="history-backup"><span data-icon="download"></span> Sao lưu lịch sử</button></div><div class="panel"><div class="panel-heading"><h2>Các lượt dự báo đã lưu</h2><input id="history-search" type="search" placeholder="Tìm tên tệp hoặc mô hình…" aria-label="Tìm lịch sử"></div><div class="table-wrap" id="history-table"></div></div><div class="notice"><span data-icon="history"></span><p>Các lượt dự báo giữ bản chụp dữ liệu và ngưỡng tại thời điểm chạy. Sửa tập hồ sơ không làm thay đổi kết quả lịch sử.</p></div></section>
+      <section id="page-models" class="page" hidden><div class="page-heading"><div><h1>Hiệu năng mô hình</h1><p>Đối chiếu chỉ số từ bộ bàn giao và đánh giá trên nhãn của tập hồ sơ.</p></div></div><div class="panel"><div class="panel-heading"><h2>Chỉ số gốc của mô hình</h2><span class="tag primary">Bộ bàn giao thật</span></div><div class="table-wrap" id="model-table"></div></div><div class="notice"><span data-icon="shield"></span><p>CV/test AUC lấy từ bundle gốc. Chỉ số trên tệp tải lên không thay thế kiểm thử độc lập nếu tệp có chứa dữ liệu huấn luyện.</p></div><div class="panel"><div class="panel-heading"><div><h2>So sánh trên tập hồ sơ đang chọn</h2><p>Chỉ tính đánh giá trên nhãn thực tế 0/1 hợp lệ.</p></div><button class="button" id="compare-models">Chạy so sánh 3 mô hình</button></div><div class="table-wrap" id="comparison-table"></div></div></section>
+    </main>
+    <footer class="site-footer"><span>CreditRisk AI · Nhóm 4</span><span id="app-version"></span></footer>
+  </div>
+  <input type="file" id="upload" accept=".csv,.xlsx,.json" hidden><input type="file" id="restore-file" accept=".json" hidden>
+  <dialog id="edit-dialog"><form id="edit-form"><div class="panel-heading"><h2 id="edit-title">Bổ sung hồ sơ</h2><button type="button" class="icon-button" id="close-edit" aria-label="Đóng">×</button></div><div id="edit-fields"></div><label class="check"><input type="checkbox" id="edit-copy"> Tạo bản sao dataset rồi chỉnh sửa</label><label>Tên bản sao<input id="edit-copy-name" maxlength="255" placeholder="Nhập khi tạo bản sao"></label><div class="form-footer"><button type="button" class="button secondary" id="cancel-edit">Hủy</button><button type="submit" class="button">Lưu phiên bản mới</button></div></form></dialog>
+  <dialog id="storage-dialog"><form id="storage-form"><div class="panel-heading"><h2>Kho dữ liệu riêng</h2><button type="button" id="close-storage" class="icon-button" aria-label="Đóng">×</button></div><div class="storage-body"><p id="storage-description"></p><label>Mã truy cập kho (giữ riêng, không chia sẻ công khai)<input id="workspace-key" type="password" autocomplete="off" pattern="[0-9a-f]{64}" minlength="64" maxlength="64" required></label><button class="button secondary compact" type="button" id="copy-workspace-key">Sao chép mã kho</button><p>Mã này cho phép truy cập toàn bộ kho. Dùng cùng mã trên thiết bị khác để mở cùng dữ liệu khi MongoDB Atlas đã được cấu hình.</p></div><div class="form-footer"><button type="submit" class="button">Mở kho theo mã</button></div></form></dialog>
+  <div class="busy-overlay" id="busy" hidden role="status" aria-live="polite"><div class="busy-card"><span class="spinner"></span><strong id="busy-title">Đang xử lý…</strong><p id="busy-detail">Vui lòng giữ trang mở.</p><progress id="busy-progress" max="100"></progress></div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body></html>

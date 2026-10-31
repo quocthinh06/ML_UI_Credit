@@ -1,0 +1,11 @@
+.venv
+.test-tmp
+config.local.json
+exports
+logs
+docs
+tests
+models/*.ipynb
+models/model_rf_v1.pkl
+models/xgb_snapshot.bin
+models/xgb_recovered.json

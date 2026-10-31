@@ -1,8 +1,21 @@
-name: Python and PyQt6 tests
+name: Web and desktop tests
 on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt pytest ruff
+      - run: python tools/download_model.py
+      - run: python -m ruff check creditrisk/web.py creditrisk/cloud_storage.py tests/test_web.py main.py
+      - run: python -m pytest tests/test_web.py tests/test_validation.py tests/test_service.py tests/test_excel_report.py tests/test_real_model.py -q -o qt_api=
+      - run: node --check creditrisk/static/app.js
   tests:
     runs-on: windows-latest
     steps:

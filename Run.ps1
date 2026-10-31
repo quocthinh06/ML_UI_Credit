@@ -6,5 +6,5 @@ if (-not (Test-Path -LiteralPath $pythonPath)) {
     Write-Host 'Run Setup.ps1 first.'
     exit 1
 }
-& $pythonPath main.py
+& $pythonPath desktop_main.py
 exit $LASTEXITCODE

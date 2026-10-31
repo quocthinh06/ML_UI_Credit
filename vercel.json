@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "flask",
+  "buildCommand": "python tools/download_model.py",
+  "functions": {
+    "main.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{.venv/**,.test-tmp/**,.git/**,tests/**,docs/**,exports/**,logs/**,creditrisk/assets/**,creditrisk/ui.py,creditrisk/charts.py,desktop_main.py,config.local.json,models/*.ipynb,models/model_rf_v1.pkl}"
+    }
+  },
+  "headers": [
+    {"source": "/static/(.*)", "headers": [{"key": "Cache-Control", "value": "public, max-age=3600"}]}
+  ]
+}

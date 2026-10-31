@@ -36,3 +36,8 @@ Ba mô hình đối chiếu với tập test độc lập 6.000 dòng gốc: RF 
 Kiểm thử mới gồm chuẩn hóa UCI, giữ nhãn/không coi nhãn thiếu là 0, cache tách theo mô hình/cơ sở ngưỡng, xóa dòng cuối mà vẫn giữ lịch sử, chuyển chỉ đầu vào và cách ly bản sao, biểu đồ có/không có nhãn, tự chạy khi upload, đổi mô hình có tính lại kết quả, và metadata trong output.
 
 Đã chạy lại kiểm tra MySQL sau thay đổi: 10.000 dòng nhập → dự báo → lưu/đọc lại trong 1,587 giây, revision và xuất XLSX qua; dữ liệu kiểm thử tạm đã dọn đúng phạm vi.
+# Web acceptance · 2026-10-31
+
+73 pytest tests passed on the migration checkout, including 17 web/API tests and the existing model, data, Excel and desktop tests. Ruff and JavaScript syntax checks passed. Browser acceptance passed 12 checks: original RF probabilities, filtered Excel download, distinct LR/XGBoost inference and explanations, three-model comparison, new dataset revisions, preservation of historical snapshots, and revised-input inference. IndexedDB data survived a reload. Desktop and 390px mobile views were inspected, with no document-wide horizontal overflow and no browser console errors.
+
+MongoDB connection requires a real Atlas URI. Tests cover workspace-key authorization, hashed scoping and configuration-disabled behavior; a live Atlas connection has not been verified without credentials. Linux web CI uses the production dependency set and downloads SHA256-verified model handoffs.
