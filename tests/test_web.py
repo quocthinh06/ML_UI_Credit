@@ -34,6 +34,14 @@ def test_web_models(client, model):
     assert len(data["features"]) == 23
 
 
+def test_login_configuration_is_explicit_without_database(client):
+    response = client.get("/api/auth/session")
+    assert response.json["user"] is None and not response.json["configured"]
+    assert client.get("/login").status_code == 200
+    assert client.post("/api/auth/login", json={"username": "not_configured", "password": "not-a-real-password"}).status_code == 503
+    assert client.post("/api/auth/logout", json={}).status_code == 200
+
+
 def test_web_prediction_uses_real_input_contract(client, frame, model):
     response = client.post("/api/predict", json={"rows": frame.to_dict("records"), "model": model.name})
     assert response.status_code == 200

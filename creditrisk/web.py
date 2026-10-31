@@ -12,11 +12,12 @@ from zipfile import BadZipFile, ZipFile
 
 import numpy as np
 import pandas as pd
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, g, jsonify, render_template, request, send_file
 from werkzeug.exceptions import HTTPException
 
 from .analytics import evaluation, summary
 from . import cloud_storage
+from . import auth
 from .config import ROOT
 from .inference import load_models
 from .service import export_filename, export_frame, read_file
@@ -97,6 +98,7 @@ def predict(data, limit=500):
 def create_app(test_config=None):
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.update(MAX_CONTENT_LENGTH=4 * 1024 * 1024)
+    auth.install(app)
     if test_config:
         app.config.update(test_config)
 
@@ -139,13 +141,54 @@ def create_app(test_config=None):
 
     @app.route("/api/workspace", methods=["GET", "PUT"])
     def workspace():
-        owner = cloud_storage.workspace_id(request.headers.get("Authorization", ""))
+        user = getattr(g, "user", None)
+        if user:
+            from hashlib import sha256
+            from werkzeug.exceptions import Forbidden
+            account_id = request.args.get("account_id", user["_id"])
+            if account_id != user["_id"] and user["role"] != "admin":
+                raise Forbidden("Bạn chỉ được truy cập dữ liệu của chính tài khoản mình.")
+            owner = sha256(f"account:{account_id}".encode()).hexdigest()
+        else:
+            owner = cloud_storage.workspace_id(request.headers.get("Authorization", ""))
         try:
             if request.method == "GET":
                 return jsonify(cloud_storage.read_snapshot(owner))
             data = payload()
-            return jsonify(cloud_storage.write_snapshot(owner, data.get("state"), data.get("revision")))
-        except HTTPException:
+            incoming = data.get("state")
+            if user:
+                if (not isinstance(incoming, dict) or not isinstance(incoming.get("datasets"), list)
+                        or not isinstance(incoming.get("runs"), list)):
+                    raise ValidationError("Cấu trúc kho dữ liệu không hợp lệ.")
+                for item in incoming["datasets"]:
+                    if (not isinstance(item, dict) or not isinstance(item.get("id"), str)
+                            or not isinstance(item.get("versions"), list) or not item["versions"]
+                            or any(not isinstance(v, dict) or not isinstance(v.get("id"), str)
+                                   or not isinstance(v.get("rows"), list) for v in item["versions"])):
+                        raise ValidationError("Cấu trúc phiên bản dữ liệu không hợp lệ.")
+                if any(not isinstance(r, dict) or not isinstance(r.get("id"), str) for r in incoming["runs"]):
+                    raise ValidationError("Cấu trúc lịch sử không hợp lệ.")
+                previous = cloud_storage.read_snapshot(owner)["state"]
+                if previous and isinstance(incoming, dict):
+                    old_runs = {r["id"]: r for r in previous.get("runs", [])}
+                    new_runs = {r["id"]: r for r in incoming.get("runs", [])}
+                    if any(new_runs.get(key) != row for key, row in old_runs.items()):
+                        raise ValidationError("Không được xóa hoặc sửa kết quả lịch sử đã lưu.")
+                    old_versions = {v["id"]: v for d in previous.get("datasets", []) for v in d["versions"]}
+                    for d in incoming.get("datasets", []):
+                        for v in d.get("versions", []):
+                            if v.get("id") in old_versions and v != old_versions[v["id"]]:
+                                raise ValidationError("Dữ liệu đã lưu cần được chỉnh sửa bằng phiên bản mới.")
+            result = cloud_storage.write_snapshot(owner, incoming, data.get("revision"))
+            if user:
+                cloud_storage.database().workspaces.update_one({"_id": owner}, {"$set": {
+                    "account_id": account_id, "dataset_count": len(incoming["datasets"]),
+                    "version_count": sum(len(d["versions"]) for d in incoming["datasets"]),
+                    "run_count": len(incoming["runs"]), "updated_at": auth.now(),
+                }})
+                auth.audit("data_version_save", account_id, detail=f"datasets={len(incoming['datasets'])}, runs={len(incoming['runs'])}")
+            return jsonify(result)
+        except (HTTPException, ValidationError):
             raise
         except Exception:
             app.logger.exception("MongoDB workspace unavailable")
@@ -153,7 +196,12 @@ def create_app(test_config=None):
 
     @app.get("/api/models")
     def models():
-        return jsonify(models=[{
+        default_model = "Random Forest"
+        if getattr(g, "user", None):
+            setting = cloud_storage.database().system_settings.find_one({"_id": "active_model"})
+            if setting:
+                default_model = setting["name"]
+        return jsonify(default_model=default_model, models=[{
             "name": m.name, "version": m.version, "digest": m.digest, "threshold": m.threshold,
             "cv_auc": m.metadata.get("cv_auc"), "test_auc": m.metadata.get("test_auc"),
         } for m in model_registry().values()], features=FEATURES)
@@ -186,6 +234,8 @@ def create_app(test_config=None):
     @app.post("/api/predict")
     def inference():
         result, model, config = predict(payload())
+        if getattr(g, "user", None):
+            auth.audit("prediction", model.name, detail=f"rows={len(result)}")
         return jsonify(rows=records_json(result), summary=summary(result),
                        evaluation=evaluation(result), model=model.name, thresholds=asdict(config))
 

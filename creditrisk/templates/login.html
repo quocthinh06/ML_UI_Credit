@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1626"><title>{{ 'Đổi mật khẩu' if password_change else 'Đăng nhập' }} · CreditRisk AI</title><link rel="stylesheet" href="/static/app.css"><link rel="stylesheet" href="/static/auth.css"><script src="/static/login.js" defer></script></head>
+<body class="auth-page" data-password-change="{{ 'true' if password_change else 'false' }}">
+<main class="auth-shell">
+  <section class="auth-story"><a class="brand" href="/"><span class="brand-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8 12 3 3 5-6"/></svg></span><span>CreditRisk AI<small>QUẢN LÝ RỦI RO TÍN DỤNG</small></span></a>
+    <div class="auth-intro"><h1>Hiểu dữ liệu.<br>Nhìn rõ rủi ro.</h1><p>Không gian phân tích tín dụng dành cho chuyên viên, với dữ liệu riêng và khả năng truy vết từng lần dự báo.</p></div>
+    <div class="auth-illustration" aria-hidden="true"><div class="mini-chart-title">Phân tích rủi ro tín dụng</div><svg viewBox="0 0 360 150"><path d="M15 120H345M15 75H345M15 30H345" stroke="#314561" stroke-width="1"/><rect x="35" y="57" width="49" height="63" rx="6" fill="#48b5ae"/><rect x="113" y="34" width="49" height="86" rx="6" fill="#4c8cf6"/><rect x="191" y="74" width="49" height="46" rx="6" fill="#8baaf5"/><rect x="269" y="90" width="49" height="30" rx="6" fill="#eb9d9b"/></svg><p>Random Forest · Logistic Regression · XGBoost</p></div>
+    <p class="auth-disclaimer">Hệ thống hỗ trợ phân tích. Quyết định tín dụng thuộc chuyên viên.</p>
+  </section>
+  <section class="auth-card"><div class="auth-card-content"><div class="auth-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></div>
+    <h2>{{ 'Đổi mật khẩu của bạn' if password_change else 'Chào mừng trở lại' }}</h2><p>{{ 'Tạo mật khẩu riêng để bảo vệ tài khoản trước khi tiếp tục.' if password_change else 'Đăng nhập để vào không gian làm việc của bạn.' }}</p>
+    {% if not configured %}<div class="auth-notice" role="status">Đăng nhập chưa được kích hoạt. Quản trị viên cần cấu hình MongoDB Atlas và khóa phiên bảo mật trên Vercel.</div>{% endif %}
+    <form id="login-form">
+      {% if not password_change %}<label for="username">Tên đăng nhập hoặc email<input id="username" name="username" autocomplete="username" required maxlength="100" placeholder="Nhập tên đăng nhập của bạn" {% if not configured %}disabled{% endif %}></label>{% endif %}
+      <label for="password">{{ 'Mật khẩu hiện tại' if password_change else 'Mật khẩu' }}<span class="password-control"><input id="password" name="password" type="password" autocomplete="{{ 'current-password' }}" required maxlength="128" placeholder="Nhập mật khẩu" {% if not configured %}disabled{% endif %}><button type="button" id="toggle-password" aria-label="Hiện mật khẩu">Hiện</button></span></label>
+      {% if password_change %}<label for="new-password">Mật khẩu mới<input id="new-password" name="new-password" type="password" autocomplete="new-password" required minlength="10" maxlength="128" placeholder="Tối thiểu 10 ký tự"></label><label for="confirm-password">Nhập lại mật khẩu mới<input id="confirm-password" type="password" autocomplete="new-password" required minlength="10" maxlength="128"></label>{% endif %}
+      <div class="auth-error" id="auth-error" role="alert" hidden></div>
+      <button class="button auth-submit" type="submit" id="submit-login" {% if not configured %}disabled{% endif %}>{{ 'Lưu mật khẩu mới' if password_change else 'Đăng nhập' }} <span aria-hidden="true">→</span></button>
+    </form>
+    <p class="auth-help">{% if password_change %}Các phiên đăng nhập cũ sẽ hết hiệu lực sau khi đổi mật khẩu.{% else %}Quên mật khẩu hoặc chưa có tài khoản?<br>Liên hệ quản trị viên để được cấp hoặc đặt lại tài khoản.{% endif %}</p>
+    <div class="auth-roles"><div><strong>Chuyên viên phân tích</strong><span>Dự báo và quản lý dữ liệu của mình</span></div><div><strong>Quản trị viên</strong><span>Quản lý tài khoản và hệ thống</span></div></div>
+    <p class="auth-footnote">Vai trò được xác định từ tài khoản đăng nhập.</p>
+  </div></section>
+</main></body></html>

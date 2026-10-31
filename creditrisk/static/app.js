@@ -25,7 +25,11 @@ let models = [], features = [], selectedDataset = null, selectedVersion = null, 
 let singleResult = null, singleInputs = null, singleConfig = null, editId = null, database;
 let resultsPage = 0, dataPage = 0, comparison = [], toastTimer;
 let remoteEnabled = false, cloudRevision = 0;
+let currentAccount = null, csrfToken = null, workspaceAccount = null;
 const PAGE_SIZE = 25;
+
+function cloudPath() { return workspaceAccount ? 'workspace?account_id='+encodeURIComponent(workspaceAccount) : 'workspace'; }
+function pendingKey() { return 'creditrisk-cloud-pending'+(currentAccount?'-'+currentAccount.id+'-'+(workspaceAccount||currentAccount.id):''); }
 
 function workspaceKey() {
   let key = localStorage.getItem('creditrisk-workspace-key');
@@ -47,7 +51,7 @@ async function busy(title, fn) {
   try { return await fn(); } finally { $('busy').hidden = true; document.querySelector('.workspace').inert = false; $('sidebar').inert = false; }
 }
 async function api(path, data, options = {}) {
-  let headers = {}, body;
+  let headers = csrfToken ? {'X-CSRF-Token':csrfToken} : {}, body;
   if (data instanceof FormData) body = data;
   else if (data !== undefined) {
     headers['Content-Type'] = 'application/json'; body = JSON.stringify(data);
@@ -59,6 +63,7 @@ async function api(path, data, options = {}) {
   const response = await fetch(`/api/${path}`, {method: data === undefined ? 'GET' : 'POST', body,
     ...options, headers:{...headers,...options.headers}});
   if (!response.ok) {
+    if (response.status === 401 && currentAccount) { location.assign('/login'); throw new Error('Phiên đăng nhập đã hết hạn.'); }
     const type = response.headers.get('Content-Type') || '';
     const error = type.includes('json') ? (await response.json()).error : `Máy chủ trả lỗi ${response.status}. Vui lòng thử lại.`;
     throw new Error(error || 'Không thể xử lý yêu cầu.');
@@ -67,7 +72,7 @@ async function api(path, data, options = {}) {
 }
 async function openStorage() {
   database = await new Promise((resolve, reject) => {
-    const req = indexedDB.open('creditrisk-ai-v1', 1);
+    const req = indexedDB.open('creditrisk-ai-v1'+(currentAccount?'-'+currentAccount.id+'-'+(workspaceAccount||currentAccount.id):''), 1);
     req.onupgradeneeded = () => req.result.createObjectStore('app');
     req.onsuccess = () => resolve(req.result); req.onerror = () => reject(new Error('Trình duyệt không cho phép lưu dữ liệu. Hãy bật IndexedDB.'));
   });
@@ -85,25 +90,25 @@ async function persist() {
     });
   } catch { throw new Error('Không lưu được dữ liệu vào trình duyệt. Có thể đã hết dung lượng; hãy sao lưu JSON và thử lại.'); }
   if (remoteEnabled) {
-    localStorage.setItem('creditrisk-cloud-pending', '1');
+    localStorage.setItem(pendingKey(), '1');
     try {
-      const result = await api('workspace', {state, revision:cloudRevision},
+      const result = await api(cloudPath(), {state, revision:cloudRevision},
         {method:'PUT',headers:{Authorization:`Bearer ${workspaceKey()}`}});
-      cloudRevision = result.revision; localStorage.removeItem('creditrisk-cloud-pending');
+      cloudRevision = result.revision; localStorage.removeItem(pendingKey());
       $('connection').innerHTML = '<span class="status-dot"></span> API & MongoDB đã đồng bộ';
     } catch(error) { $('connection').textContent = 'Đã lưu cục bộ · chưa đồng bộ'; showError(error); }
   }
 }
 
 async function connectCloud() {
-  const result = await api('workspace', undefined, {headers:{Authorization:`Bearer ${workspaceKey()}`}});
+  const result = await api(cloudPath(), undefined, {headers:{Authorization:`Bearer ${workspaceKey()}`}});
   cloudRevision = result.revision;
   if (result.state) {
-    const pending = localStorage.getItem('creditrisk-cloud-pending') && state.datasets.length;
+    const pending = localStorage.getItem(pendingKey()) && state.datasets.length;
     if (!pending || !confirm('Có thay đổi cục bộ chưa đồng bộ. Giữ bản cục bộ và thay thế bản trên kho? Chọn Hủy để mở bản trên kho.')) {
       state = result.state;
       await new Promise((resolve,reject)=>{const tx=database.transaction('app','readwrite');tx.objectStore('app').put(state,'state');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
-      localStorage.removeItem('creditrisk-cloud-pending');
+      localStorage.removeItem(pendingKey());
     } else await persist();
   } else if (state.datasets.length) await persist();
   document.querySelector('.sidebar-footer').lastChild.textContent = ' MongoDB Atlas · kho riêng';
@@ -369,5 +374,22 @@ $('storage-form').addEventListener('submit',guarded(async event=>{
   state=result.state||{datasets:[],runs:[]};await persist();selectDataset(state.datasets[0]?.id);$('storage-dialog').close();notify('Đã mở kho dữ liệu riêng.');
 }));
 
-async function initialize(){navigate();await openStorage();const [meta,health]=await Promise.all([api('models'),api('health')]);models=meta.models;features=meta.features;if(!models.length)throw new Error('Chưa tải được model thật. Kiểm tra bước build trên Vercel.');$('model-choice').replaceChildren(...models.map(m=>new Option(m.name,m.name)));$('model-choice').disabled=false;$('decision').value=model().threshold*100;$('connection').innerHTML='<span class="status-dot"></span> API dự báo đã kết nối';$('app-version').textContent=`v${health.version} · Dữ liệu riêng trên trình duyệt`;remoteEnabled=health.storage==='mongodb';if(remoteEnabled){try{await connectCloud();}catch(error){showError(error);}}inputFields('single-fields','single');selectedDataset=state.datasets[0]?.id;selectedVersion=dataset()?.versions.at(-1)?.id;renderAll();}
+async function initialize(){
+  navigate();
+  const auth=await api('auth/session');currentAccount=auth.user;csrfToken=auth.csrf;
+  if(auth.enabled&&!currentAccount){location.assign('/login');return;}
+  if(currentAccount?.must_change_password){location.assign('/change-password');return;}
+  if(currentAccount){
+    $('sign-in-link').hidden=true;
+    workspaceAccount=currentAccount.role==='admin'?new URLSearchParams(location.search).get('account_id'):null;
+    $('workspace-settings').hidden=true;
+    const banner=$('account-banner');banner.hidden=false;
+    const name=document.createElement('strong');name.textContent=`${currentAccount.name} · ${currentAccount.role==='admin'?'Quản trị viên':'Chuyên viên phân tích'}`;banner.append(name);
+    if(workspaceAccount){const scope=document.createElement('span');scope.textContent='Đang quản lý dữ liệu: '+workspaceAccount;banner.append(scope);}
+    if(currentAccount.role==='admin'){const link=document.createElement('a');link.href='/admin';link.className='button secondary';link.textContent='Admin Console';banner.append(link);}
+    const change=document.createElement('a');change.href='/change-password';change.className='button secondary';change.textContent='Đổi mật khẩu';banner.append(change);
+    const logout=document.createElement('button');logout.className='button secondary';logout.textContent='Đăng xuất';logout.addEventListener('click',guarded(async()=>{await api('auth/logout',{});location.assign('/login');}));banner.append(logout);
+  }
+  await openStorage();const [meta,health]=await Promise.all([api('models'),api('health')]);models=meta.models;features=meta.features;if(!models.length)throw new Error('Chưa tải được model thật. Kiểm tra bước build trên Vercel.');$('model-choice').replaceChildren(...models.map(m=>new Option(m.name,m.name)));if(meta.default_model)$('model-choice').value=meta.default_model;$('model-choice').disabled=false;$('decision').value=model().threshold*100;$('connection').innerHTML='<span class="status-dot"></span> API dự báo đã kết nối';$('app-version').textContent=`v${health.version} · Dữ liệu riêng trên trình duyệt`;remoteEnabled=health.storage==='mongodb';if(remoteEnabled){try{await connectCloud();}catch(error){showError(error);}}inputFields('single-fields','single');selectedDataset=state.datasets[0]?.id;selectedVersion=dataset()?.versions.at(-1)?.id;renderAll();
+}
 initialize().catch(error=>{$('connection').textContent='Chưa kết nối được API';showError(error);});

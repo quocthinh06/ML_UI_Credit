@@ -5,6 +5,7 @@
   <meta name="theme-color" content="#0b1626"><meta name="description" content="Dự báo và phân tích rủi ro tín dụng với Random Forest, Logistic Regression và XGBoost.">
   <title>CreditRisk AI · Dự báo rủi ro tín dụng</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <link rel="stylesheet" href="/static/auth.css">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
@@ -26,9 +27,11 @@
       <span class="connection" id="connection"><span class="status-dot"></span> Đang kết nối API</span>
       <label class="model-select">Mô hình <select id="model-choice" aria-label="Mô hình dự báo" disabled><option>Đang tải…</option></select></label>
       <span class="threshold-badge" id="model-meta">—</span>
+      <a href="/login" id="sign-in-link" class="button secondary compact">Đăng nhập</a>
       <button class="button secondary compact" id="workspace-settings">Kho dữ liệu</button>
       <button class="button secondary compact" id="sample-top"><span data-icon="file"></span> Dùng dữ liệu mẫu</button>
     </header>
+    <div id="account-banner" class="account-banner" hidden></div>
     <main id="main" tabindex="-1">
       <div id="alert" class="alert" role="alert" hidden></div>
       <section id="page-overview" class="page">

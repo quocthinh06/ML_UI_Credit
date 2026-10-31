@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.0.0] - 2026-11-01
+
+### Added
+
+- Màn hình đăng nhập/đổi mật khẩu cùng thiết kế CreditRisk AI trên desktop và mobile; vai trò Admin/Analyst xác định ở backend.
+- Tài khoản và phiên thu hồi được trong MongoDB, băm scrypt, CSRF, giới hạn đăng nhập sai, buộc đổi mật khẩu tạm, khóa/mở khóa và bảo vệ Admin cuối cùng.
+- Kho dữ liệu và cache tách theo tài khoản; chuyên viên toàn quyền thao tác dữ liệu riêng nhưng bị chặn truy cập tài khoản/kho khác.
+- Admin Console quản lý tài khoản, thông tin kho dữ liệu, model tích hợp, kích hoạt/rollback model mặc định có lý do và tra cứu nhật ký.
+- Tài liệu cấu hình Atlas/phiên/Admin ban đầu và kiểm thử quyền/thu hồi phiên/CRUD riêng/CSRF/nhật ký.
+
+### Deployment
+
+- Chưa tự bật bắt buộc đăng nhập nếu chưa cấu hình MongoDB Atlas, SESSION_SECRET và Admin ban đầu. Dùng AUTH_ENABLED=1 sau khi cấu hình.
+- Huấn luyện model mới chưa có backend/worker; giao diện ghi rõ chưa khả dụng. Kích hoạt/rollback chỉ áp dụng các bundle đã tích hợp và có đánh giá.
+
 ## [0.3.0.0] - 2026-10-31
 
 ### Added
