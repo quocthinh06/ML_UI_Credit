@@ -13,6 +13,7 @@
 
 - `main.py` trở thành WSGI entrypoint `app`; bản PyQt6 chuyển sang `desktop_main.py`, bộ cài desktop tách riêng.
 - Vercel tải model có SHA256 trong build, loại PyQt/Matplotlib/SHAP khỏi runtime web và dùng XGBoost CPU trên Linux.
+- Chuyển cấu hình pytest/ruff sang file riêng để Vercel cài đúng dependency từ requirements.txt.
 
 ## [0.2.1.0] - 2026-10-31
 
