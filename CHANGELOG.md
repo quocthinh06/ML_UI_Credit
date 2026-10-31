@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0.1] - 2026-11-01
+
+### Fixed
+
+- Báo rõ lỗi xác thực MongoDB, thiếu quyền readWrite, timeout mạng hoặc URI không hợp lệ tại màn hình đăng nhập; không trả chi tiết chứa secret cho client.
+- Bổ sung kiểm thử phân loại lỗi MongoDB và kiểm tra không lộ thông tin nhạy cảm.
+
 ## [0.4.0.0] - 2026-11-01
 
 ### Added

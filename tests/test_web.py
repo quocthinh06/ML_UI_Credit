@@ -42,6 +42,26 @@ def test_login_configuration_is_explicit_without_database(client):
     assert client.post("/api/auth/logout", json={}).status_code == 200
 
 
+@pytest.mark.parametrize(("error", "expected"), [
+    ("auth", "từ chối xác thực"), ("permissions", "readWrite"),
+    ("timeout", "Network Access"), ("configuration", "connection string"),
+])
+def test_mongodb_failures_return_actionable_errors_without_secrets(client, monkeypatch, error, expected):
+    from pymongo.errors import ConfigurationError, OperationFailure, ServerSelectionTimeoutError
+
+    secret = "do-not-return-this-test-secret"
+    errors = {"auth": OperationFailure(secret, code=8000),
+              "permissions": OperationFailure(secret, code=13),
+              "timeout": ServerSelectionTimeoutError(secret), "configuration": ConfigurationError(secret)}
+    def fail():
+        raise errors[error]
+    monkeypatch.setattr("creditrisk.auth.bootstrap", fail)
+    response = client.post("/api/auth/login", json={"username": "test-user", "password": "invalid"})
+    assert response.status_code == 503
+    assert expected in response.json["error"]
+    assert secret not in response.get_data(as_text=True)
+
+
 def test_web_prediction_uses_real_input_contract(client, frame, model):
     response = client.post("/api/predict", json={"rows": frame.to_dict("records"), "model": model.name})
     assert response.status_code == 200

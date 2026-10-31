@@ -123,6 +123,25 @@ def create_app(test_config=None):
 
     @app.errorhandler(Exception)
     def handle_error(exc):
+        from pymongo.errors import ConfigurationError, OperationFailure, PyMongoError, ServerSelectionTimeoutError
+
+        if isinstance(exc, OperationFailure):
+            app.logger.error("MongoDB operation failed (code=%s)", exc.code)
+            if exc.code in (18, 8000):
+                return jsonify(error="MongoDB Atlas từ chối xác thực. Quản trị viên cần kiểm tra username, "
+                               "mật khẩu và MONGODB_URI trong Vercel, sau đó redeploy."), 503
+            if exc.code == 13:
+                return jsonify(error="Database user chưa có đủ quyền. Cần cấp readWrite cho database "
+                               "được cấu hình trong MONGODB_DATABASE."), 503
+            return jsonify(error="MongoDB không thực hiện được thao tác. Quản trị viên cần kiểm tra cấu hình database."), 503
+        if isinstance(exc, ServerSelectionTimeoutError):
+            app.logger.error("MongoDB server selection timed out")
+            return jsonify(error="Không kết nối được MongoDB Atlas. Hãy kiểm tra cluster đang chạy, "
+                           "Network Access và địa chỉ cluster trong MONGODB_URI."), 503
+        if isinstance(exc, (ConfigurationError, PyMongoError)):
+            app.logger.error("MongoDB client configuration/connection failed (%s)", type(exc).__name__)
+            return jsonify(error="Cấu hình hoặc kết nối MongoDB không hợp lệ. Kiểm tra connection string "
+                           "MONGODB_URI trong Vercel và redeploy."), 503
         if isinstance(exc, HTTPException):
             return jsonify(error="Tệp hoặc yêu cầu quá lớn." if exc.code == 413 else exc.description), exc.code
         if isinstance(exc, (ValueError, TypeError, KeyError, OSError, BadZipFile)):
