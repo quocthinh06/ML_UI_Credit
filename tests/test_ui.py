@@ -3,6 +3,47 @@ from PyQt6.QtWidgets import QMessageBox
 from creditrisk.ui import MainWindow
 
 
+def test_navigation_and_data_actions_at_minimum_window_size(qtbot, service, model):
+    from pathlib import Path
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtGui import QFontDatabase
+    from PyQt6.QtWidgets import QPushButton
+
+    # Offscreen Qt on Windows has no system-font discovery; use the shipped OS font.
+    for font in Path("C:/Windows/Fonts").glob("segoeui*.ttf"):
+        QFontDatabase.addApplicationFont(str(font))
+    window = MainWindow(service, model, auto_connect=False)
+    qtbot.addWidget(window)
+    window.resize(1050, 720)
+    window.show()
+    for index, item in enumerate(window.nav_buttons):
+        assert not item.icon().isNull()
+        qtbot.mouseClick(item, Qt.MouseButton.LeftButton)
+        assert window.stack.currentIndex() == index and item.isChecked()
+        assert sum(button.isChecked() for button in window.nav_buttons) == 1
+    window.navigate(1)
+    window.stack.currentWidget().layout().activate()
+    actions = window.stack.currentWidget().findChildren(QPushButton)
+    assert len(actions) == 6
+    assert all(action.width() >= action.minimumSizeHint().width() for action in actions)
+    assert window.datasets_view.geometry().bottom() < window.data_note.geometry().top()
+    delete = next(action for action in actions if action.property("danger"))
+    assert "giữ nguyên lịch sử" in delete.toolTip()
+
+
+def test_export_dialog_defaults_to_selected_model(qtbot, service, model, frame, monkeypatch):
+    from PyQt6.QtWidgets import QFileDialog
+
+    window = MainWindow(service, model, auto_connect=False)
+    qtbot.addWidget(window)
+    defaults = []
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: (defaults.append(args[2]) or "", ""))
+    for name in ["Random Forest", "Logistic Regression", "XGBoost"]:
+        model.name = name
+        window.export(frame)
+    assert defaults == ["ket_qua_RF.xlsx", "ket_qua_LR.xlsx", "ket_qua_XGb.xlsx"]
+
+
 def test_prediction_edit_invalidates_and_save(qtbot, service, model, frame, monkeypatch):
     window = MainWindow(service, model, auto_connect=False)
     qtbot.addWidget(window)

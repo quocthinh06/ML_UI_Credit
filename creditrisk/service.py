@@ -40,11 +40,35 @@ def read_file(path):
     return prepare_input(frame)
 
 
-def export_frame(frame, path):
+def export_filename(model_name):
+    suffix = {"Random Forest": "RF", "Logistic Regression": "LR", "XGBoost": "XGb"}.get(model_name)
+    return f"ket_qua_{suffix}.xlsx" if suffix else "ket_qua.xlsx"
+
+
+def export_frame(frame, path, *, model=None, thresholds=None):
     """Write beside destination and replace only after the entire export succeeds."""
     path = Path(path)
     if path.suffix.lower() not in (".csv", ".xlsx"):
         raise ValidationError("Tên tệp xuất cần đuôi .csv hoặc .xlsx.")
+    if path.suffix.lower() == ".xlsx" and model is not None:
+        # Recompute only raw inputs; existing results must match the selected model.
+        if "probability" in frame:
+            if "model_sha256" not in frame or not frame.model_sha256.eq(model.digest).all():
+                raise ValidationError("Kết quả không thuộc model đang chọn. Vui lòng chạy dự báo lại.")
+        else:
+            from .validation import Thresholds
+
+            thresholds = thresholds or Thresholds()
+            frame = frame.reset_index(drop=True).copy()
+            output = model.predict(frame, thresholds)
+            frame = pd.concat([frame, output.reset_index(drop=True)], axis=1)
+            for key, value in {
+                "model_name": model.name, "model_version": model.version,
+                "model_sha256": model.digest, "decision_threshold": thresholds.decision,
+                "decision_basis": thresholds.basis, "risk_low_threshold": thresholds.low,
+                "risk_high_threshold": thresholds.high,
+            }.items():
+                frame[key] = value
     safe = frame.copy()
     # Spreadsheet formula injection: imported identifiers and dataset names are untrusted.
     for col in safe.select_dtypes(include=["object", "string"]).columns:
@@ -57,7 +81,9 @@ def export_frame(frame, path):
         if path.suffix.lower() == ".csv":
             safe.to_csv(name, index=False, encoding="utf-8-sig")
         else:
-            safe.to_excel(name, index=False)
+            from .excel_report import write_report
+
+            write_report(safe, name)
         os.replace(name, path)
     finally:
         if os.path.exists(name):

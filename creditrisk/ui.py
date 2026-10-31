@@ -3,6 +3,8 @@
 from pathlib import Path
 
 import pandas as pd
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -35,7 +37,7 @@ from .inference import load_models
 from .charts import DashboardCharts
 from .analytics import evaluation
 from .qt_workers import Task
-from .service import CreditService, export_frame, read_file
+from .service import CreditService, export_filename, export_frame, read_file
 from .table_model import DataFrameModel
 from .validation import FEATURES, PAY_COLUMNS, Thresholds, validate_frame
 
@@ -59,6 +61,11 @@ def table():
     view = QTableView()
     view.setModel(DataFrameModel())
     view.setAlternatingRowColors(True)
+    view.setShowGrid(False)
+    view.verticalHeader().setDefaultSectionSize(44)
+    view.horizontalHeader().setMinimumHeight(44)
+    view.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+    view.setTextElideMode(Qt.TextElideMode.ElideRight)
     view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
     view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
     view.setSortingEnabled(False)
@@ -148,50 +155,75 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("CreditRisk AI · Nhóm 4 · Dashboard")
         self.resize(1440, 940)
         self.setMinimumSize(1050, 720)
-        self.setStyleSheet((ROOT / "creditrisk/style.qss").read_text(encoding="utf-8"))
+        self.setStyleSheet(
+            (ROOT / "creditrisk/style.qss").read_text(encoding="utf-8").replace(
+                "__ASSETS__", (ROOT / "creditrisk/assets").as_posix()
+            )
+        )
         shell = QWidget()
         root = QHBoxLayout(shell)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(218)
+        sidebar.setFixedWidth(224)
         nav = QVBoxLayout(sidebar)
-        nav.setContentsMargins(18, 28, 18, 24)
-        nav.addWidget(label("CreditRisk AI", "brand"))
-        nav.addWidget(label("QUẢN LÝ RỦI RO TÍN DỤNG"))
-        nav.addSpacing(32)
+        nav.setContentsMargins(14, 26, 14, 20)
+        nav.setSpacing(8)
+        brand = QHBoxLayout()
+        mark = QLabel()
+        mark.setObjectName("brandMark")
+        mark.setPixmap(QIcon(str(ROOT / "creditrisk/assets/shield.svg")).pixmap(28, 28))
+        mark.setFixedSize(42, 42)
+        mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        brand.addWidget(mark)
+        brand.addWidget(label("CreditRisk AI", "brand"))
+        nav.addLayout(brand)
+        nav.addWidget(label("Quản lý rủi ro tín dụng", "navCaption"))
+        nav.addSpacing(24)
         self.nav_buttons = []
         self.stack = QStackedWidget()
         for i, title in enumerate(
-            ["Tổng quan", "Quản lý dữ liệu", "Dự báo rủi ro", "Kết quả & Lịch sử", "Hiệu năng mô hình"]
+            ["Tổng quan", "Quản lý dữ liệu", "Dự báo rủi ro", "Kết quả && Lịch sử", "Hiệu năng mô hình"]
         ):
             item = button(title, lambda checked=False, index=i: self.navigate(index))
+            icon = ["overview", "database", "predict", "history", "performance"][i]
+            item.setIcon(QIcon(str(ROOT / f"creditrisk/assets/{icon}.svg")))
+            item.setIconSize(QSize(20, 20))
             item.setCheckable(True)
+            item.setMinimumHeight(46)
             nav.addWidget(item)
             self.nav_buttons.append(item)
         nav.addStretch()
-        nav.addWidget(
-            label("Mô hình UCI · 23 trường\nKết quả hỗ trợ theo dõi rủi ro.\nQuyết định thuộc chuyên viên.")
-        )
+        footer = QFrame()
+        footer.setObjectName("sidebarNote")
+        footer_layout = QVBoxLayout(footer)
+        footer_layout.addWidget(label("Mô hình UCI · 23 trường", "navCaption"))
+        footer_layout.addWidget(label("Kết quả hỗ trợ theo dõi rủi ro.\nQuyết định thuộc chuyên viên."))
+        nav.addWidget(footer)
         root.addWidget(sidebar)
         content = QWidget()
         content.setObjectName("content")
         main = QVBoxLayout(content)
-        main.setContentsMargins(28, 20, 28, 20)
-        top = QHBoxLayout()
+        main.setContentsMargins(24, 16, 24, 16)
+        main.setSpacing(12)
+        topbar = QFrame()
+        topbar.setObjectName("topbar")
+        top = QHBoxLayout(topbar)
+        top.setContentsMargins(16, 12, 16, 12)
+        top.setSpacing(16)
         self.connection = label("Chưa kết nối MySQL", "subtitle")
         if service:
             self.connection.setText("Cơ sở dữ liệu đã kết nối · thời gian lưu UTC")
-        top.addWidget(self.connection)
+        self.connection.setObjectName("connectionBadge")
+        top.addWidget(self.connection, 1)
         self.model_choice = QComboBox()
         self.model_choice.setMinimumWidth(180)
         self.model_choice.currentIndexChanged.connect(self.switch_model)
         top.addWidget(self.model_choice)
-        top.addStretch()
         self.connect_button = button("Kết nối / tải lại", self.connect_backend, True)
         top.addWidget(self.connect_button)
-        main.addLayout(top)
+        main.addWidget(topbar)
         self.model_info = label("Chưa nạp mô hình", "subtitle")
         main.addWidget(self.model_info)
         self.build_dashboard()
@@ -219,6 +251,7 @@ class MainWindow(QMainWindow):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 12, 0, 0)
+        layout.setSpacing(14)
         layout.addWidget(label(title, "title"))
         layout.addWidget(label(description, "subtitle"))
         self.stack.addWidget(page)
@@ -390,14 +423,17 @@ class MainWindow(QMainWindow):
         layout.addLayout(toolbar)
         metrics = QHBoxLayout()
         self.metrics = []
-        for title in [
-            "Hồ sơ danh mục",
-            "Rủi ro cao",
-            "Cần dự báo lại",
-            "Tệp đã lưu",
+        metrics.setSpacing(14)
+        for title, tone in [
+            ("Hồ sơ danh mục", "primary"), ("Rủi ro cao", "danger"),
+            ("Cần dự báo lại", "warning"), ("Tệp đã lưu", "teal"),
         ]:
-            group = QGroupBox(title)
+            group = QFrame()
+            group.setObjectName("metricCard")
+            group.setProperty("tone", tone)
             box = QVBoxLayout(group)
+            box.setContentsMargins(18, 16, 18, 16)
+            box.addWidget(label(title, "metricCaption"))
             value = label("0", "metric")
             self.metrics.append(value)
             box.addWidget(value)
@@ -442,15 +478,24 @@ class MainWindow(QMainWindow):
         layout = self.page(
             "Quản lý dữ liệu", "Nhập CSV/Excel; mỗi lần cập nhật tạo phiên bản mới và giữ nguyên lịch sử."
         )
-        actions = QHBoxLayout()
-        actions.addWidget(button("Nhập CSV / Excel", self.import_file))
-        actions.addWidget(button("Xem tệp đã chọn", self.open_dataset, True))
-        actions.addWidget(button("Bổ sung / cập nhật hồ sơ", self.edit_dataset, True))
-        actions.addWidget(button("Lưu thành bản mới", self.clone_dataset, True))
-        actions.addWidget(button("Xuất dữ liệu đang xem", self.export_data, True))
+        actions = QGridLayout()
+        actions.setSpacing(10)
+        for i, (text, callback, secondary) in enumerate([
+            ("Nhập CSV / Excel", self.import_file, False),
+            ("Xem tệp đã chọn", self.open_dataset, True),
+            ("Bổ sung / cập nhật hồ sơ", self.edit_dataset, True),
+            ("Lưu thành bản mới", self.clone_dataset, True),
+            ("Xuất dữ liệu đang xem", self.export_data, True),
+            ("Xóa dòng đã chọn", self.delete_record, True),
+        ]):
+            action = button(text, callback, secondary)
+            if callback == self.delete_record:
+                action.setProperty("danger", True)
+                action.setToolTip("Xóa khỏi phiên bản mới; giữ nguyên lịch sử.")
+            actions.addWidget(action, i // 3, i % 3)
         layout.addLayout(actions)
-        layout.addWidget(button("Xóa dòng đã chọn (giữ lịch sử)", self.delete_record, True))
         self.datasets_view = table()
+        self.datasets_view.setMinimumHeight(120)
         self.datasets_view.doubleClicked.connect(self.open_dataset)
         layout.addWidget(self.datasets_view, 1)
         self.data_note = label("Chọn tệp để xem dữ liệu.", "subtitle")
@@ -460,6 +505,7 @@ class MainWindow(QMainWindow):
         self.version_choice.activated.connect(self.open_version)
         layout.addWidget(self.version_choice)
         self.data_view = table()
+        self.data_view.setMinimumHeight(140)
         layout.addWidget(self.data_view, 2)
 
     def selected(self, view):
@@ -648,12 +694,14 @@ class MainWindow(QMainWindow):
             self.show_error("Chưa có dữ liệu để xuất.")
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Xuất dữ liệu", "ket_qua.csv", "CSV (*.csv);;Excel (*.xlsx)"
+            self, "Xuất dữ liệu", export_filename(self.model.name if self.model else None),
+            "Excel (*.xlsx);;CSV (*.csv)"
         )
         if path:
             snapshot = frame.copy()
+            model, thresholds = self.model, self.thresholds()
             self.execute(
-                lambda: export_frame(snapshot, path),
+                lambda: export_frame(snapshot, path, model=model, thresholds=thresholds),
                 lambda _: QMessageBox.information(self, "Đã xuất", "Đã lưu tệp thành công."),
             )
 
@@ -693,6 +741,7 @@ class MainWindow(QMainWindow):
         scroll.setWidget(self.form)
         body.addWidget(scroll, 3)
         result_group = QGroupBox("Kết quả dự báo đơn lẻ")
+        result_group.setObjectName("resultPanel")
         result = QVBoxLayout(result_group)
         self.result_label = label("Chưa dự báo", "result")
         result.addWidget(self.result_label)
@@ -707,7 +756,9 @@ class MainWindow(QMainWindow):
         self.save_destination = QComboBox()
         self.save_destination.addItem("Tạo tệp đơn lẻ mới", None)
         result.addWidget(self.save_destination)
-        result.addWidget(button("Chuyển đầu vào sang dataset hàng loạt", self.transfer_single, True))
+        transfer = button("Chuyển đầu vào sang dataset", self.transfer_single, True)
+        transfer.setToolTip("Chuyển riêng dữ liệu đầu vào sang dataset hàng loạt đã chọn.")
+        result.addWidget(transfer)
         result.addWidget(button("Giải thích kết quả", self.explain_single, True))
         self.save_button = button("Lưu kết quả vào MySQL", self.save_single)
         self.save_button.setEnabled(False)
@@ -862,6 +913,16 @@ class MainWindow(QMainWindow):
             def done(result):
                 output = pd.concat([values, result], axis=1)
                 output.insert(0, "ID", cid)
+                for key, value in {
+                    "model_name": self.model.name,
+                    "model_version": self.model.version,
+                    "model_sha256": self.model.digest,
+                    "decision_threshold": thresholds.decision,
+                    "decision_basis": thresholds.basis,
+                    "risk_low_threshold": thresholds.low,
+                    "risk_high_threshold": thresholds.high,
+                }.items():
+                    output[key] = value
                 self.preview = (values.assign(ID=cid), output, thresholds)
                 row = result.iloc[0]
                 self.result_label.setText(f"{row['probability']:.2%}")

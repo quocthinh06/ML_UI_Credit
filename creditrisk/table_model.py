@@ -60,6 +60,16 @@ class DataFrameModel(QAbstractTableModel):
             if orientation == Qt.Orientation.Horizontal:
                 name = str(self.frame.columns[section])
                 return {
+                    "id": "Mã tệp",
+                    "name": "Tên tệp dữ liệu",
+                    "created_at": "Thời điểm tạo (UTC)",
+                    "revision": "Phiên bản dữ liệu",
+                    "version_id": "Mã phiên bản",
+                    "run_id": "Mã lần dự báo",
+                    "model_name": "Mô hình",
+                    "model_version": "Phiên bản mô hình",
+                    "thresholds": "Cấu hình ngưỡng",
+                    "updated_at_utc": "Cập nhật (UTC)",
                     "probability": "PD đã hiệu chỉnh",
                     "raw_score": "Điểm thô",
                     "default_label": "Cảnh báo (0/1)",

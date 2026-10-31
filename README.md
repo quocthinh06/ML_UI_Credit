@@ -1,6 +1,6 @@
 # CreditRisk AI · Nhóm 4
 
-Ứng dụng desktop **PyQt6 + MySQL** dự báo nguy cơ vỡ nợ tín dụng. Giao diện tham khảo ảnh trong `ML_UI_Credit.zip`; nghiệp vụ dựa trên báo cáo và bộ mô hình nhóm cung cấp. Không dùng Flask/FastAPI hoặc giao diện web.
+Ứng dụng desktop **PyQt6 + MySQL** dự báo nguy cơ vỡ nợ tín dụng. Giao diện native dùng QSS theo [bốn màn hình Stitch](docs/design/stitch/README.md); nghiệp vụ dựa trên báo cáo và bộ mô hình nhóm cung cấp. Không dùng Flask/FastAPI hoặc giao diện web.
 
 ## Chạy trên Windows
 
@@ -25,8 +25,9 @@ Output gồm 23 đầu vào, ID, `raw_score`, `probability` (PD), `default_label
 
 - **Tổng quan:** chọn tệp và Phân tích; biểu đồ mức rủi ro, PD, PD theo tuổi, nhãn cảnh báo; chuyển sang khám phá tuổi/hạn mức/học vấn/trả nợ, hoặc ma trận nhầm lẫn/ROC/chỉ số trên file có nhãn. Thanh công cụ biểu đồ hỗ trợ phóng to, di chuyển và lưu hình. Các chỉ số danh mục phía trên tính phiên bản hiện tại theo mô hình đang chọn; biểu đồ phía dưới chỉ thuộc tệp có tên trong phần chú thích.
 - **Quản lý dữ liệu:** xem số dòng/trạng thái/lần cập nhật; thêm, sửa, xóa dòng; chọn cập nhật dataset hiện tại (lưu bản cũ trong lịch sử) hoặc tạo bản sao rồi sửa. Có thể xem phiên bản cũ và lưu thành tệp mới để khôi phục. Xóa dòng không xóa lịch sử dự báo.
-- **Một hồ sơ đơn lẻ:** nhập đủ 23 trường và ID, dự báo và lưu kết quả đơn lẻ thành tệp riêng. Chọn tệp nhận ở danh sách và bấm **Chuyển đầu vào sang dataset hàng loạt** để chỉ chuyển dữ liệu đầu vào, với lựa chọn bản hiện tại/bản sao và xác nhận trùng ID. Lượt dự báo hàng loạt sẽ tính lại bằng mô hình đang chọn, không kế thừa kết quả đơn lẻ.
+- **Một hồ sơ đơn lẻ:** nhập đủ 23 trường và ID, dự báo và lưu kết quả đơn lẻ thành tệp riêng. Chọn tệp nhận ở danh sách và bấm **Chuyển đầu vào sang dataset** để chỉ chuyển dữ liệu đầu vào, với lựa chọn bản hiện tại/bản sao và xác nhận trùng ID. Lượt dự báo hàng loạt sẽ tính lại bằng mô hình đang chọn, không kế thừa kết quả đơn lẻ.
 - **Hàng loạt:** tự chạy khi tải file mới hoặc bấm Chạy dự báo với tệp đã lưu. Lọc ID, mức rủi ro, khoảng PD, khoảng tuổi, khoảng hạn mức, PAY_0 tối thiểu và nhãn cảnh báo. Xuất đúng các dòng sau lọc sang CSV/XLSX; đặt bộ lọc về toàn bộ để xuất tất cả.
+- **Xuất Excel:** mặc định `ket_qua_RF.xlsx`, `ket_qua_LR.xlsx` hoặc `ket_qua_XGb.xlsx` theo model đang chọn. Workbook gồm dữ liệu, insight (số dòng/cột, PD, cảnh báo, metadata/ngưỡng), dashboard và bảng số liệu biểu đồ. Biểu đồ có nhãn nhóm, tên trục và số liệu trên cột; đánh giá/ROC chỉ xuất khi có đủ nhãn thực tế. Dữ liệu nguồn chưa có dự báo được tính bằng model đang chọn; kết quả đã có phải thuộc đúng model đó.
 - **Chọn mô hình:** danh sách phía trên gồm Random Forest (mặc định theo CV AUC), Logistic Regression và XGBoost. Khi đổi, ứng dụng chạy lại hoặc mở cache phù hợp với **cùng dữ liệu, mô hình và toàn bộ ngưỡng**; không chỉ đổi tên trên kết quả cũ. Các lượt khác nhau luôn được giữ trong lịch sử.
 - **Hiệu năng mô hình:** CV AUC và test AUC gốc từ bundle; nút so sánh ba mô hình trên file đang chọn khi có nhãn. Số đo trên file tải lên được tách khỏi chỉ số test gốc: nếu file chứa dữ liệu huấn luyện thì đó không phải đánh giá độc lập.
 - **Giải thích đơn lẻ:** Random Forest/XGBoost dùng Tree SHAP thực, Logistic Regression hiển thị hệ số nhân giá trị đã biến đổi. Đây là đóng góp vào điểm thô/log-odds, không phải phần trăm PD sau isotonic.

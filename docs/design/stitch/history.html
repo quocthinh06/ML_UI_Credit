@@ -1,0 +1,945 @@
+<!DOCTYPE html><html lang="vi"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<meta content="web_dashboard" name="shell-type">
+<title>CreditRisk AI - Kết quả &amp; Lịch sử Audit Trail</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    @layer base {
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      h1, h2, h3, h4, .font-display {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-[#f4f7fb] text-slate-800 antialiased min-h-screen">
+<!-- Left Sidebar (Navy Blue #0b1727) -->
+<aside class="fixed left-0 top-0 h-full w-64 bg-[#0b1727] z-50 flex flex-col justify-between shadow-xl text-slate-300">
+<div class="flex flex-col">
+<!-- Logo Branding -->
+<div class="h-16 px-6 flex items-center gap-3 border-b border-slate-800/80 bg-[#07101c]">
+<div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+<span class="material-symbols-outlined text-[22px]">shield_with_heart</span>
+</div>
+<div class="flex flex-col">
+<span class="font-display font-bold text-base text-white tracking-tight leading-tight">CreditRisk AI</span>
+<span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Enterprise Risk Suite</span>
+</div>
+</div>
+<!-- Navigation Menu -->
+<div class="px-3 pt-5">
+<p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Hệ Thống Nghiệp Vụ</p>
+<nav class="flex flex-col gap-1">
+<!-- Item 1: Tổng quan -->
+<a class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-all" data-path="tong-quan" href="#">
+<span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-blue-400">grid_view</span>
+<div class="flex flex-col">
+<span class="text-sm font-medium leading-tight">Tổng quan</span>
+<span class="text-[11px] text-slate-400 group-hover:text-slate-300">Giám sát tín dụng</span>
+</div>
+</a>
+<!-- Item 2: Quản lý dữ liệu -->
+<a class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-all" data-path="quan-ly-du-lieu" href="#">
+<span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-blue-400">database</span>
+<div class="flex flex-col">
+<span class="text-sm font-medium leading-tight">Quản lý dữ liệu</span>
+<span class="text-[11px] text-slate-400 group-hover:text-slate-300">Chuẩn bị hồ sơ</span>
+</div>
+</a>
+<!-- Item 3: Dự báo rủi ro -->
+<a class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-all" data-path="du-bao-rui-ro" href="#">
+<span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-blue-400">bolt</span>
+<div class="flex flex-col">
+<span class="text-sm font-medium leading-tight">Dự báo rủi ro</span>
+<span class="text-[11px] text-slate-400 group-hover:text-slate-300">Chấm điểm hồ sơ</span>
+</div>
+</a>
+<!-- Item 4: Kết quả & Lịch sử (ACTIVE) -->
+<a aria-current="page" class="group flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium shadow-md shadow-blue-900/30 transition-all" data-path="ket-qua-lich-su" href="#">
+<span class="material-symbols-outlined text-[20px] text-white">history_edu</span>
+<div class="flex flex-col">
+<span class="text-sm font-semibold leading-tight text-white">Kết quả &amp; Lịch sử</span>
+<span class="text-[11px] text-blue-100">Audit trail &amp; XAI</span>
+</div>
+</a>
+<!-- Item 5: Mô hình ML -->
+
+</nav>
+</div>
+</div>
+<!-- AI Standards Box Bottom Sidebar -->
+<div class="p-3.5 m-3.5 bg-slate-900/90 border border-slate-800 rounded-xl flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Tiêu chuẩn AI</span>
+<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold text-[10px] border border-emerald-500/30">F2-CRIT</span>
+</div>
+<div class="flex items-center justify-between text-xs text-slate-300">
+<span class="">Ngưỡng phân loại (τ):</span>
+<span class="font-bold text-emerald-400 font-mono">0.3900</span>
+</div>
+<div class="flex items-center justify-between text-xs text-slate-300">
+<span class="">F2 Metric Target:</span>
+<span class="font-bold text-white font-mono">0.842</span>
+</div>
+<div class="w-full bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden">
+<div class="bg-emerald-400 h-full w-[84%] rounded-full"></div>
+</div>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="pl-64 flex flex-col min-h-screen">
+<!-- Top Header (Clean White Bar) -->
+<header class="fixed top-0 left-64 right-0 h-16 bg-white border-b border-slate-200 z-40 px-8 flex items-center justify-between shadow-xs">
+<!-- Left Header Indicators -->
+<div class="flex items-center gap-3">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="">API Gateway Online</span>
+</div>
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium">
+<span class="material-symbols-outlined text-[15px] text-blue-600">psychology</span>
+<span class="">Random Forest v1.2</span>
+<span class="text-slate-300">|</span>
+<span class="text-emerald-600 font-semibold font-mono">τ = 0.39</span>
+</div>
+</div>
+<!-- Right Header Controls -->
+<div class="flex items-center gap-5">
+<button aria-label="Thông báo" class="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500"></span>
+</button>
+<div class="h-6 w-px bg-slate-200"></div>
+<div class="flex items-center gap-3">
+<div class="flex flex-col text-right">
+<span class="text-xs font-semibold text-slate-900 leading-tight">Nguyễn Văn A</span>
+<span class="text-[11px] text-slate-500">Senior Risk Analyst</span>
+</div>
+<div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs ring-2 ring-blue-100">
+            NA
+          </div>
+</div>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="w-full pt-16 flex-1 pb-10">
+<div class="px-8 py-6 flex flex-col gap-6">
+<!-- Top Breadcrumbs & Page Heading Area -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center gap-1.5 text-xs text-slate-500">
+<span class="hover:text-slate-700">Bảng điều hành</span>
+<span class="material-symbols-outlined text-[14px] text-slate-400">chevron_right</span>
+<span class="text-blue-600 font-semibold">Kết quả &amp; Lịch sử Audit</span>
+<span class="material-symbols-outlined text-[14px] text-slate-400">chevron_right</span>
+<span class="text-slate-400">Tra cứu kết quả hợp nhất</span>
+</div>
+<h1 class="font-display text-2xl font-bold text-slate-900 tracking-tight">
+              Tra cứu kết quả dự báo &amp; Nhật ký kiểm toán (Audit Trail)
+            </h1>
+<p class="text-sm text-slate-600 max-w-4xl">
+              Lưu vết toàn bộ 14,392 quyết định chấm điểm tín dụng trong kỳ từ nguồn tệp hàng loạt và hồ sơ đơn lẻ, bảo đảm tính giải trình &amp; minh bạch mô hình AI.
+            </p>
+</div>
+<!-- Action Buttons Area: ONLY ONE PRIMARY BLUE BUTTON -->
+<div class="flex items-center gap-2.5 flex-wrap">
+<button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors text-xs font-semibold shadow-xs" type="button">
+<span class="material-symbols-outlined text-[18px] text-slate-500">view_column</span>
+<span class="">Tùy biến cột hiển thị</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors text-xs font-semibold shadow-xs" type="button">
+<span class="material-symbols-outlined text-[18px] text-slate-500">filter_alt</span>
+<span class="">Lưu bộ lọc</span>
+</button>
+<!-- The SINGLE Primary Blue Button -->
+<button class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-sm shadow-blue-500/20" id="btn-export-audit" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span class="">+ Xuất dữ liệu kiểm toán CSV</span>
+</button>
+</div>
+</div>
+<!-- 4 KPI Metrics Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+<!-- Card 1: Tổng hồ sơ -->
+<div class="p-5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs uppercase font-bold tracking-wider text-slate-500">Tổng hồ sơ đã ghi nhận</span>
+<div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">inventory_2</span>
+</div>
+</div>
+<div class="my-3 flex items-baseline gap-2">
+<span class="font-display text-3xl font-extrabold text-slate-900">14,392</span>
+<span class="text-xs font-semibold text-emerald-600 flex items-center bg-emerald-50 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[13px] mr-0.5">arrow_upward</span> +4.8%
+              </span>
+</div>
+<div class="flex flex-col gap-1.5 pt-1 border-t border-slate-100">
+<div class="flex items-center justify-between text-xs text-slate-500">
+<span class="">Đã dự báo: <strong class="text-slate-800">12,480</strong></span>
+<span class="">Chờ: <strong class="text-slate-800">1,000</strong></span>
+<span class="">Cần làm lại: <strong class="text-amber-600">912</strong></span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden flex">
+<div class="bg-blue-600 h-full w-[86.7%]" title="Đã dự báo: 12,480"></div>
+<div class="bg-amber-400 h-full w-[6.3%]" title="Cần dự báo lại: 912"></div>
+<div class="bg-slate-300 h-full w-[7%]" title="Chờ xử lý: 1,000"></div>
+</div>
+</div>
+</div>
+<!-- Card 2: Nhãn Vỡ Nợ -->
+<div class="p-5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs uppercase font-bold tracking-wider text-slate-500">Hồ sơ gắn nhãn Vỡ nợ (Nhãn 1)</span>
+<div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+</div>
+</div>
+<div class="my-3 flex items-baseline gap-2">
+<span class="font-display text-3xl font-extrabold text-rose-600">1,842</span>
+<span class="text-xs text-slate-500">/ 12,480 đã dự báo</span>
+</div>
+<div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100 text-slate-600">
+<span class="">Tỷ lệ phân loại: <strong class="text-rose-600 font-bold">14.76%</strong></span>
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px] font-medium border border-slate-200">Điểm thô ≥ τ 0.39</span>
+</div>
+</div>
+<!-- Card 3: Cờ làm sạch Cleansed -->
+<div class="p-5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs uppercase font-bold tracking-wider text-slate-500">Cờ làm sạch (Cleansed)</span>
+<span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[11px] border border-emerald-200 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Cờ Audit Trail
+              </span>
+</div>
+<div class="my-3 flex items-baseline gap-2">
+<span class="font-display text-3xl font-extrabold text-emerald-600 font-mono">15</span>
+<span class="text-xs text-slate-500 font-medium">hồ sơ đặc thù</span>
+</div>
+<p class="text-xs text-slate-600 leading-relaxed pt-1 border-t border-slate-100">
+              Lưu vết 15 hồ sơ được gán 0 ngày quá hạn (0 DPD) do thiếu dữ liệu để thẩm định viên rà soát chi tiết.
+            </p>
+</div>
+<!-- Card 4: Độ trễ suy luận AI -->
+<div class="p-5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="text-xs uppercase font-bold tracking-wider text-slate-500">Độ trễ suy luận AI</span>
+<div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">speed</span>
+</div>
+</div>
+<div class="my-3 flex items-baseline gap-2">
+<span class="font-display text-3xl font-extrabold text-slate-900 font-mono">18.4</span>
+<span class="text-xs font-semibold text-slate-500">ms / hồ sơ</span>
+</div>
+<div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100 text-slate-600">
+<span class="font-medium">Random Forest v1.2 Prod</span>
+<span class="flex items-center gap-1 text-emerald-600 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> SLO Đạt 99.98%
+              </span>
+</div>
+</div>
+</div>
+<!-- Search & Filter Controls Panel -->
+<div class="p-5 bg-white rounded-xl border border-slate-200/80 shadow-xs flex flex-col gap-4">
+<!-- Search Bar Row -->
+<div class="flex flex-col md:flex-row gap-3 items-stretch">
+<div class="relative flex-1">
+<span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</span>
+<input class="w-full pl-10 pr-10 py-2 bg-slate-50 text-slate-900 rounded-lg text-sm border border-slate-200 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-blue-500 transition-colors" id="audit-search-input" placeholder="Tìm theo Mã KH (ví dụ: KH-88491), CCCD, Tên tệp CSV, ID phiên chấm..." type="text" value="KH-88491">
+<button aria-label="Xóa tìm kiếm" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600" type="button">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+</button>
+</div>
+<div class="flex items-center gap-2.5">
+<button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors text-xs font-semibold shadow-xs" type="button">
+<span class="material-symbols-outlined text-[17px] text-slate-500">refresh</span>
+<span class="">Làm mới</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors text-xs font-semibold shadow-xs" id="toggle-filter-btn" type="button">
+<span class="material-symbols-outlined text-[17px] text-slate-500">tune</span>
+<span class="">Bộ lọc nâng cao (5)</span>
+</button>
+</div>
+</div>
+<!-- Advanced Filters Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-1 border-t border-slate-100" id="filter-panel">
+<!-- Filter 1 -->
+<div class="flex flex-col gap-1">
+<label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Loại phiên chấm</label>
+<select class="w-full bg-slate-50 text-slate-800 rounded-lg px-3 py-1.5 text-xs border border-slate-200 focus:outline-none focus:border-blue-500 focus:bg-white">
+<option selected="">Tất cả loại hình (14,392)</option>
+<option>Theo lô (Batch CSV)</option>
+<option>Hồ sơ đơn lẻ (Single API)</option>
+</select>
+</div>
+<!-- Filter 2 -->
+<div class="flex flex-col gap-1">
+<label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Tệp dữ liệu nguồn</label>
+<select class="w-full bg-slate-50 text-slate-800 rounded-lg px-3 py-1.5 text-xs border border-slate-200 focus:outline-none focus:border-blue-500 focus:bg-white">
+<option selected="">Tất cả tệp (18 tệp đính kèm)</option>
+<option>Q4_2024_Customer_Batch.csv</option>
+<option>SME_Loans_2024.csv</option>
+<option>Microfinance_Live.csv</option>
+<option>Consumer_Credit_Batch_09.csv</option>
+</select>
+</div>
+<!-- Filter 3 -->
+<div class="flex flex-col gap-1">
+<label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Phiên bản mô hình</label>
+<select class="w-full bg-slate-50 text-slate-800 rounded-lg px-3 py-1.5 text-xs border border-slate-200 focus:outline-none focus:border-blue-500 focus:bg-white">
+<option selected="">Tất cả model</option>
+<option>Random Forest v1.2 (Prod τ=0.39)</option>
+<option>Logistic Regression v1.0 (Baseline)</option>
+<option>XGBoost Candidate v2.0</option>
+</select>
+</div>
+<!-- Filter 4 -->
+<div class="flex flex-col gap-1">
+<label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Phân loại rủi ro</label>
+<select class="w-full bg-slate-50 text-slate-800 rounded-lg px-3 py-1.5 text-xs border border-slate-200 focus:outline-none focus:border-blue-500 focus:bg-white">
+<option selected="">Tất cả mức rủi ro</option>
+<option>Rủi ro Cao (Nhãn 1, Score ≥ 0.39)</option>
+<option>Rủi ro Trung bình (PD 25% - 50%)</option>
+<option>Rủi ro Thấp (Nhãn 0, Score &lt; 0.39)</option>
+</select>
+</div>
+<!-- Filter 5 -->
+<div class="flex flex-col gap-1">
+<label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Trạng thái &amp; Cờ Audit</label>
+<select class="w-full bg-slate-50 text-slate-800 rounded-lg px-3 py-1.5 text-xs border border-slate-200 focus:outline-none focus:border-blue-500 focus:bg-white">
+<option>Tất cả trạng thái</option>
+<option>Đã phê duyệt</option>
+<option>Chờ thẩm định viên</option>
+<option>Cần dự báo lại</option>
+<option selected="">Cờ Audit (15 hồ sơ gán 0 DPD)</option>
+</select>
+</div>
+</div>
+<!-- Active Filter Tags Ribbon -->
+<div class="flex items-center gap-2 flex-wrap text-xs pt-1">
+<span class="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">Đang áp dụng:</span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+<span class="">Từ khóa: <strong>"KH-88491"</strong></span>
+<button class="hover:text-rose-600 ml-0.5 text-slate-400" type="button">×</button>
+</span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+<span class="">Cờ: <strong>Imputation 0 DPD (Audit 15)</strong></span>
+<button class="hover:text-rose-600 ml-0.5 text-emerald-600" type="button">×</button>
+</span>
+<button class="text-blue-600 hover:text-blue-800 font-medium underline ml-2 text-xs" type="button">Xóa tất cả bộ lọc</button>
+</div>
+</div>
+<!-- Master-Detail Split Workspace -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+<!-- LEFT COLUMN: Audit Table (xl:col-span-7 2xl:col-span-8) -->
+<div class="xl:col-span-7 2xl:col-span-8 bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col">
+<!-- Table Header Bar -->
+<div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<h3 class="font-display font-bold text-sm text-slate-800">Danh sách hồ sơ kiểm toán</h3>
+<span class="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200">15 kết quả lọc</span>
+</div>
+<span class="text-xs text-slate-500">Hiển thị: <strong>1 - 5</strong> trên 15 hồ sơ cờ audit</span>
+</div>
+<!-- Table -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50/70 border-b border-slate-200 text-slate-500 text-[11px] font-semibold uppercase tracking-wider">
+<th class="py-3 px-4">Mã hồ sơ &amp; Thời gian</th>
+<th class="py-3 px-4">Nguồn / Tệp</th>
+<th class="py-3 px-4 text-right">Điểm thô (τ=0.39)</th>
+<th class="py-3 px-4 text-right">Xác suất PD (Isotonic)</th>
+<th class="py-3 px-4">Top SHAP Feature</th>
+<th class="py-3 px-4">Cờ làm sạch</th>
+<th class="py-3 px-4">Trạng thái</th>
+<th class="py-3 px-4 text-center">Thao tác</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 text-xs">
+<!-- Row 1: Selected -->
+<tr class="bg-blue-50/40 hover:bg-blue-50/70 transition-colors cursor-pointer border-l-4 border-l-blue-600" onclick="selectAuditRecord('KH-88491')">
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-display font-bold text-blue-700">KH-88491</span>
+<span class="px-1.5 py-0.2 rounded bg-blue-600 text-white text-[10px] font-bold uppercase">Selected</span>
+</div>
+<span class="text-slate-500 text-[11px]">28/10/2024 10:24:18</span>
+<span class="text-slate-400 text-[10px] font-mono">CCCD: 001094038192</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-semibold text-slate-800">Single API</span>
+<span class="text-slate-500 text-[11px]">Direct Underwriting</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-rose-600 font-bold">0.7896</span>
+<span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-semibold text-[10px] border border-rose-200">Nhãn 1 (Vỡ nợ)</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-rose-600 font-bold">59.97%</span>
+<span class="text-[10px] text-rose-600 font-medium">Rủi ro Cao (&gt;50%)</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col text-[11px]">
+<span class="font-semibold text-slate-800">DPD (+41.2%)</span>
+<span class="text-slate-500">Tỷ lệ HM (+33.6%)</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-medium border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Gán 0 DPD
+                      </span>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200">Đã dự báo</span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<button class="text-blue-600 hover:text-blue-800 font-semibold underline text-xs" type="button">Chi tiết →</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="selectAuditRecord('KH-88490')">
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-display font-semibold text-slate-800">KH-88490</span>
+<span class="text-slate-500 text-[11px]">28/10/2024 09:15:02</span>
+<span class="text-slate-400 text-[10px] font-mono">CCCD: 034089012389</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-semibold text-slate-800">Batch CSV</span>
+<span class="text-slate-500 text-[11px] truncate max-w-[110px]" title="Q4_2024_Customer_Batch.csv">Q4_2024_Batch...</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-emerald-600 font-bold">0.1840</span>
+<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold text-[10px] border border-emerald-200">Nhãn 0 (An toàn)</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-emerald-600 font-bold">14.20%</span>
+<span class="text-[10px] text-emerald-600 font-medium">Rủi ro Thấp (&lt;25%)</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col text-[11px]">
+<span class="font-semibold text-slate-800">Thu nhập (-28.4%)</span>
+<span class="text-slate-500">Lịch sử TD (-15.1%)</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-medium border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Gán 0 DPD
+                      </span>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200">Đã dự báo</span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<button class="text-blue-600 hover:text-blue-800 font-semibold underline text-xs" type="button">Chi tiết →</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="selectAuditRecord('KH-88488')">
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-display font-semibold text-slate-800">KH-88488</span>
+<span class="text-slate-500 text-[11px]">27/10/2024 16:42:11</span>
+<span class="text-slate-400 text-[10px] font-mono">CCCD: 079195004112</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-semibold text-slate-800">Batch CSV</span>
+<span class="text-slate-500 text-[11px] truncate max-w-[110px]" title="SME_Loans_2024.csv">SME_Loans_2024...</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-slate-700 font-bold">0.3620</span>
+<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[10px] border border-slate-200">Nhãn 0 (&lt; τ)</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-amber-600 font-bold">31.40%</span>
+<span class="text-[10px] text-amber-600 font-medium">Trung bình (25-50%)</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col text-[11px]">
+<span class="font-semibold text-slate-800">DTI (+18.4%)</span>
+<span class="text-slate-500">Tài sản ĐB (-12.8%)</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-medium border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Gán 0 DPD
+                      </span>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200">Đã dự báo</span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<button class="text-blue-600 hover:text-blue-800 font-semibold underline text-xs" type="button">Chi tiết →</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="selectAuditRecord('KH-88482')">
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-display font-semibold text-slate-800">KH-88482</span>
+<span class="text-slate-500 text-[11px]">27/10/2024 14:10:55</span>
+<span class="text-slate-400 text-[10px] font-mono">CCCD: 025091008891</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-semibold text-slate-800">Single API</span>
+<span class="text-slate-500 text-[11px]">Re-scoring pipeline</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-slate-400 font-bold">--</span>
+<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-semibold text-[10px] border border-slate-200">Chưa có kết quả</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-slate-400 font-bold">--</span>
+<span class="text-[10px] text-slate-400">Chờ hiệu chỉnh</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="text-slate-400 text-[11px]">N/A (Lỗi vector)</span>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-medium border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Gán 0 DPD
+                      </span>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-amber-50 text-amber-700 text-[11px] font-medium border border-amber-200">Cần dự báo lại</span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<button class="text-blue-600 hover:text-blue-800 font-semibold underline text-xs" type="button">Chi tiết →</button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="selectAuditRecord('KH-88479')">
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-display font-semibold text-slate-800">KH-88479</span>
+<span class="text-slate-500 text-[11px]">26/10/2024 18:04:30</span>
+<span class="text-slate-400 text-[10px] font-mono">CCCD: 040087002341</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col">
+<span class="font-semibold text-slate-800">Batch CSV</span>
+<span class="text-slate-500 text-[11px] truncate max-w-[110px]" title="Consumer_Credit_Batch_09.csv">Consumer_Batch...</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-rose-600 font-bold">0.6421</span>
+<span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 font-semibold text-[10px] border border-rose-200">Nhãn 1 (Vỡ nợ)</span>
+</div>
+</td>
+<td class="py-3.5 px-4 text-right">
+<div class="flex flex-col items-end">
+<span class="font-mono text-sm text-rose-600 font-bold">52.18%</span>
+<span class="text-[10px] text-rose-600 font-medium">Rủi ro Cao (&gt;50%)</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col text-[11px]">
+<span class="font-semibold text-slate-800">Số món nợ (+34.1%)</span>
+<span class="text-slate-500">DPD (+22.0%)</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-medium border border-emerald-200">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Gán 0 DPD
+                      </span>
+</td>
+<td class="py-3.5 px-4">
+<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200">Đã dự báo</span>
+</td>
+<td class="py-3.5 px-4 text-center">
+<button class="text-blue-600 hover:text-blue-800 font-semibold underline text-xs" type="button">Chi tiết →</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Pagination -->
+<div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+<div class="flex items-center gap-2">
+<span class="">Dòng mỗi trang:</span>
+<select class="bg-white border border-slate-300 text-slate-800 rounded px-2 py-1 text-xs focus:outline-none">
+<option>5</option>
+<option>10</option>
+<option>25</option>
+<option>50</option>
+</select>
+<span class="text-slate-400">|</span>
+<span class="">Tổng cộng 15 bản ghi audit (3 trang)</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded border border-slate-200 bg-white text-slate-400 hover:text-slate-700 disabled:opacity-40" disabled="" type="button">
+<span class="material-symbols-outlined text-[16px]">first_page</span>
+</button>
+<button class="p-1 rounded border border-slate-200 bg-white text-slate-400 hover:text-slate-700 disabled:opacity-40" disabled="" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</button>
+<button class="px-2.5 py-1 rounded bg-blue-600 text-white font-semibold text-xs" type="button">1</button>
+<button class="px-2.5 py-1 rounded hover:bg-slate-100 text-slate-700 font-semibold text-xs" type="button">2</button>
+<button class="px-2.5 py-1 rounded hover:bg-slate-100 text-slate-700 font-semibold text-xs" type="button">3</button>
+<button class="p-1 rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+<button class="p-1 rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50" type="button">
+<span class="material-symbols-outlined text-[16px]">last_page</span>
+</button>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: Detail Inspector Drawer (xl:col-span-5 2xl:col-span-4) -->
+<div class="xl:col-span-5 2xl:col-span-4 bg-white rounded-xl border border-slate-200/80 shadow-xs flex flex-col">
+<!-- Inspector Header -->
+<div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">policy</span>
+</div>
+<div class="flex flex-col">
+<h2 class="font-display font-bold text-sm text-slate-900 leading-tight">Chi tiết Audit &amp; Giải trình XAI</h2>
+<span class="text-xs text-blue-600 font-semibold" id="inspector-target-id">Hồ sơ mục tiêu: KH-88491</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white border border-transparent hover:border-slate-200" title="In / Xuất biên bản" type="button">
+<span class="material-symbols-outlined text-[18px]">print</span>
+</button>
+<button class="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-white border border-transparent hover:border-slate-200" title="Chia sẻ hồ sơ" type="button">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</button>
+</div>
+</div>
+<!-- Inspector Body Scrollable -->
+<div class="p-5 flex flex-col gap-5 overflow-y-auto max-h-[820px]">
+<!-- Block 1: Scoring Comparison (Raw vs Isotonic) -->
+<div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Tách bạch thang điểm mô hình</span>
+<span class="px-2 py-0.5 rounded bg-white text-slate-700 font-semibold text-[11px] border border-slate-200 font-mono">Random Forest v1.2</span>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<!-- Raw Score Box -->
+<div class="p-3 bg-white rounded-lg border border-slate-200/80 flex flex-col gap-1 shadow-2xs">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-semibold text-slate-500">Điểm thô (Score)</span>
+<span class="text-[10px] text-emerald-600 font-mono font-semibold">τ = 0.3900</span>
+</div>
+<div class="flex items-baseline gap-1 my-0.5">
+<span class="font-mono text-xl text-rose-600 font-extrabold">0.7896</span>
+<span class="text-[11px] text-rose-600 font-bold">&gt; τ</span>
+</div>
+<div class="text-[11px] text-slate-600 flex items-center gap-1 font-medium">
+<span class="w-2 h-2 rounded-full bg-rose-500"></span> Phân loại: <strong class="text-rose-700">Nhãn 1 (Vỡ nợ)</strong>
+</div>
+</div>
+<!-- Calibrated Isotonic Box -->
+<div class="p-3 bg-white rounded-lg border border-slate-200/80 flex flex-col gap-1 shadow-2xs">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-semibold text-slate-500">Xác suất hiệu chỉnh</span>
+<span class="text-[10px] text-slate-500 font-mono font-medium">Isotonic PD</span>
+</div>
+<div class="flex items-baseline gap-1 my-0.5">
+<span class="font-mono text-xl text-rose-600 font-extrabold">59.97%</span>
+<span class="text-[11px] text-rose-600 font-bold">&gt; 50%</span>
+</div>
+<div class="text-[11px] text-slate-600 flex items-center gap-1 font-medium">
+<span class="w-2 h-2 rounded-full bg-rose-500"></span> Mức rủi ro: <strong class="text-rose-700">Cao</strong>
+</div>
+</div>
+</div>
+<!-- Risk band legend -->
+<div class="flex flex-col gap-1.5 pt-1 text-[11px] text-slate-600">
+<span class="font-semibold text-slate-700">Quy chuẩn phân hạng xác suất hiệu chỉnh:</span>
+<div class="grid grid-cols-3 gap-1.5 text-center font-medium">
+<span class="py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Thấp: &lt; 25%</span>
+<span class="py-1 rounded bg-slate-100 text-slate-700 border border-slate-200">TB: 25 - 50%</span>
+<span class="py-1 rounded bg-rose-50 text-rose-700 border border-rose-200">Cao: &gt; 50%</span>
+</div>
+</div>
+</div>
+<!-- Block 2: SHAP Feature Attribution -->
+<div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Đóng góp đặc trưng SHAP (XAI)</span>
+<span class="text-[11px] font-mono text-slate-500">Base value: 0.1420</span>
+</div>
+<p class="text-xs text-slate-600">
+                  Mức độ làm tăng (+) hoặc giảm (-) nguy cơ vỡ nợ của hồ sơ <strong class="text-slate-800">KH-88491</strong>:
+                </p>
+<!-- Waterfall Bars -->
+<div class="flex flex-col gap-3 pt-1">
+<!-- Feature 1 -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between text-xs">
+<span class="font-medium text-slate-800">Số ngày quá hạn (DPD = 38 ngày)</span>
+<span class="text-rose-600 font-bold font-mono">+41.2%</span>
+</div>
+<div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden flex">
+<div class="bg-rose-500 h-full rounded-full" style="width: 82.4%;"></div>
+</div>
+</div>
+<!-- Feature 2 -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between text-xs">
+<span class="font-medium text-slate-800">Tỷ lệ sử dụng hạn mức (82.4%)</span>
+<span class="text-rose-600 font-bold font-mono">+33.6%</span>
+</div>
+<div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden flex">
+<div class="bg-rose-500 h-full rounded-full" style="width: 67.2%;"></div>
+</div>
+</div>
+<!-- Feature 3 -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between text-xs">
+<span class="font-medium text-slate-800">Tỷ lệ nợ trên thu nhập DTI (44.8%)</span>
+<span class="text-rose-600 font-bold font-mono">+18.4%</span>
+</div>
+<div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden flex">
+<div class="bg-rose-500 h-full rounded-full" style="width: 36.8%;"></div>
+</div>
+</div>
+<!-- Feature 4 -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between text-xs">
+<span class="font-medium text-slate-800">Thu nhập ổn định (35.0 triệu VND)</span>
+<span class="text-emerald-600 font-bold font-mono">-14.2%</span>
+</div>
+<div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden flex justify-end">
+<div class="bg-emerald-500 h-full rounded-full" style="width: 28.4%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Block 3: Immutability Audit Trail -->
+<div class="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs flex flex-col gap-2.5">
+<div class="flex items-center justify-between">
+<span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Bảo toàn chứng tích (Immutability)</span>
+<span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">SHA-256 Verified</span>
+</div>
+<p class="text-xs text-slate-600">
+                  So sánh dữ liệu gốc tiếp nhận và dữ liệu sau pipeline xử lý (Imputation Trail):
+                </p>
+<div class="overflow-x-auto rounded-lg border border-slate-200">
+<table class="w-full text-left text-xs">
+<thead>
+<tr class="text-slate-500 text-[10px] uppercase font-bold tracking-wider bg-slate-50 border-b border-slate-200">
+<th class="py-2 px-2.5">Biến số</th>
+<th class="py-2 px-2.5">Đầu vào thô</th>
+<th class="py-2 px-2.5">Sau làm sạch</th>
+<th class="py-2 px-2.5">Ghi chú</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 text-xs">
+<tr class="bg-amber-50/40">
+<td class="py-2 px-2.5 font-semibold text-slate-800">DPD_Current</td>
+<td class="py-2 px-2.5 text-rose-600 font-mono font-medium">NULL / NA</td>
+<td class="py-2 px-2.5 text-emerald-600 font-mono font-bold">0 ngày</td>
+<td class="py-2 px-2.5 text-amber-700 font-semibold text-[11px]">Audit Flag: Gán 0</td>
+</tr>
+<tr>
+<td class="py-2 px-2.5 font-semibold text-slate-800">Monthly_Income</td>
+<td class="py-2 px-2.5 font-mono text-slate-600">35,000,000</td>
+<td class="py-2 px-2.5 font-mono text-slate-600">35,000,000</td>
+<td class="py-2 px-2.5 text-slate-400 text-[11px]">Giữ nguyên gốc</td>
+</tr>
+<tr>
+<td class="py-2 px-2.5 font-semibold text-slate-800">Revolving_Util</td>
+<td class="py-2 px-2.5 font-mono text-slate-600">0.824</td>
+<td class="py-2 px-2.5 font-mono text-slate-600">0.824</td>
+<td class="py-2 px-2.5 text-slate-400 text-[11px]">Giữ nguyên gốc</td>
+</tr>
+<tr>
+<td class="py-2 px-2.5 font-semibold text-slate-800">DTI_Ratio</td>
+<td class="py-2 px-2.5 font-mono text-slate-600">0.448</td>
+<td class="py-2 px-2.5 font-mono text-slate-600">0.448</td>
+<td class="py-2 px-2.5 text-slate-400 text-[11px]">Giữ nguyên gốc</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Block 4: Audit Event Log -->
+<div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-3">
+<span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Nhật ký xử lý (Audit Event Log)</span>
+<div class="relative pl-5 flex flex-col gap-3.5 text-xs">
+<!-- Timeline line -->
+<div class="absolute left-1.5 top-1.5 bottom-1.5 w-0.5 bg-slate-200"></div>
+<!-- Step 1 -->
+<div class="relative flex flex-col gap-0.5">
+<span class="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-white"></span>
+<div class="flex items-center justify-between text-[11px]">
+<span class="font-bold text-slate-800">Tiếp nhận hồ sơ qua API</span>
+<span class="text-slate-400 font-mono">10:24:18.012</span>
+</div>
+<p class="text-slate-600 text-[11px]">Khởi tạo phiên chấm bởi <strong>Nguyễn Văn A (Senior Risk Analyst)</strong></p>
+</div>
+<!-- Step 2 -->
+<div class="relative flex flex-col gap-0.5">
+<span class="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white"></span>
+<div class="flex items-center justify-between text-[11px]">
+<span class="font-bold text-slate-800">Data Cleansing &amp; Imputation</span>
+<span class="text-slate-400 font-mono">10:24:18.020</span>
+</div>
+<p class="text-slate-600 text-[11px]">Phát hiện giá trị rỗng ở DPD. Gán 0 DPD &amp; kích hoạt cờ Audit Trail #15.</p>
+</div>
+<!-- Step 3 -->
+<div class="relative flex flex-col gap-0.5">
+<span class="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-white"></span>
+<div class="flex items-center justify-between text-[11px]">
+<span class="font-bold text-slate-800">Random Forest v1.2 Scoring</span>
+<span class="text-slate-400 font-mono">10:24:18.031</span>
+</div>
+<p class="text-slate-600 text-[11px]">Thời gian suy luận: 18.4ms. Điểm thô: 0.7896. Xác suất Isotonic PD: 59.97%.</p>
+</div>
+<!-- Step 4 -->
+<div class="relative flex flex-col gap-0.5">
+<span class="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-slate-400 ring-4 ring-white"></span>
+<div class="flex items-center justify-between text-[11px]">
+<span class="font-bold text-slate-800">Lưu trữ Hash Audit Trail</span>
+<span class="text-slate-400 font-mono">10:24:18.040</span>
+</div>
+<p class="text-slate-600 text-[11px]">Ghi nhận Block: <code class="text-slate-600 bg-slate-200/70 px-1 py-0.5 rounded text-[10px] font-mono">#0x8f2a...78c1</code>. Trạng thái: <strong>Đã dự báo</strong>.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Inspector Footer Actions (Neutral Outline) -->
+<div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5">
+<button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors text-xs font-semibold shadow-xs" type="button">
+<span class="material-symbols-outlined text-[16px] text-slate-500">history</span>
+<span class="">Xem lịch sử thay đổi</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors text-xs font-semibold shadow-xs" type="button">
+<span class="material-symbols-outlined text-[16px] text-emerald-600">verified_user</span>
+<span class="">Xác nhận kiểm toán</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Compliance & Regulatory Footer Banner -->
+<div class="p-4 bg-white rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[24px]">gavel</span>
+</div>
+<div class="flex flex-col">
+<span class="font-display font-bold text-sm text-slate-800">Quy chuẩn kiểm toán AI &amp; Tuân thủ Basel II / IFRS 9</span>
+<p class="text-xs text-slate-600">
+                Tất cả kết quả dự báo trong hệ thống được định danh bất biến, phân loại ngưỡng phân tách (τ = 0.39) trên điểm thô và chuẩn hóa xác suất thực tế qua Isotonic Regression.
+              </p>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="text-xs text-slate-500">Phiên bản Audit Trail: <strong class="text-slate-800 font-mono">2024.4.1-REL</strong></span>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Interactive Scripts -->
+<script>
+    function selectAuditRecord(customerId) {
+      const inspectorIdEl = document.getElementById('inspector-target-id');
+      if (inspectorIdEl) {
+        inspectorIdEl.textContent = 'Hồ sơ mục tiêu: ' + customerId;
+      }
+    }
+
+    // Quick export confirmation
+    document.getElementById('btn-export-audit')?.addEventListener('click', function() {
+      const originalText = this.innerHTML;
+      this.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span><span>Đang xuất 14,392 hồ sơ...</span>';
+      setTimeout(() => {
+        this.innerHTML = '<span class="material-symbols-outlined text-[18px]">check_circle</span><span>Đã xuất thành công Audit.csv</span>';
+        setTimeout(() => {
+          this.innerHTML = originalText;
+        }, 2200);
+      }, 1000);
+    });
+
+    // Toggle filter panel
+    document.getElementById('toggle-filter-btn')?.addEventListener('click', function() {
+      const panel = document.getElementById('filter-panel');
+      if (panel) {
+        panel.classList.toggle('hidden');
+      }
+    });
+  </script>
+
+
+</body></html>

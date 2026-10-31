@@ -1,0 +1,451 @@
+<!DOCTYPE html><html lang="vi" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"tertiary":"#0061a6","on-tertiary-fixed":"#001c37","tertiary-fixed":"#d2e4ff","secondary-fixed":"#78f5f8","error-container":"#ffdad6","on-primary-container":"#00305d","surface-container-highest":"#dae2ff","on-secondary-container":"#007072","on-error-container":"#93000a","on-tertiary":"#ffffff","secondary-container":"#78f5f8","surface":"#faf8ff","surface-container-lowest":"#ffffff","tertiary-container":"#589be4","inverse-primary":"#a5c8ff","surface-container-high":"#e2e7ff","on-primary-fixed-variant":"#004785","secondary":"#00696b","error":"#ba1a1a","primary":"#005fae","primary-fixed":"#d4e3ff","tertiary-fixed-dim":"#a0c9ff","surface-bright":"#faf8ff","on-secondary":"#ffffff","on-primary-fixed":"#001c3a","on-tertiary-fixed-variant":"#00497f","on-secondary-fixed-variant":"#004f51","on-secondary-fixed":"#002020","on-surface":"#101b33","on-primary":"#ffffff","surface-dim":"#cfd9fb","outline":"#717784","surface-tint":"#005fae","inverse-surface":"#263049","primary-fixed-dim":"#a5c8ff","on-background":"#101b33","inverse-on-surface":"#eef0ff","on-surface-variant":"#404753","outline-variant":"#c0c7d5","surface-container-low":"#f2f3ff","surface-variant":"#dae2ff","background":"#faf8ff","secondary-fixed-dim":"#58d9dc","surface-container":"#eaedff","on-error":"#ffffff","on-tertiary-container":"#003159","primary-container":"#4099ff"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"space-xl":"2rem","space-lg":"1.5rem","space-xs":"0.25rem","gutter-sm":"1rem","gutter":"1.5rem","margin-mobile":"1rem","space-md":"1rem","margin":"1.75rem","space-sm":"0.5rem"},"fontFamily":{"display-xl-mobile":["Inter"],"headline-lg":["Inter"],"headline-sm":["Inter"],"headline-md":["Inter"],"body-md":["Inter"],"label-sm":["Inter"],"body-sm":["Inter"],"display-xl":["Inter"],"label-md":["Inter"],"body-lg":["Inter"],"mono-metric":["JetBrains Mono"],"title-md":["Inter"]},"fontSize":{"display-xl-mobile":["26px",{"lineHeight":"34px","letterSpacing":"-0.01em","fontWeight":"700"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"headline-sm":["16px",{"lineHeight":"24px","letterSpacing":"0em","fontWeight":"600"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"20px","letterSpacing":"0em","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"18px","letterSpacing":"0.01em","fontWeight":"400"}],"display-xl":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-lg":["15px",{"lineHeight":"22px","letterSpacing":"0em","fontWeight":"400"}],"mono-metric":["18px",{"lineHeight":"24px","letterSpacing":"-0.02em","fontWeight":"600"}],"title-md":["15px",{"lineHeight":"22px","letterSpacing":"0em","fontWeight":"500"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-[#0b1727] z-50 flex flex-col justify-between shadow-xl text-slate-300"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 px-6 flex items-center gap-3 border-b border-slate-800/80 bg-[#07101c]"><div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20"><span class="material-symbols-outlined text-[22px]">shield_with_heart</span></div><div class="flex flex-col"><span class="font-display font-bold text-base text-white tracking-tight leading-tight">CreditRisk AI</span><span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Enterprise Risk Suite</span></div></div><div class="px-3 pt-5"><p class="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Hệ Thống Nghiệp Vụ</p><nav class="flex flex-col gap-1"><a class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-all" data-path="tong-quan" href="#"><span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-blue-400">grid_view</span><div class="flex flex-col"><span class="text-sm font-medium leading-tight">Tổng quan</span><span class="text-[11px] text-slate-400 group-hover:text-slate-300">Giám sát tín dụng</span></div></a><a class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-all" data-path="quan-ly-du-lieu" href="#"><span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-blue-400">database</span><div class="flex flex-col"><span class="text-sm font-medium leading-tight">Quản lý dữ liệu</span><span class="text-[11px] text-slate-400 group-hover:text-slate-300">Chuẩn bị hồ sơ</span></div></a><a aria-current="page" class="group flex items-center gap-3 px-3 py-2.5 rounded-lg bg-blue-600 text-white font-medium shadow-md shadow-blue-900/30 transition-all" data-path="du-bao-rui-ro" href="#"><span class="material-symbols-outlined text-[20px] text-white">bolt</span><div class="flex flex-col"><span class="text-sm font-semibold leading-tight text-white">Dự báo rủi ro</span><span class="text-[11px] text-blue-100">Chấm điểm hồ sơ</span></div></a><a class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-all" data-path="ket-qua-lich-su" href="#"><span class="material-symbols-outlined text-[20px] text-slate-400 group-hover:text-blue-400">history_edu</span><div class="flex flex-col"><span class="text-sm font-medium leading-tight">Kết quả &amp; Lịch sử</span><span class="text-[11px] text-slate-400 group-hover:text-slate-300">Audit trail &amp; XAI</span></div></a></nav></div></div><div class="p-3.5 m-3.5 bg-slate-900/90 border border-slate-800 rounded-xl flex flex-col gap-2"><div class="flex items-center justify-between"><span class="text-[10px] uppercase font-bold tracking-wider text-slate-400">Tiêu chuẩn AI</span><span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold text-[10px] border border-emerald-500/30">F2-CRIT</span></div><div class="flex items-center justify-between text-xs text-slate-300"><span class="">Ngưỡng phân loại (τ):</span><span class="font-bold text-emerald-400 font-mono">0.3900</span></div><div class="flex items-center justify-between text-xs text-slate-300"><span class="">F2 Metric Target:</span><span class="font-bold text-white font-mono">0.842</span></div><div class="w-full bg-slate-800 rounded-full h-1.5 mt-1 overflow-hidden"><div class="bg-emerald-400 h-full w-[84%] rounded-full"></div></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/95 backdrop-blur-xl z-40 flex items-center justify-between px-gutter shadow-[0_1px_8px_rgba(43,53,79,0.06)]"><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-2.5 py-1 rounded-full bg-surface-container text-secondary text-label-sm font-label-sm"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span><span class="">API Gateway Online</span></div><div class="hidden md:flex items-center gap-space-xs px-2.5 py-1 rounded-lg bg-surface-container-low text-on-surface-variant text-label-sm font-mono-metric font-label-sm"><span class="material-symbols-outlined text-[16px] text-primary">neurology</span><span class="">Random Forest v1.2</span><span class="text-outline-variant">|</span><span class="text-primary font-semibold">τ = 0.39</span></div></div><div class="flex items-center gap-space-md"><div class="relative flex items-center"><button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors relative" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error"></span></button></div><div class="flex items-center gap-space-sm pl-space-sm"><div class="flex flex-col text-right"><span class="font-label-md text-label-md text-on-surface leading-tight font-bold">Nguyễn Văn A</span><span class="font-label-sm text-label-sm text-on-surface-variant">Senior Risk Analyst</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-background min-h-screen"><div class="flex flex-col w-full">
+<div class="p-gutter flex flex-col gap-space-lg max-w-[1600px] mx-auto w-full">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+<div>
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-1">
+<span class="">Hệ thống chấm điểm tín dụng</span>
+<span class="">/</span>
+<span class="text-primary font-bold">Dự báo nguy cơ vỡ nợ</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">Dự báo nguy cơ vỡ nợ</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">Thực hiện dự báo theo từng hồ sơ đơn lẻ hoặc theo danh sách hàng loạt từ tệp dữ liệu CSV</p>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant font-mono-metric text-body-sm shadow-sm">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+          Pipeline: RF-Production-v1.2
+        </span>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low text-primary hover:bg-surface-container font-label-md text-label-md transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+          Nhật ký chạy (42)
+        </button>
+</div>
+</div>
+<!-- Section 1: Model Selection Control (Shared Global Banner) -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest p-space-lg shadow-md">
+<div class="absolute -right-16 -top-16 w-64 h-64 bg-primary/5 rounded-full pointer-events-none blur-3xl"></div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg relative z-10">
+<div class="flex flex-col sm:flex-row sm:items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-primary-container text-on-primary flex items-center justify-center shadow-md shrink-0">
+<span class="material-symbols-outlined text-[28px]">psychology</span>
+</div>
+<div>
+<div class="flex flex-wrap items-center gap-space-sm mb-1">
+<span class="font-title-md text-title-md text-on-surface font-bold">Mô hình dự báo: Random Forest v1.2</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-md font-label-sm text-label-sm bg-secondary-fixed text-on-secondary-fixed font-bold tracking-wide">
+                Đề xuất theo F2-score: 0.751
+              </span>
+</div>
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1 font-body-sm text-body-sm text-on-surface-variant">
+<span class="">Recall: <strong class="text-on-surface font-mono-metric">78.2%</strong></span>
+<span class="text-outline-variant">•</span>
+<span class="">Precision: <strong class="text-on-surface font-mono-metric">64.8%</strong></span>
+<span class="text-outline-variant">•</span>
+<span class="">AUC: <strong class="text-on-surface font-mono-metric">0.864</strong></span>
+<span class="text-outline-variant">•</span>
+<span class="">Tập huấn luyện: <span class="font-mono-metric">142,500 mẫu</span></span>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap sm:flex-nowrap items-center gap-space-md self-start lg:self-auto"><div class="flex items-center gap-3 px-3.5 py-2 rounded-lg bg-surface-container-low border border-outline-variant/30 text-body-sm">
+  <div class="flex flex-col">
+    <span class="text-[11px] text-outline font-semibold uppercase tracking-wider">Ngưỡng phân loại cắt (Cutoff)</span>
+    <span class="text-body-md font-bold font-mono text-primary">τ = 0.3900 <span class="text-[11px] text-on-surface-variant font-normal">(F2-optimal)</span></span>
+  </div>
+</div>
+<a class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-outline-variant/60 text-primary hover:bg-surface-container-low font-label-md text-label-md font-semibold transition-all group shrink-0 bg-transparent shadow-sm" href="#">
+  <span class="">So sánh đối chuẩn mô hình</span>
+  <span class="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a></div>
+</div>
+</div>
+<!-- Section 2: Tab Navigation Header -->
+<div class="flex flex-col gap-space-lg">
+<div class="flex items-center gap-space-sm p-1.5 rounded-xl bg-surface-container max-w-fit shadow-sm">
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-lg font-title-md text-title-md font-semibold transition-all bg-surface-container-lowest text-primary shadow-sm" id="tab-single-btn" type="button">
+<span class="material-symbols-outlined text-[20px]">person_search</span>
+<span class="">Một hồ sơ đơn lẻ</span>
+<span class="w-2 h-2 rounded-full bg-primary ml-1"></span>
+</button>
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-lg font-title-md text-title-md font-medium text-on-surface-variant hover:text-on-surface transition-all" id="tab-batch-btn" type="button">
+<span class="material-symbols-outlined text-[20px]">dataset</span>
+<span class="">Hàng loạt (CSV/Excel 3 Bước)</span>
+<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-container-high text-on-surface-variant uppercase">3 Bước</span>
+</button>
+</div>
+<!-- Tab Content Area: Tab 1 Single (Active) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg" id="tab-single-content">
+<!-- Left Column: Bootstrap-Styled Structured Input Form (7 cols) -->
+<div class="lg:col-span-7 flex flex-col gap-space-lg">
+<div class="rounded-xl bg-surface-container-lowest p-space-lg shadow-md flex flex-col gap-space-lg">
+<div class="flex items-center justify-between pb-space-sm">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">edit_note</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Dữ liệu đầu vào chấm điểm</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Nhập các thông số tài chính &amp; lịch sử tín dụng theo schema v2.1</p>
+</div>
+</div>
+<div class="flex items-center gap-1.5 text-label-sm font-label-sm px-2.5 py-1 rounded bg-surface-container text-on-surface-variant font-mono">
+                Mã mẫu: KH-88491
+              </div>
+</div>
+<form class="flex flex-col gap-space-lg" id="prediction-form" onsubmit="event.preventDefault();">
+<!-- Field Group 1: Debt & Income -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col gap-space-md">
+<div class="flex items-center gap-2 pb-1">
+<span class="material-symbols-outlined text-primary text-[20px]">account_balance_wallet</span>
+<span class="font-label-md text-label-md text-on-surface font-bold uppercase tracking-wider">Nhóm 1: Thông tin dư nợ &amp; thu nhập</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+<!-- Thu nhập hàng tháng -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface-variant font-semibold flex items-center justify-between"><span class="">Số ngày quá hạn (DPD)</span>
+<span class="text-label-sm text-error font-semibold font-mono">Nhóm 2</span></label>
+<div class="relative"><input class="w-full h-10 px-3 pr-14 rounded-lg bg-surface-container-lowest text-on-surface font-mono-metric text-body-md focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" type="number" value="38">
+<span class="absolute right-3 top-2.5 font-label-sm text-outline-variant font-mono font-bold">ngày</span></div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Số ngày quá hạn gần nhất ghi nhận theo hệ thống CIC</span>
+</div>
+<!-- Tổng dư nợ hiện tại -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface-variant font-semibold flex items-center justify-between">
+<span class="">Tổng dư nợ hiện tại</span>
+<span class="text-label-sm text-outline font-normal">VND</span>
+</label>
+<div class="relative">
+<input class="w-full h-10 px-3 pr-12 rounded-lg bg-surface-container-lowest text-on-surface font-mono-metric text-body-md focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" placeholder="Tổng dư nợ..." type="text" value="48,000,000">
+<span class="absolute right-3 top-2.5 font-label-sm text-outline-variant font-mono font-bold">VND</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Bao gồm vay tiêu dùng và trả góp hiện hữu</span>
+</div>
+</div>
+<!-- Tỷ lệ DTI -->
+<div class="flex flex-col gap-1.5 pt-1">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="text-on-surface-variant font-semibold">Tỷ lệ DTI (Debt-to-Income)</span>
+<span class="font-mono-metric text-primary font-bold">44.8%</span>
+</div>
+<div class="relative w-full h-2.5 bg-surface-container rounded-full overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 bg-primary rounded-full" style="width: 44.8%;"></div>
+</div>
+<div class="flex justify-between font-label-sm text-label-sm text-outline">
+<span class="">0% (An toàn)</span>
+<span class="text-primary font-semibold">Mức cảnh báo 40%</span>
+<span class="">100% (Nguy hiểm)</span>
+</div>
+</div>
+</div>
+<!-- Field Group 2: Credit History & Utilization -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col gap-space-md">
+<div class="flex items-center gap-2 pb-1">
+<span class="material-symbols-outlined text-secondary text-[20px]">credit_card_clock</span>
+<span class="font-label-md text-label-md text-on-surface font-bold uppercase tracking-wider">Nhóm 2: Lịch sử tín dụng &amp; sử dụng hạn mức</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
+<!-- Số ngày quá hạn DPD -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface-variant font-semibold flex items-center justify-between"><span class="">Số ngày quá hạn (DPD)</span>
+<span class="text-label-sm text-error font-semibold font-mono">Nhóm 2</span></label>
+<div class="relative"><input class="w-full h-10 px-3 pr-14 rounded-lg bg-surface-container-lowest text-on-surface font-mono-metric text-body-md focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" type="number" value="38">
+<span class="absolute right-3 top-2.5 font-label-sm text-outline-variant font-mono font-bold">ngày</span></div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Số ngày quá hạn gần nhất ghi nhận theo hệ thống CIC</span>
+</div>
+<!-- Tỷ lệ sử dụng hạn mức -->
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface-variant font-semibold flex items-center justify-between">
+<span class="">Tỷ lệ sử dụng hạn mức</span>
+<span class="text-label-sm text-error font-semibold font-mono">&gt;80%</span>
+</label>
+<div class="relative">
+<input class="w-full h-10 px-3 pr-10 rounded-lg bg-surface-container-lowest text-on-surface font-mono-metric text-body-md focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" type="text" value="82.4%">
+<span class="absolute right-3 top-2.5 font-label-sm text-outline-variant font-mono font-bold">%</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Hạn mức thẻ và thấu chi đang được kích hoạt tối đa</span>
+</div>
+</div>
+<!-- Thước đo phụ tải hạn mức -->
+<div class="p-3 rounded-lg bg-surface-container-lowest flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-[18px]">warning</span>
+<span class="font-body-sm text-body-sm text-on-surface">Cảnh báo: DPD &gt; 30 ngày &amp; Hạn mức &gt; 80% kích hoạt trọng số nhân đôi rủi ro.</span>
+</div>
+<span class="font-mono-metric text-error text-body-sm font-bold">+24.5 bp</span>
+</div>
+</div>
+<!-- Form Buttons -->
+<div class="flex items-center justify-end gap-space-md pt-2"><button class="text-slate-500 hover:text-red-600 hover:underline bg-transparent border-0 font-medium text-sm flex items-center gap-1 cursor-pointer transition-colors px-2 py-1" onclick="return confirm('Bạn có chắc muốn xóa toàn bộ dữ liệu vừa nhập?');" type="reset"><span class="material-symbols-outlined text-[16px]">restart_alt</span><span class="">Xóa dữ liệu nhập</span></button><button class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-label-md text-label-md font-bold transition-all shadow-md shadow-blue-500/20" type="button"><span class="material-symbols-outlined text-[20px]">bolt</span><span class="">Chạy dự báo</span></button></div>
+</form>
+</div>
+<!-- Feature Block: Save Prediction Results to CSV File -->
+
+</div>
+<!-- Right Column: AI Inference Engine Output (5 cols) -->
+<div class="lg:col-span-5 flex flex-col gap-space-lg"><!-- Prominent AI Inference & Human-in-the-Loop Result Card -->
+<div class="rounded-xl bg-surface-container-lowest p-6 shadow-xl border border-error/30 flex flex-col gap-5">
+  <!-- Header with clear status -->
+  <div class="flex items-center justify-between border-b border-outline-variant/20 pb-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-error/15 text-error flex items-center justify-center">
+        <span class="material-symbols-outlined text-[24px]">crisis_alert</span>
+      </div>
+      <div>
+        <h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Kết quả thẩm định AI</h2>
+        <p class="font-body-sm text-[12px] text-on-surface-variant">Phân tích rủi ro tự động • Model RF v1.2</p>
+      </div>
+    </div>
+    <span class="px-3 py-1 rounded-full font-label-md text-label-md font-bold uppercase tracking-wider bg-error text-white shadow-sm flex items-center gap-1.5">
+      <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+      Nhãn 1: Vỡ nợ
+    </span>
+  </div>
+
+  <!-- Super Prominent AI Default Probability Metric Banner -->
+  <div class="p-5 rounded-xl bg-error/10 border border-error/30 flex flex-col gap-3 relative overflow-hidden">
+    <div class="flex items-center justify-between">
+      <div class="flex flex-col">
+        <span class="font-label-sm text-[11px] uppercase tracking-wider text-error font-bold">Xác suất vỡ nợ dự báo (Isotonic)</span>
+        <div class="flex items-baseline gap-2 mt-1">
+          <span class="text-[38px] leading-tight font-bold font-mono-metric text-error">59.97%</span>
+          <span class="text-body-sm font-semibold text-error/80 uppercase">/ Vùng rủi ro cao</span>
+        </div>
+      </div>
+      <div class="text-right flex flex-col items-end">
+        <span class="font-label-sm text-[11px] text-on-surface-variant uppercase font-semibold">Ngưỡng phân định cắt</span>
+        <div class="px-2.5 py-1 rounded-md bg-surface-container-low font-mono text-sm font-bold text-primary mt-1 border border-outline-variant/30">
+          τ = 0.3900
+        </div>
+        <span class="text-[11px] text-outline mt-0.5">Điểm thô: 0.7896 &gt; τ</span>
+      </div>
+    </div>
+
+    <!-- Visual Risk Scale Slider -->
+    <div class="flex flex-col gap-1.5 pt-1">
+      <div class="relative w-full h-3 bg-surface-container rounded-full overflow-hidden flex">
+        <div class="h-full bg-secondary-fixed/60 rounded-l-full" style="width: 25%;" title="Thấp (&lt;25%)"></div>
+        <div class="h-full bg-surface-container-high" style="width: 25%;" title="Trung bình (25-50%)"></div>
+        <div class="h-full bg-error/40 rounded-r-full" style="width: 50%;" title="Cao (&gt;50%)"></div>
+        <div class="absolute top-0 bottom-0 z-30 flex items-center" style="left: 59.97%;">
+          <div class="w-4 h-4 -ml-2 rounded-full bg-error ring-2 ring-white shadow-md"></div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between text-[11px] text-outline font-mono">
+        <span class="">0% (An toàn)</span>
+        <span class="text-on-surface-variant">25%</span>
+        <span class="text-on-surface-variant font-semibold">50% (Ranh giới cao)</span>
+        <span class="text-error font-semibold">100%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section A: AI Recommendation (Model Decision Support) -->
+  <div class="p-4 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-2.5">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[20px]">smart_toy</span>
+        <span class="font-label-md text-label-md text-on-surface font-bold uppercase tracking-wide">Khuyến nghị hỗ trợ quyết định từ AI</span>
+      </div>
+      <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-error/15 text-error font-mono">CẢNH BÁO MỨC ĐỘ 2</span>
+    </div>
+    <p class="font-body-md text-body-md text-on-surface font-medium leading-relaxed">
+      Tổ hợp <strong class="text-error">DPD = 38 ngày</strong> và <strong class="text-error">sử dụng hạn mức 82.4%</strong> vượt ngưỡng an toàn danh mục.
+    </p>
+    <div class="p-3 rounded-lg bg-surface-container-lowest border border-outline-variant/20 flex items-start gap-2.5 text-on-surface text-body-sm font-medium">
+      <span class="material-symbols-outlined text-error text-[20px] shrink-0 mt-0.5">block</span>
+      <span class=""><strong class="text-error">Khuyến nghị AI:</strong> Từ chối cấp tín dụng mới hoặc yêu cầu bổ sung 100% tài sản bảo đảm, giảm 50% hạn mức thẻ tín dụng hiện hữu.</span>
+    </div>
+  </div>
+
+  <!-- Section B: Human-in-the-Loop Final Decision by Credit Officer -->
+  <div class="p-4 rounded-xl bg-blue-600/5 border-2 border-primary/40 flex flex-col gap-3.5 shadow-sm">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-md bg-primary text-on-primary flex items-center justify-center">
+          <span class="material-symbols-outlined text-[16px]">person_check</span>
+        </div>
+        <span class="font-label-md text-label-md text-primary font-bold uppercase tracking-wide">Quyết định thẩm định của chuyên viên</span>
+      </div>
+      <span class="text-[11px] text-outline-variant font-semibold">Human-in-the-loop</span>
+    </div>
+
+    <!-- Radio Decision Options -->
+    <div class="grid grid-cols-1 gap-2">
+      <label class="flex items-center gap-3 p-2.5 rounded-lg bg-surface-container-lowest border border-error/40 hover:bg-surface-container-low cursor-pointer transition-all">
+        <input type="radio" name="officer_decision" value="reject" checked="" class="text-error focus:ring-error w-4 h-4">
+        <div class="flex flex-col flex-1">
+          <div class="flex items-center justify-between">
+            <span class="font-label-md text-body-sm font-bold text-on-surface">Đồng thuận từ chối cấp tín dụng</span>
+            <span class="text-[11px] px-1.5 py-0.5 rounded bg-error/10 text-error font-semibold">Theo khuyến nghị AI</span>
+          </div>
+          <span class="text-[11px] text-on-surface-variant">Không giải ngân, đưa vào danh sách kiểm soát đặc biệt</span>
+        </div>
+      </label>
+
+      <label class="flex items-center gap-3 p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 hover:bg-surface-container-low cursor-pointer transition-all">
+        <input type="radio" name="officer_decision" value="verify_more" class="text-primary focus:ring-primary w-4 h-4">
+        <div class="flex flex-col flex-1">
+          <div class="flex items-center justify-between">
+            <span class="font-label-md text-body-sm font-bold text-on-surface">Yêu cầu xác minh &amp; bổ sung hồ sơ</span>
+            <span class="text-[11px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-semibold">Tái thẩm định</span>
+          </div>
+          <span class="text-[11px] text-on-surface-variant">Bổ sung sao kê thực tế, tài sản bảo đảm bổ sung</span>
+        </div>
+      </label>
+
+      <label class="flex items-center gap-3 p-2.5 rounded-lg bg-surface-container-lowest border border-outline-variant/30 hover:bg-surface-container-low cursor-pointer transition-all">
+        <input type="radio" name="officer_decision" value="approve_exception" class="text-primary focus:ring-primary w-4 h-4">
+        <div class="flex flex-col flex-1">
+          <div class="flex items-center justify-between">
+            <span class="font-label-md text-body-sm font-bold text-on-surface">Phê duyệt ngoại lệ (Vượt quyền/Cắt giảm)</span>
+            <span class="text-[11px] px-1.5 py-0.5 rounded bg-blue-600/10 text-primary font-semibold">Ngoại lệ</span>
+          </div>
+          <span class="text-[11px] text-on-surface-variant">Áp dụng lãi suất bù rủi ro &amp; trình cấp phê duyệt cấp 2</span>
+        </div>
+      </label>
+    </div>
+
+    <!-- Officer Note Input Area -->
+    <div class="flex flex-col gap-1 pt-1">
+      <label class="font-label-sm text-[12px] text-on-surface-variant font-semibold flex items-center justify-between">
+        <span class="">Ghi chú thẩm định &amp; lý do quyết định:</span>
+        <span class="text-[10px] text-outline">Bắt buộc khi lưu hồ sơ</span>
+      </label>
+      <input type="text" class="w-full h-10 px-3 rounded-lg bg-surface-container-lowest text-on-surface text-body-sm border border-outline-variant/40 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" placeholder="Nhập lý do thẩm định hoặc căn cứ chấp thuận/từ chối..." value="Đồng thuận kết luận AI: DPD &gt; 30d nhóm 2, đề xuất không cấp hạn mức mới.">
+    </div>
+  </div>
+
+  <!-- Top Risk Contributing Factors (Feature Impact) -->
+  <div class="flex flex-col gap-2 pt-1 border-t border-outline-variant/20">
+    <div class="flex items-center justify-between">
+      <span class="font-label-md text-[12px] text-on-surface-variant font-bold uppercase tracking-wider">Yếu tố rủi ro then chốt</span>
+      <span class="text-[11px] text-outline">SHAP Feature Impact</span>
+    </div>
+    <div class="space-y-2 pt-1">
+      <div>
+        <div class="flex justify-between text-body-sm mb-1">
+          <span class="text-on-surface">Lịch sử quá hạn (DPD 38 ngày)</span>
+          <span class="font-mono-metric text-error font-bold">+41.2%</span>
+        </div>
+        <div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+          <div class="h-full bg-error rounded-full" style="width: 78%;"></div>
+        </div>
+      </div>
+      <div>
+        <div class="flex justify-between text-body-sm mb-1">
+          <span class="text-on-surface">Tỷ lệ sử dụng hạn mức (82.4%)</span>
+          <span class="font-mono-metric text-error font-bold">+33.6%</span>
+        </div>
+        <div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+          <div class="h-full bg-error rounded-full" style="width: 65%;"></div>
+        </div>
+      </div>
+      <div>
+        <div class="flex justify-between text-body-sm mb-1">
+          <span class="text-on-surface">Tỷ lệ nợ trên thu nhập (DTI 44.8%)</span>
+          <span class="font-mono-metric text-primary font-bold">+18.4%</span>
+        </div>
+        <div class="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+          <div class="h-full bg-primary rounded-full" style="width: 42%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simplified Persistence & Confirm Action -->
+  <div class="pt-2 border-t border-outline-variant/20 flex flex-col gap-3">
+    <div class="flex items-center justify-between text-[12px] text-on-surface-variant">
+      <span class="flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[16px] text-emerald-400">folder_zip</span>
+        Lưu vào: <strong class="text-on-surface font-mono">Q4_2024_Customer_Batch.csv</strong>
+      </span>
+      <span class="text-emerald-400 font-semibold font-mono text-[11px]">5/5 columns khớp</span>
+    </div>
+    <button class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-label-md text-label-md font-bold cursor-pointer transition-all shadow-md shadow-blue-500/20" type="button">
+      <span class="material-symbols-outlined text-[20px]">verified</span>
+      <span class="">Xác nhận quyết định &amp; Lưu vào kho dữ liệu</span>
+    </button>
+    <div class="flex items-center justify-between text-[11px] text-outline pt-0.5">
+      <span class="">Hồ sơ: KH-88491 • 16:42:09</span>
+      <button type="button" class="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
+        <span class="material-symbols-outlined text-[14px]">content_copy</span>
+        Sao chép JSON
+      </button>
+    </div>
+  </div>
+</div></div>
+</div>
+<!-- Quick Jump Banner to Tab 2: Batch 3-Step Process -->
+<div class="mt-space-sm rounded-xl bg-gradient-to-r from-primary/10 via-surface-container to-secondary-fixed/20 p-space-lg shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-lg">
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-primary text-on-primary flex items-center justify-center shrink-0 shadow-md">
+<span class="material-symbols-outlined text-[26px]">upload_file</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-primary uppercase font-bold tracking-wider">Quy trình xử lý khối lượng lớn</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Cần dự báo cho hàng ngàn khách hàng cùng lúc?</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+                Sử dụng tính năng phân tích hàng loạt qua file dữ liệu CSV/Excel với tốc độ xử lý hơn 10,000 hồ sơ/giây theo chuẩn 3 bước khép kín.
+              </p>
+</div>
+</div>
+<div class="flex items-center gap-space-md self-start md:self-center shrink-0">
+<!-- 3 Mini Steps Indicator -->
+<div class="hidden xl:flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant">
+<span class="px-2 py-1 rounded bg-surface-container-lowest font-bold text-on-surface">1. Tải tệp</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest font-bold text-on-surface">2. Kiểm tra Schema</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+<span class="px-2 py-1 rounded bg-surface-container-lowest font-bold text-on-surface">3. Chạy &amp; Lưu tệp</span>
+</div>
+<button class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-on-primary hover:bg-primary/90 font-label-md text-label-md font-bold transition-all shadow-md" id="switch-to-batch-btn" type="button">
+<span class="">Chuyển sang Tab Hàng loạt</span>
+<span class="material-symbols-outlined text-[18px]">keyboard_double_arrow_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Tab Switching Micro-interaction
+  const tabSingleBtn = document.getElementById('tab-single-btn');
+  const tabBatchBtn = document.getElementById('tab-batch-btn');
+  const switchToBatchBtn = document.getElementById('switch-to-batch-btn');
+
+  function setSingleTabActive() {
+    tabSingleBtn.className = "flex items-center gap-2 px-5 py-2.5 rounded-lg font-title-md text-title-md font-semibold transition-all bg-surface-container-lowest text-primary shadow-sm";
+    tabBatchBtn.className = "flex items-center gap-2 px-5 py-2.5 rounded-lg font-title-md text-title-md font-medium text-on-surface-variant hover:text-on-surface transition-all";
+  }
+
+  function setBatchTabActive() {
+    tabBatchBtn.className = "flex items-center gap-2 px-5 py-2.5 rounded-lg font-title-md text-title-md font-semibold transition-all bg-surface-container-lowest text-primary shadow-sm";
+    tabSingleBtn.className = "flex items-center gap-2 px-5 py-2.5 rounded-lg font-title-md text-title-md font-medium text-on-surface-variant hover:text-on-surface transition-all";
+  }
+
+  tabSingleBtn.addEventListener('click', setSingleTabActive);
+  tabBatchBtn.addEventListener('click', setBatchTabActive);
+  if (switchToBatchBtn) {
+    switchToBatchBtn.addEventListener('click', () => {
+      setBatchTabActive();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+</script></main></div>
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

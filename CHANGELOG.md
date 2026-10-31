@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.1.0] - 2026-10-31
+
+### Changed
+
+- Áp dụng phong cách bốn màn hình Stitch bằng QSS native: sidebar SVG, thẻ thống kê, thanh kết nối, bảng và tab bo góc, focus/hover/disabled và thanh cuộn đồng nhất.
+- Chia nhóm thao tác dữ liệu thành hai hàng, Việt hóa tiêu đề bảng lịch sử/dataset và làm dịu đường lưới biểu đồ.
+
+### Added
+
+- Lưu ảnh và HTML của 4 màn hình Stitch trong `docs/design/stitch/`.
+- Xuất Excel gồm dữ liệu, insight, số dòng/cột, thông tin model/ngưỡng và dashboard với nhãn/số liệu; đánh giá và ROC khi đủ nhãn thực tế.
+- Tên file mặc định theo model: `ket_qua_RF.xlsx`, `ket_qua_LR.xlsx`, `ket_qua_XGb.xlsx`; ngăn xuất nhầm kết quả model khác.
+
 ## [0.2.0.0] - 2026-10-30
 
 ### Added

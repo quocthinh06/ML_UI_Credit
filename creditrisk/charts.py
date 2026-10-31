@@ -14,6 +14,7 @@ COLORS = ["#087f83", "#b77900", "#bd252d"]
 class DashboardCharts(QWidget):
     def __init__(self):
         super().__init__()
+        self.setObjectName("chartPanel")
         self.frame = pd.DataFrame()
         layout = QVBoxLayout(self)
         self.caption = QLabel("Tải CSV để xem dữ liệu và kết quả dự báo.")
@@ -152,8 +153,15 @@ class DashboardCharts(QWidget):
                 axes[3].bar(["Nhãn 0", "Nhãn 1 · cảnh báo"], warnings.values, color=["#087f83", "#bd252d"])
                 axes[3].set(title="Nhãn cảnh báo theo ngưỡng đã lưu", ylabel="Số hồ sơ")
         for ax in axes:
-            ax.tick_params(labelsize=8)
+            ax.tick_params(labelsize=8, colors="#566176", length=0, pad=6)
             ax.title.set_fontsize(10)
+            ax.title.set_color("#101b33")
+            ax.title.set_fontweight("semibold")
+            ax.set_axisbelow(True)
+            if ax.axison and not ax.images:
+                ax.grid(axis="y", color="#edf0f7", linewidth=0.8)
+            for spine in ax.spines.values():
+                spine.set_color("#dce3ef")
             ax.xaxis.label.set_fontsize(8)
             ax.yaxis.label.set_fontsize(8)
             for side in ("top", "right"):
