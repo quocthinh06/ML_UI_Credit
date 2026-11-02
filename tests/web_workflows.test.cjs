@@ -228,3 +228,28 @@ test('slow successful requests are not aborted by a short client deadline',async
   assert.equal((await run("api('predict',{rows:[]})")).ok,true);
   assert.equal(run('deadlines'),0);
 });
+
+test('profile details predict only canonical inputs without changing dataset or batch history',async()=>{
+  const {run}=app();
+  run(`features=['AGE'];location.hash='#datasets';$('batch-panel').hidden=true;dataPage=1;resultsPage=2;
+    globalThis.filled=null;globalThis.predictions=0;
+    inputFields=(_,prefix,row)=>{filled={prefix,row};};
+    predictSingle=async()=>{predictions++;singleInputs=filled.row;};navigate=()=>{};batchTab=()=>{};
+    globalThis.before=JSON.stringify(state);`);
+  await run("openProfileDetails({ID:'old',AGE:30,probability:.8,default_label:1,model_name:'Other'})");
+  assert.equal(run('filled.row.ID'),'old');
+  assert.equal(run('Object.keys(filled.row).length'),2);
+  assert.equal(run('predictions'),1);
+  assert.equal(run('JSON.stringify(state)===before'),true);
+  run("models=[{name:'LR',threshold:.42}];$('model-choice').value='LR';$('decision-basis').value='raw';globalThis.batchCalls=0;runBatch=async()=>{batchCalls++;};");
+  await run("$('model-choice').handlers.change({})");
+  assert.equal(run('predictions'),2);
+  assert.equal(run('batchCalls'),0);
+  assert.equal(run('location.hash'),'predict');
+  run('dataPage=0;resultsPage=0;returnToProfiles()');
+  assert.equal(run('location.hash'),'#datasets');
+  assert.equal(run('selectedDataset'),'a');
+  assert.equal(run('selectedVersion'),'v1');
+  assert.equal(run('dataPage'),1);
+  assert.equal(run('resultsPage'),2);
+});

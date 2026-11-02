@@ -4,9 +4,9 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0b1626"><meta name="description" content="Dự báo và phân tích rủi ro tín dụng với Random Forest, Logistic Regression và XGBoost.">
   <title>CreditRisk AI · Dự báo rủi ro tín dụng</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='20261102-stable') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='20261102-profile-detail') }}">
   <link rel="stylesheet" href="/static/auth.css">
-  <script src="{{ url_for('static', filename='app.js', v='20261102-stable') }}" defer></script>
+  <script src="{{ url_for('static', filename='app.js', v='20261102-profile-detail') }}" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Đến nội dung chính</a>
@@ -61,6 +61,7 @@
         <div class="panel model-banner"><span class="model-symbol" data-icon="predict"></span><div><h2 id="predict-model-title">Đang tải mô hình…</h2><p id="predict-model-detail"></p></div><span class="tag primary">23 trường UCI · TWD</span></div>
         <div class="panel threshold-settings"><label>Cơ sở ngưỡng<select id="decision-basis"><option value="raw">Điểm thô · notebook</option><option value="probability">PD đã hiệu chỉnh</option></select></label><label>Ngưỡng nhãn (%)<input id="decision" type="number" min="0" max="100" step="0.01" value="39"></label><label>PD thấp (%)<input id="low" type="number" min="0" max="100" step="0.01" value="20"></label><label>PD cao (%)<input id="high" type="number" min="0" max="100" step="0.01" value="50"></label></div>
         <div class="tabs" role="tablist" aria-label="Loại dự báo"><button class="tab active" id="tab-single" role="tab" aria-selected="true" aria-controls="single-panel">Một hồ sơ đơn lẻ</button><button class="tab" id="tab-batch" role="tab" aria-selected="false" aria-controls="batch-panel">Hàng loạt CSV / Excel</button></div>
+        <div id="profile-context" class="notice" hidden><div><strong id="profile-source"></strong><p>Dự báo riêng hồ sơ bằng mô hình và ngưỡng đang chọn. Chỉnh sửa tại đây không cập nhật dataset hoặc kết quả hàng loạt.</p></div><button id="back-to-profiles" type="button" class="button secondary compact">Quay lại danh sách hồ sơ</button></div>
         <div id="single-panel" role="tabpanel" aria-labelledby="tab-single" class="single-layout">
           <form id="single-form" class="panel profile-panel"><div class="panel-heading"><div><h2>Dữ liệu đầu vào chấm điểm</h2><p>Nhập đủ 23 trường; không tự thay thế dữ liệu thiếu.</p></div><button type="button" class="button secondary compact" id="fill-sample">Điền mẫu</button></div><div id="single-fields"></div><div class="form-footer"><button type="reset" class="button secondary">Xóa dữ liệu nhập</button><button type="submit" class="button"><span data-icon="predict"></span> Chạy dự báo</button></div></form>
           <aside class="panel result-panel"><div class="panel-heading"><h2>Kết quả dự báo</h2><span class="tag" id="result-status">Chưa dự báo</span></div><div id="single-result" class="result-placeholder"><span data-icon="shield"></span><p>Kết quả sẽ hiển thị sau khi chạy model.</p></div><div class="result-actions"><button class="button" id="save-single" disabled>Lưu hồ sơ & kết quả</button><button class="button secondary" id="export-single" disabled>Xuất Excel</button><button class="button secondary" id="explain-single" disabled>Giải thích kết quả</button><button class="button secondary" id="transfer-single" disabled>Thêm vào dự báo hàng loạt</button></div><div id="explanation" hidden></div><p class="fine-print">Nhãn 1 là cảnh báo rủi ro. Hệ thống không tự phê duyệt hoặc từ chối tín dụng.</p></aside>
