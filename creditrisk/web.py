@@ -5,6 +5,7 @@ from io import BytesIO
 import gzip
 import json
 import logging
+import os
 from pathlib import Path
 import tempfile
 from threading import Lock
@@ -30,7 +31,10 @@ MAX_ROWS = 30000
 @lru_cache(maxsize=1)
 def model_registry():
     with MODEL_LOCK:
-        models, errors = load_models(ROOT / "models/best_model_v1.pkl")
+        path = ROOT / "models/best_model.pkl"
+        if not path.is_file():
+            path = ROOT / "models/best_model_v1.pkl"
+        models, errors = load_models(path)
         if errors:
             logging.warning("Optional models failed to load: %s", errors)
         return models
@@ -63,8 +67,16 @@ def input_frame(data, limit=MAX_ROWS):
     return prepare_input(pd.DataFrame(rows))
 
 
+def default_model():
+    if getattr(g, "user", None):
+        setting = cloud_storage.database().system_settings.find_one({"_id": "active_model"})
+        if setting and setting["name"] in model_registry():
+            return setting["name"]
+    return next(iter(model_registry()))
+
+
 def selected_model(data):
-    name = data.get("model", "Random Forest")
+    name = data.get("model") if "model" in data else default_model()
     if name not in model_registry():
         raise ValidationError("Mô hình không tồn tại hoặc chưa tải được.")
     return model_registry()[name]
@@ -96,6 +108,9 @@ def predict(data, limit=500):
 
 
 def create_app(test_config=None):
+    if not os.environ.get("VERCEL"):
+        from dotenv import load_dotenv
+        load_dotenv(ROOT / ".env", override=False)
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.update(MAX_CONTENT_LENGTH=4 * 1024 * 1024)
     auth.install(app)
@@ -123,25 +138,13 @@ def create_app(test_config=None):
 
     @app.errorhandler(Exception)
     def handle_error(exc):
-        from pymongo.errors import ConfigurationError, OperationFailure, PyMongoError, ServerSelectionTimeoutError
+        from .mongo_diagnostics import connection_error
 
-        if isinstance(exc, OperationFailure):
-            app.logger.error("MongoDB operation failed (code=%s)", exc.code)
-            if exc.code in (18, 8000):
-                return jsonify(error="MongoDB Atlas từ chối xác thực. Quản trị viên cần kiểm tra username, "
-                               "mật khẩu và MONGODB_URI trong Vercel, sau đó redeploy."), 503
-            if exc.code == 13:
-                return jsonify(error="Database user chưa có đủ quyền. Cần cấp readWrite cho database "
-                               "được cấu hình trong MONGODB_DATABASE."), 503
-            return jsonify(error="MongoDB không thực hiện được thao tác. Quản trị viên cần kiểm tra cấu hình database."), 503
-        if isinstance(exc, ServerSelectionTimeoutError):
-            app.logger.error("MongoDB server selection timed out")
-            return jsonify(error="Không kết nối được MongoDB Atlas. Hãy kiểm tra cluster đang chạy, "
-                           "Network Access và địa chỉ cluster trong MONGODB_URI."), 503
-        if isinstance(exc, (ConfigurationError, PyMongoError)):
-            app.logger.error("MongoDB client configuration/connection failed (%s)", type(exc).__name__)
-            return jsonify(error="Cấu hình hoặc kết nối MongoDB không hợp lệ. Kiểm tra connection string "
-                           "MONGODB_URI trong Vercel và redeploy."), 503
+        diagnostic = connection_error(exc)
+        if diagnostic:
+            code, message = diagnostic
+            app.logger.error("MongoDB failure: %s", code)
+            return jsonify(error=message, code=code), 503
         if isinstance(exc, HTTPException):
             return jsonify(error="Tệp hoặc yêu cầu quá lớn." if exc.code == 413 else exc.description), exc.code
         if isinstance(exc, (ValueError, TypeError, KeyError, OSError, BadZipFile)):
@@ -210,17 +213,12 @@ def create_app(test_config=None):
         except (HTTPException, ValidationError):
             raise
         except Exception:
-            app.logger.exception("MongoDB workspace unavailable")
+            app.logger.error("MongoDB workspace unavailable; connection or snapshot operation failed")
             return jsonify(error="Không kết nối được MongoDB Atlas. Dữ liệu cục bộ vẫn được giữ."), 503
 
     @app.get("/api/models")
     def models():
-        default_model = "Random Forest"
-        if getattr(g, "user", None):
-            setting = cloud_storage.database().system_settings.find_one({"_id": "active_model"})
-            if setting:
-                default_model = setting["name"]
-        return jsonify(default_model=default_model, models=[{
+        return jsonify(default_model=default_model(), models=[{
             "name": m.name, "version": m.version, "digest": m.digest, "threshold": m.threshold,
             "cv_auc": m.metadata.get("cv_auc"), "test_auc": m.metadata.get("test_auc"),
         } for m in model_registry().values()], features=FEATURES)

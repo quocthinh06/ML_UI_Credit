@@ -20,7 +20,7 @@ def now():
 
 
 def enforced():
-    return os.environ.get("AUTH_ENABLED", "0") == "1"
+    return os.environ.get("AUTH_ENABLED", "1" if os.environ.get("VERCEL") else "0") == "1"
 
 
 def configured():
@@ -134,7 +134,7 @@ def install(app):
                 audit("admin_action_denied", request.path, success=False,
                       detail=f"{request.method} {response.status_code}")
             except Exception:
-                current_app.logger.exception("Could not record denied admin action")
+                current_app.logger.error("Could not record denied admin action")
         return response
 
     @app.before_request
