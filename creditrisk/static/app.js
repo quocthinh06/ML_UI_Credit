@@ -23,7 +23,7 @@ document.querySelectorAll('[data-icon]').forEach(el => el.innerHTML = icon(el.da
 let state = {datasets: [], runs: []};
 let models = [], features = [], selectedDataset = null, selectedVersion = null, selectedCustomer = null;
 let singleResult = null, singleInputs = null, singleConfig = null, editId = null, database;
-let selectedRunId = null;
+let selectedRunId = null, profileOrigin = null;
 let resultsPage = 0, dataPage = 0, toastTimer;
 let remoteEnabled = false, cloudRevision = 0, revisionKnown = false;
 let syncReady=false, cloudSyncTask=null, cloudReadTask=null, localGeneration=0;
@@ -239,7 +239,7 @@ function navigate() {
   if(current==='models'&&models.length)renderModels();
   document.title = `${({overview:'Tổng quan',datasets:'Quản lý dữ liệu',predict:'Dự báo rủi ro',history:'Kết quả & Lịch sử',models:'Hiệu năng mô hình'})[current]} · CreditRisk AI`;
 }
-function batchTab(show) { $('single-panel').hidden = show; $('batch-panel').hidden = !show; $('tab-single').classList.toggle('active', !show); $('tab-batch').classList.toggle('active', show); $('tab-single').setAttribute('aria-selected', String(!show)); $('tab-batch').setAttribute('aria-selected', String(show)); }
+function batchTab(show) { if(show)clearProfileContext(); $('single-panel').hidden = show; $('batch-panel').hidden = !show; $('tab-single').classList.toggle('active', !show); $('tab-batch').classList.toggle('active', show); $('tab-single').setAttribute('aria-selected', String(!show)); $('tab-batch').setAttribute('aria-selected', String(show)); }
 function setModelInfo() {
   if (!model()) return;
   $('model-meta').textContent = `${model().version} · τ = ${model().threshold.toFixed(4)}`;
@@ -268,9 +268,9 @@ function table(container, columns, rows, {select, action, selected} = {}) {
       else td.textContent = value == null ? '—' : ['probability','raw_score','actual_rate'].includes(key) ? pct(value) : key === 'created' ? date(value) : typeof value === 'number' ? fmt(value) : typeof value === 'object' ? JSON.stringify(value) : String(value);
       td.title = td.textContent;
     });
-    if (select) { tr.className = 'selectable'; tr.tabIndex = 0; tr.setAttribute('aria-label', `Chọn hồ sơ ${row.ID ?? row.name}`); tr.addEventListener('click', () => select(row)); tr.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(row); } }); }
+    if (select) { tr.className = 'selectable'; tr.tabIndex = 0; tr.setAttribute('aria-label', `Chọn hồ sơ ${row.ID ?? row.name}`); tr.addEventListener('click', () => select(row)); tr.addEventListener('keydown', event => { if(event.target!==tr)return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select(row); } }); }
     if (selected?.(row)) tr.classList.add('selected');
-    if (action) { const td = tr.insertCell(); const button = document.createElement('button'); button.className = 'button secondary compact'; button.textContent = action.label; button.addEventListener('click', guarded(() => action.run(row))); td.append(button); }
+    if (action) { const td = tr.insertCell(); const button = document.createElement('button'); button.type='button'; button.className = 'button secondary compact'; button.textContent = action.label; button.setAttribute('aria-label',`${action.label} ${row.ID??row.name??''}`); button.addEventListener('click', guarded(event => {event.stopPropagation();return action.run(row);})); td.append(button); }
   }); wrap.append(el);
 }
 function pagination(id, count, page, change) {
@@ -304,7 +304,7 @@ function renderDatasets() {
   $('data-caption').textContent = v ? `Phiên bản ${v.revision} · ${fmt(v.rows.length)} dòng · ${Object.keys(v.rows[0] || {}).length} cột · Chọn dòng để chỉnh sửa` : 'Chọn một tập hồ sơ để xem.';
   const data = v?.rows || [], columns = data.length ? Object.keys(data[0]).map(c=>[c,c]) : [];
   if (dataPage >= Math.ceil(data.length / PAGE_SIZE)) dataPage = 0;
-  table('data-table', columns, data.slice(dataPage * PAGE_SIZE, (dataPage + 1) * PAGE_SIZE), {select:r=>{selectedCustomer=r.ID;renderDatasets();}, selected:r=>r.ID===selectedCustomer});
+  table('data-table', columns, data.slice(dataPage * PAGE_SIZE, (dataPage + 1) * PAGE_SIZE), {select:r=>{selectedCustomer=r.ID;renderDatasets();}, selected:r=>r.ID===selectedCustomer,action:{label:'Xem chi tiết',run:openProfileDetails}});
   pagination('data-footer', data.length, dataPage, page=>{dataPage=page;renderDatasets();});
   ['predict-dataset','add-customer','clone-dataset','rename-dataset','delete-dataset'].forEach(id=>$(id).disabled=!v);
   ['edit-customer','delete-customer'].forEach(id=>$(id).disabled=!v || selectedCustomer==null);
@@ -324,7 +324,7 @@ function renderResults() {
   const order=['ID','raw_score','probability','default_label','risk_level','AGE','LIMIT_BAL',...features.filter(f=>!['AGE','LIMIT_BAL'].includes(f))];
   const titles={ID:'Mã hồ sơ',raw_score:'Điểm thô',probability:'PD hiệu chỉnh',default_label:'Cảnh báo (0/1)',risk_level:'Mức rủi ro',AGE:'Tuổi',LIMIT_BAL:'Hạn mức (TWD)'};
   if (resultsPage>=Math.ceil(rows.length/PAGE_SIZE)) resultsPage=0;
-  table('results-table',order.map(c=>[c,titles[c]||c]),rows.slice(resultsPage*PAGE_SIZE,(resultsPage+1)*PAGE_SIZE));
+  table('results-table',order.map(c=>[c,titles[c]||c]),rows.slice(resultsPage*PAGE_SIZE,(resultsPage+1)*PAGE_SIZE),{action:{label:'Xem chi tiết',run:openProfileDetails}});
   pagination('results-footer',rows.length,resultsPage,page=>{resultsPage=page;renderResults();});
 }
 
@@ -469,6 +469,25 @@ function inputFields(container,prefix,row={}){
   groups.forEach(([title,keys])=>{html+=`<fieldset><legend>${title}</legend><div class="field-grid">`;keys.forEach(key=>{const categorical=['SEX','EDUCATION','MARRIAGE'].includes(key);let control;if(categorical){const options=key==='SEX'?[[1,'Nam'],[2,'Nữ']]:key==='EDUCATION'?[[1,'Sau đại học'],[2,'Đại học'],[3,'THPT'],[4,'Khác']]:[[1,'Đã kết hôn'],[2,'Độc thân'],[3,'Khác']];control=`<select id="${prefix}-${key}" name="${key}" required><option value="">Chọn…</option>${options.map(([v,t])=>`<option value="${v}" ${Number(row[key])===v?'selected':''}>${v} · ${t}</option>`).join('')}</select>`;}else{const min=key==='AGE'?18:key==='LIMIT_BAL'?1:key.startsWith('PAY_AMT')?0:key.startsWith('PAY_')?-2:null,max=key==='AGE'?100:key==='LIMIT_BAL'?10000000:key.startsWith('PAY_')&&!key.includes('AMT')?8:null;control=`<input id="${prefix}-${key}" name="${key}" type="number" required step="${key==='AGE'||(key.startsWith('PAY_')&&!key.includes('AMT'))?'1':'any'}" ${min!=null?`min="${min}"`:''} ${max!=null?`max="${max}"`:''} value="${escapeHTML(row[key]??'')}" placeholder="${key}">`;}html+=`<label for="${prefix}-${key}">${names[key]||key}${control}<small>${key}${hints[key]?` · ${hints[key]}`:''}</small></label>`;});html+='</div></fieldset>';});$(container).innerHTML=html;
 }
 function formRow(prefix){const row={ID:$(`${prefix}-ID`).value.trim()};features.forEach(f=>row[f]=Number($(`${prefix}-${f}`).value));return row;}
+function clearProfileContext(){profileOrigin=null;$('profile-context').hidden=true;}
+async function openProfileDetails(row){
+  const inputs=Object.fromEntries(['ID',...features].map(key=>[key,row[key]]));
+  profileOrigin={hash:location.hash||'#datasets',batch:!$('batch-panel').hidden,datasetId:selectedDataset,versionId:version()?.id,customerId:row.ID,runId:selectedRunId,modelName:model()?.name,thresholds:model()?configuration():null};
+  invalidateSingle();inputFields('single-fields','single',inputs);
+  const actual=row['default.payment.next.month'];
+  $('profile-source').textContent=`Hồ sơ ${row.ID} · ${dataset()?.name||'Tập dữ liệu'} · Phiên bản ${version()?.revision??'—'}${[0,1].includes(actual)?` · Nhãn thực tế nguồn: ${actual}`:''}`;
+  $('profile-context').hidden=false;
+  location.hash='predict';navigate();batchTab(false);
+  await predictSingle({preventDefault(){}});
+}
+function returnToProfiles(){
+  if(!profileOrigin)return;
+  const origin=profileOrigin;clearProfileContext();
+  selectedDataset=origin.datasetId;selectedVersion=origin.versionId;selectedCustomer=origin.customerId;selectedRunId=origin.runId;
+  if(origin.modelName)$('model-choice').value=origin.modelName;
+  if(origin.thresholds){$('decision-basis').value=origin.thresholds.basis;['decision','low','high'].forEach(k=>$(k).value=origin.thresholds[k]*100);}
+  location.hash=origin.hash;navigate();batchTab(origin.batch);renderAll();
+}
 async function predictSingle(event){event.preventDefault();const row=formRow('single'),config=configuration(),m=model();const result=await busy('Đang chấm điểm hồ sơ',()=>api('predict',{rows:[row],model:m.name,thresholds:config}));singleResult=result.rows[0];singleInputs=row;singleConfig=config;
   const r=singleResult,tone=r.risk_level.toLowerCase();$('single-result').className='';$('single-result').innerHTML=`<div class="risk-result ${tone}"><div class="result-label">XÁC SUẤT VỠ NỢ · PD ĐÃ HIỆU CHỈNH</div><div class="pd-number">${pct(r.probability)}</div><span class="tag ${tone}">Rủi ro ${riskNames[r.risk_level].toLowerCase()}</span></div><div class="result-meta"><div><span>Điểm thô</span><strong>${r.raw_score.toFixed(4)}</strong></div><div><span>Ngưỡng nhãn · ${escapeHTML(config.basis)}</span><strong>${config.decision.toFixed(4)}</strong></div><div><span>Nhãn cảnh báo</span><strong>${r.default_label} · ${r.default_label?'Cảnh báo':'Không cảnh báo'}</strong></div><div><span>Mô hình</span><strong>${escapeHTML(m.name)}</strong></div></div>`;
   $('result-status').textContent=r.default_label?'Nhãn 1 · Cảnh báo':'Nhãn 0';$('result-status').className=`tag ${tone}`;['save-single','export-single','explain-single','transfer-single'].forEach(id=>$(id).disabled=false);$('explanation').hidden=true;
@@ -542,8 +561,9 @@ document.querySelectorAll('[data-action="upload"]').forEach(el=>el.addEventListe
 document.querySelectorAll('[data-action="export"]').forEach(el=>el.addEventListener('click',guarded(exportCurrent)));
 document.querySelectorAll('[data-action="sample"]').forEach(el=>el.addEventListener('click',guarded(loadSample)));
 $('sample-top').addEventListener('click',guarded(loadSample));$('upload').addEventListener('change',guarded(upload));
-$('single-form').addEventListener('submit',guarded(predictSingle));$('single-form').addEventListener('input',invalidateSingle);$('single-form').addEventListener('reset',()=>setTimeout(invalidateSingle,0));
-$('fill-sample').addEventListener('click',guarded(async()=>{const sample=await api('sample');inputFields('single-fields','single',sample.rows[0]);invalidateSingle();}));
+$('back-to-profiles').addEventListener('click',guarded(returnToProfiles));
+$('single-form').addEventListener('submit',guarded(predictSingle));$('single-form').addEventListener('input',invalidateSingle);$('single-form').addEventListener('reset',()=>{clearProfileContext();setTimeout(invalidateSingle,0);});
+$('fill-sample').addEventListener('click',guarded(async()=>{const sample=await api('sample');clearProfileContext();inputFields('single-fields','single',sample.rows[0]);invalidateSingle();}));
 $('save-single').addEventListener('click',guarded(saveSingle));$('export-single').addEventListener('click',guarded(()=>exportRows([singleResult],singleConfig)));$('explain-single').addEventListener('click',guarded(explainSingle));$('transfer-single').addEventListener('click',guarded(transferSingle));
 $('tab-single').addEventListener('click',()=>batchTab(false));$('tab-batch').addEventListener('click',()=>batchTab(true));
 document.querySelectorAll('.dataset-select').forEach(el=>el.addEventListener('change',()=>selectDataset(el.value)));
@@ -553,7 +573,7 @@ $('model-choice').addEventListener('change',guarded(async()=>{
   selectedRunId=null;$('decision').value=$('decision-basis').value==='raw'?model().threshold*100:50;
   invalidateSingle();renderAll();
   if(hadSingle)await predictSingle({preventDefault(){}});
-  if(version()?.rows.length)await runBatch({go:false});
+  if(version()?.rows.length&&!(profileOrigin&&!$('single-panel').hidden&&location.hash.replace(/^#/,'')==='predict'))await runBatch({go:false});
 }));
 ['decision','low','high','decision-basis'].forEach(id=>$(id).addEventListener('change',guarded(()=>{selectedRunId=null;if(id==='decision-basis')$('decision').value=$('decision-basis').value==='raw'?model().threshold*100:50;configuration();invalidateSingle();renderAll();})));
 ['run-batch','predict-dataset'].forEach(id=>$(id).addEventListener('click',guarded(()=>runBatch())));$('analyze-selected').addEventListener('click',guarded(()=>runBatch({go:false})));
