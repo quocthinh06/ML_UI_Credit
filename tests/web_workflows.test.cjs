@@ -193,12 +193,12 @@ test('batch progress counts completed records including the last chunk',async()=
   assert.match(run("$('busy-detail').textContent"),/1[.,]?000/);
 });
 
-test('concurrent batches preserve output order and never exceed two requests',async()=>{
+test('stable batches preserve output order and allow only one request at a time',async()=>{
   const {run}=app();
   run(`globalThis.pending=0;globalThis.peak=0;
     api=async(_,data)=>{pending++;peak=Math.max(peak,pending);await new Promise(resolve=>setTimeout(resolve,data.rows[0].ID==='0'?20:1));pending--;return {rows:data.rows};};`);
   const output=await run("inferRows(Array.from({length:1200},(_,i)=>({ID:String(i)})),{name:'RF'},{})");
-  assert.equal(run('peak'),2);
+  assert.equal(run('peak'),1);
   assert.deepEqual(Array.from(output,r=>r.ID),Array.from({length:1200},(_,i)=>String(i)));
 });
 
@@ -217,4 +217,14 @@ test('upload keeps imported inputs if prediction fails',async()=>{
   await assert.rejects(run("upload({target:{files:[new File(['data'],'sample.csv')],value:'sample.csv'}})"),/Prediction failed/);
   assert.equal(run('saves'),1);
   assert.equal(run('state.datasets[0].versions[0].rows[0].ID'),'new');
+});
+
+
+test('slow successful requests are not aborted by a short client deadline',async()=>{
+  const {run}=app();
+  run(`const realTimer=setTimeout;globalThis.deadlines=0;
+    setTimeout=(fn,ms)=>{if(ms===20000||ms===25000){deadlines++;Promise.resolve().then(fn);return 0;}return realTimer(fn,ms);};
+    fetch=async(_,options)=>{await new Promise(resolve=>realTimer(resolve,5));if(options.signal?.aborted)throw Object.assign(new Error('aborted'),{name:'AbortError'});return Response.json({ok:true});};`);
+  assert.equal((await run("api('predict',{rows:[]})")).ok,true);
+  assert.equal(run('deadlines'),0);
 });

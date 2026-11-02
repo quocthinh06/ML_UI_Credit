@@ -66,34 +66,26 @@ async function api(path, data, options = {}, retried=false) {
       headers['Content-Encoding'] = 'gzip';
     }
   }
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),options.timeoutMs||25000);
-  let response;
-  try{
-    response=await fetch(`/api/${path}`,{method:data===undefined?'GET':'POST',body,...options,signal:controller.signal,headers:{...headers,...options.headers}});
-    if(response.status===403&&!retried){
-      const denied=await response.clone().json().catch(()=>({}));
-      if(denied.code==='CSRF_STALE'){
-        const refreshed=await fetch('/api/auth/session',{signal:controller.signal,cache:'no-store'});
-        const auth=await refreshed.json();
-        if(!auth.user||auth.user.id!==currentAccount?.id){
-          throw new Error('Tài khoản đăng nhập đã thay đổi. Dữ liệu cục bộ vẫn được giữ; hãy tải lại trang.');
-        }
-        csrfToken=auth.csrf;clearTimeout(timer);
-        return api(path,data,options,true);
+  const response=await fetch(`/api/${path}`,{method:data===undefined?'GET':'POST',body,...options,headers:{...headers,...options.headers}});
+  if(response.status===403&&!retried){
+    const denied=await response.clone().json().catch(()=>({}));
+    if(denied.code==='CSRF_STALE'){
+      const refreshed=await fetch('/api/auth/session',{cache:'no-store'});
+      const auth=await refreshed.json();
+      if(!auth.user||auth.user.id!==currentAccount?.id){
+        throw new Error('Tài khoản đăng nhập đã thay đổi. Dữ liệu cục bộ vẫn được giữ; hãy tải lại trang.');
       }
+      csrfToken=auth.csrf;
+      return api(path,data,options,true);
     }
-    // Read the body while the timeout still covers a stalled download.
-    const type=response.headers.get('Content-Type')||'';
-    const result=type.includes('json')?await response.json():await response.blob();
-    if(!response.ok){
-      if(response.status===401&&currentAccount)throw Object.assign(new Error('Phiên đăng nhập hết hạn. Dữ liệu cục bộ vẫn được giữ; hãy đăng nhập lại.'),{status:401});
-      throw Object.assign(new Error(type.includes('json')?(result.error||'Không thể xử lý yêu cầu.'):`Máy chủ trả lỗi ${response.status}. Dữ liệu cục bộ vẫn được giữ.`),{status:response.status,code:result.code});
-    }
-    return result;
-  }catch(error){
-    if(error.name==='AbortError')throw Object.assign(new Error('Máy chủ phản hồi quá chậm. Dữ liệu cục bộ vẫn được giữ; có thể thử lại.'),{code:'REQUEST_TIMEOUT'});
-    throw error;
-  }finally{clearTimeout(timer);}
+  }
+  const type=response.headers.get('Content-Type')||'';
+  const result=type.includes('json')?await response.json():await response.blob();
+  if(!response.ok){
+    if(response.status===401&&currentAccount)throw Object.assign(new Error('Phiên đăng nhập hết hạn. Dữ liệu cục bộ vẫn được giữ; hãy đăng nhập lại.'),{status:401});
+    throw Object.assign(new Error(type.includes('json')?(result.error||'Không thể xử lý yêu cầu.'):`Máy chủ trả lỗi ${response.status}. Dữ liệu cục bộ vẫn được giữ.`),{status:response.status,code:result.code});
+  }
+  return result;
 }
 async function openStorage() {
   database = await new Promise((resolve, reject) => {
@@ -158,16 +150,16 @@ function startCloudSync(){
 async function sendCloudSnapshot(snapshot,revision){
   let content=new Blob([JSON.stringify({state:snapshot,revision})],{type:'application/json'});
   if(content.size>128*1024*1024)throw new Error('Kho vượt 128 MB. Bản cục bộ vẫn được giữ; hãy sao lưu JSON.');
-  if(content.size<=1024*1024)return api(cloudPath(),{state:snapshot,revision},{method:'PUT',headers:workspaceHeaders(),timeoutMs:20000});
+  if(content.size<=1024*1024)return api(cloudPath(),{state:snapshot,revision},{method:'PUT',headers:workspaceHeaders()});
   let encoding='json';
   if('CompressionStream' in window){content=await new Response(content.stream().pipeThrough(new CompressionStream('gzip'))).blob();encoding='gzip';}
   const size=1024*1024,parts=Math.ceil(content.size/size);
-  const upload=await api(cloudPath('/uploads'),{revision,encoding,size:content.size,parts},{headers:workspaceHeaders(),timeoutMs:20000});
+  const upload=await api(cloudPath('/uploads'),{revision,encoding,size:content.size,parts},{headers:workspaceHeaders()});
   for(let i=0;i<parts;i++){
-    await api(cloudPath(`/uploads/${upload.upload_id}/${i}`),content.slice(i*size,(i+1)*size),{method:'PUT',headers:workspaceHeaders(),timeoutMs:20000});
+    await api(cloudPath(`/uploads/${upload.upload_id}/${i}`),content.slice(i*size,(i+1)*size),{method:'PUT',headers:workspaceHeaders()});
     syncMessage(`Đã lưu trên thiết bị · đồng bộ nền ${i+1}/${parts} phần`);
   }
-  return api(cloudPath(`/uploads/${upload.upload_id}/commit`),{},{headers:workspaceHeaders(),timeoutMs:20000});
+  return api(cloudPath(`/uploads/${upload.upload_id}/commit`),{},{headers:workspaceHeaders()});
 }
 function sameValue(a,b){
   if(a===b)return true;
@@ -193,7 +185,7 @@ function connectCloud(){
 async function readCloud(){
   syncReady=false;syncMessage('Đang đọc kho dữ liệu · có thể tiếp tục làm việc');
   try{
-    const result=await api(cloudPath(),undefined,{headers:workspaceHeaders(),timeoutMs:20000});
+    const result=await api(cloudPath(),undefined,{headers:workspaceHeaders()});
     let pending=!!localStorage.getItem(pendingKey());
     if(pending&&sameValue(state,result.state)){localStorage.removeItem(pendingKey());pending=false;}
     if(pending&&result.state){
@@ -216,7 +208,7 @@ async function openCloudVersion(){
   if(cloudSyncTask||cloudReadTask)throw new Error('Đang đồng bộ nền. Vui lòng chờ kết thúc hoặc thử lại.');
   if(!confirm('Mở bản trên kho sẽ thay bản làm việc trên thiết bị. Bản hiện tại được sao lưu JSON và giữ một bản phục hồi trên thiết bị. Tiếp tục?'))return;
   await busy('Đang mở bản trên kho',async()=>{
-    const result=await api(cloudPath(),undefined,{headers:workspaceHeaders(),timeoutMs:20000});
+    const result=await api(cloudPath(),undefined,{headers:workspaceHeaders()});
     await new Promise((resolve,reject)=>{const tx=database.transaction('app','readwrite');tx.objectStore('app').put(state,'recovery-before-cloud');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
     backup();state=result.state||{datasets:[],runs:[]};cloudRevision=result.revision;revisionKnown=syncReady=true;
     await saveLocalState();localStorage.removeItem(pendingKey());
@@ -439,24 +431,16 @@ function renderAll() { selectors();setModelInfo();renderDatasets();renderResults
 
 async function addDataset(name,rows,{save=true}={}){const id=crypto.randomUUID(),vid=crypto.randomUUID();state.datasets.unshift({id,name,versions:[{id:vid,revision:1,created:new Date().toISOString(),rows}]});if(save)await persist();else{localGeneration++;if(remoteEnabled)localStorage.setItem(pendingKey(),'1');await saveLocalState();}selectDataset(id,vid);return id;}
 async function inferRows(rows,selected=model(),config=configuration()) {
-  const chunks=Array.from({length:Math.ceil(rows.length/500)},(_,i)=>rows.slice(i*500,(i+1)*500));
-  const outputs=new Array(chunks.length);let next=0,completed=0,failure=null;
+  const output=[];
   $('busy-progress').value=0;
   $('busy-detail').textContent=`${selected.name} · Đang xử lý ${fmt(rows.length)} hồ sơ…`;
-  async function worker(){
-    while(next<chunks.length&&!failure){
-      const index=next++;
-      try{
-        const result=await api('predict',{rows:chunks[index],model:selected.name,thresholds:config});
-        outputs[index]=result.rows;completed+=result.rows.length;
-        $('busy-progress').value=Math.round(completed/rows.length*100);
-        $('busy-detail').textContent=`${selected.name} · Đã xử lý ${fmt(completed)}/${fmt(rows.length)} hồ sơ`;
-      }catch(error){failure=error;}
-    }
+  for(let i=0;i<rows.length;i+=500){
+    const result=await api('predict',{rows:rows.slice(i,i+500),model:selected.name,thresholds:config});
+    output.push(...result.rows);
+    $('busy-progress').value=Math.round(output.length/rows.length*100);
+    $('busy-detail').textContent=`${selected.name} · Đã xử lý ${fmt(output.length)}/${fmt(rows.length)} hồ sơ`;
   }
-  await Promise.all([worker(),worker()]);
-  if(failure)throw failure;
-  return outputs.flat();
+  return output;
 }
 async function ensureRun(d,v,m,config){
   const cached=state.runs.find(r=>r.versionId===v.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config));
