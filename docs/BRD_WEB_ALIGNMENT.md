@@ -1,6 +1,6 @@
 # Phạm vi đối chiếu BRD web — 2026-11-02
 
-Nguồn: yêu cầu trực tiếp trong công việc GitHub và `docs/REQUIREMENTS.md`, `PRODUCT.md` hiện có. Bản đầy đủ BRD trong cuộc trò chuyện ChatGPT trước không truy xuất được trong phiên này; tài liệu này không tuyên bố đã đối chiếu toàn bộ bản đó.
+Nguồn: BRD 5.2.1 do người dùng gửi trực tiếp ngày 2026-11-02 (BN-01–06, BO-01–07, BR-01–16, IS-01–13), cùng yêu cầu phân quyền Admin/Analyst. Huấn luyện thực hiện ngoài giao diện theo OS-05/06.
 
 | Yêu cầu | Hành vi web |
 | --- | --- |
@@ -8,6 +8,7 @@ Nguồn: yêu cầu trực tiếp trong công việc GitHub và `docs/REQUIREMEN
 | Trùng ID / giới hạn | Từ chối ID trùng thay vì ghi đè hồ sơ. Dataset tối đa 30.000 dòng. |
 | Chọn model | RF/LR/XGBoost dùng bundle thật. Ưu tiên artifact local tin cậy `best_model.pkl`, dự phòng bộ bàn giao `best_model_v1.pkl`. Model đầu tiên trong bundle là mặc định khi chưa có cấu hình Admin. |
 | Model mặc định Admin | Cả giao diện và API khi bỏ trường `model` dùng model Active. Chọn model rõ ràng luôn được tôn trọng. |
+| Đổi model đơn lẻ (BR-03) | Sau khi đã dự báo, đổi model tự tính lại cùng đầu vào và hiển thị xác suất/nhãn mới. Thay đổi trường đầu vào vô hiệu hóa kết quả cho đến khi dự báo lại. |
 | Kết quả từng model | Mỗi lượt giữ model/version/hash/ngưỡng và snapshot đầu ra riêng. Đổi model không ghi đè lượt cũ. |
 | Dataset CRUD/copy | Import, xem, đổi tên, bổ sung/sửa/xóa dòng, tạo bản sao; thay đổi dòng tạo phiên bản mới. Xóa dataset là xóa khỏi danh sách làm việc, giữ phiên bản phục vụ lịch sử. |
 | Lịch sử | Mở chính xác lượt được chọn, kể cả khi nhiều lượt cùng model/ngưỡng; đổi tên/xóa dataset không sửa tên hoặc kết quả lịch sử. |

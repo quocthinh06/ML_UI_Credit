@@ -380,7 +380,13 @@ $('save-single').addEventListener('click',guarded(saveSingle));$('export-single'
 $('tab-single').addEventListener('click',()=>batchTab(false));$('tab-batch').addEventListener('click',()=>batchTab(true));
 document.querySelectorAll('.dataset-select').forEach(el=>el.addEventListener('change',()=>selectDataset(el.value)));
 $('version-choice').addEventListener('change',()=>selectDataset(selectedDataset,$('version-choice').value));
-$('model-choice').addEventListener('change',guarded(async()=>{selectedRunId=null;$('decision').value=$('decision-basis').value==='raw'?model().threshold*100:50;invalidateSingle();comparison=[];renderAll();if(version()?.rows.length)await runBatch({go:false});}));
+$('model-choice').addEventListener('change',guarded(async()=>{
+  const hadSingle=singleInputs!==null;
+  selectedRunId=null;$('decision').value=$('decision-basis').value==='raw'?model().threshold*100:50;
+  invalidateSingle();comparison=[];renderAll();
+  if(hadSingle)await predictSingle({preventDefault(){}});
+  if(version()?.rows.length)await runBatch({go:false});
+}));
 ['decision','low','high','decision-basis'].forEach(id=>$(id).addEventListener('change',guarded(()=>{selectedRunId=null;if(id==='decision-basis')$('decision').value=$('decision-basis').value==='raw'?model().threshold*100:50;configuration();invalidateSingle();renderAll();})));
 ['run-batch','predict-dataset'].forEach(id=>$(id).addEventListener('click',guarded(()=>runBatch())));$('analyze-selected').addEventListener('click',guarded(()=>runBatch({go:false})));
 ['result-search','risk-filter','warning-filter','min-pd','max-pd','min-age','max-age','min-limit','max-limit','min-delay'].forEach(id=>$(id).addEventListener('input',()=>{resultsPage=0;renderResults();}));

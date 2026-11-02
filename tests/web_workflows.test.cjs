@@ -8,7 +8,7 @@ function app() {
   const elements = new Map();
   const document = {
     getElementById(id) {
-      if (!elements.has(id)) elements.set(id, {value:'', disabled:false, hidden:false, addEventListener(){},
+      if (!elements.has(id)) elements.set(id, {value:'', disabled:false, hidden:false, handlers:{}, addEventListener(type,handler){this.handlers[type]=handler;},
         replaceChildren(){}, add(){}, showModal(){this.open=true;}, close(){this.open=false;}});
       return elements.get(id);
     }, querySelectorAll(){return [];}, addEventListener(){}
@@ -33,6 +33,16 @@ test('single transfer asks for destination and appends inputs to its latest vers
   assert.equal(run("state.datasets[1].versions.at(-1).rows[0].ID"),'new');
   assert.equal(run('state.datasets[0].versions.length'),1);
   assert.equal(run('state.runs.length'),0);
+});
+
+test('changing model recomputes an existing single prediction on the same input',async()=>{
+  const {run,elements}=app();
+  run(`models=[{name:'LR',threshold:.4}];$('model-choice').value='LR';$('decision-basis').value='raw';
+    globalThis.predicted=null;predictSingle=async()=>{predicted={model:model().name,id:$('single-ID').value};};
+    $('single-ID').value='new';runBatch=async()=>{};`);
+  await elements.get('model-choice').handlers.change({});
+  assert.equal(run('predicted?.model'),'LR');
+  assert.equal(run('predicted?.id'),'new');
 });
 
 test('dataset removal retains versions and prediction history',async()=>{
