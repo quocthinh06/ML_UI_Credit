@@ -15,6 +15,12 @@ from .cloud_storage import database, enabled
 bp = Blueprint("auth", __name__)
 
 
+class AuthForbidden(Forbidden):
+    def __init__(self, description, reason):
+        super().__init__(description)
+        self.reason = reason
+
+
 def now():
     return datetime.now(timezone.utc)
 
@@ -105,9 +111,9 @@ def require_user(*, admin=False, allow_password_change=False):
         raise Unauthorized("Vui lòng đăng nhập để tiếp tục.")
     g.user = user
     if admin and user["role"] != "admin":
-        raise Forbidden("Chỉ quản trị viên được sử dụng chức năng này.")
+        raise AuthForbidden("Chỉ quản trị viên được sử dụng chức năng này.", "ROLE_FORBIDDEN")
     if user.get("must_change_password") and not allow_password_change:
-        raise Forbidden("Bạn cần đổi mật khẩu trước khi tiếp tục.")
+        raise AuthForbidden("Bạn cần đổi mật khẩu trước khi tiếp tục.", "PASSWORD_CHANGE_REQUIRED")
     return user
 
 
@@ -124,6 +130,7 @@ def install(app):
         SECRET_KEY=os.environ.get("SESSION_SECRET"), SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SECURE=bool(os.environ.get("VERCEL")), SESSION_COOKIE_SAMESITE="Lax",
         PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+        SESSION_REFRESH_EACH_REQUEST=False,
     )
     app.register_blueprint(bp)
 
@@ -145,7 +152,7 @@ def install(app):
         if request.method not in ("GET", "HEAD", "OPTIONS") and session.get("sid"):
             supplied = request.headers.get("X-CSRF-Token", "")
             if not secrets.compare_digest(supplied, session.get("csrf", "")) or not supplied:
-                raise Forbidden("Phiên bảo mật đã thay đổi. Hãy tải lại trang.")
+                raise AuthForbidden("Phiên bảo mật đã thay đổi. Hãy tải lại trang.", "CSRF_STALE")
         if request.path == "/" and enforced():
             if not g.user:
                 return redirect("/login")

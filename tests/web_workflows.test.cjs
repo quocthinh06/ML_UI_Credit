@@ -14,10 +14,12 @@ function app() {
     }, querySelectorAll(){return [];}, addEventListener(){}
   };
   const context = vm.createContext({document, window:{addEventListener(){}}, location:{hash:''},
-    crypto:webcrypto, structuredClone, performance, FormData, File, setTimeout, clearTimeout, console, Option:function(text,value){this.text=text;this.value=value;}});
+    crypto:webcrypto, structuredClone, performance, FormData, File, Blob, Response, AbortController, setTimeout, clearTimeout, console,
+    localStorage:{values:new Map(),getItem(k){return this.values.get(k)||null;},setItem(k,v){this.values.set(k,String(v));},removeItem(k){this.values.delete(k);}},
+    Option:function(text,value){this.text=text;this.value=value;}});
   const source = fs.readFileSync('creditrisk/static/app.js','utf8');
   vm.runInContext(source.slice(0, source.lastIndexOf('initialize().catch')), context);
-  vm.runInContext(`persist=async()=>{};renderAll=()=>{};notify=()=>{};
+  vm.runInContext(`globalThis.originalPersist=persist;globalThis.originalApi=api;persist=async()=>{};saveLocalState=async()=>{};renderAll=()=>{};notify=()=>{};
     state={datasets:[{id:'a',name:'A',versions:[{id:'v1',revision:1,rows:[{ID:'old',AGE:30}]}]},
       {id:'b',name:'B',versions:[{id:'v2',revision:1,rows:[]}]}],runs:[]};
     selectedDataset='a';selectedVersion='v1';singleInputs={ID:'new',AGE:40};`, context);
@@ -33,6 +35,78 @@ test('single transfer asks for destination and appends inputs to its latest vers
   assert.equal(run("state.datasets[1].versions.at(-1).rows[0].ID"),'new');
   assert.equal(run('state.datasets[0].versions.length'),1);
   assert.equal(run('state.runs.length'),0);
+});
+
+test('local save completes without waiting for cloud and pending edits sync serially',async()=>{
+  const {run}=app();
+  run(`remoteEnabled=true;syncReady=true;saveLocalState=async()=>{};globalThis.saved=0;
+    globalThis.release=null;api=async()=>{saved++;if(saved===1)await new Promise(resolve=>release=resolve);return {revision:saved};};`);
+  await run('originalPersist()');
+  assert.equal(run('saved'),1);
+  assert.equal(run('localStorage.getItem(pendingKey())'),'1');
+  await run("state.runs.push({id:'later'});originalPersist()");
+  assert.equal(run('saved'),1);
+  await run('release();cloudSyncTask');
+  assert.equal(run('saved'),2);
+  assert.equal(run('localStorage.getItem(pendingKey())'),null);
+});
+
+test('startup keeps conflicting local edits without asking to overwrite cloud',async()=>{
+  const {run}=app();
+  run(`remoteEnabled=true;localStorage.setItem(pendingKey(),'1');
+    saveLocalState=async()=>{};globalThis.puts=0;
+    api=async(path,data)=>{if(data)puts++;return {revision:7,state:{datasets:[],runs:[{id:'remote-only'}]}};};
+    confirm=()=>{throw new Error('Unexpected destructive prompt');};`);
+  await run('connectCloud()');
+  assert.equal(run('state.datasets[0].id'),'a');
+  assert.equal(run('puts'),0);
+  assert.equal(run('syncReady'),false);
+  assert.equal(run('localStorage.getItem(pendingKey())'),'1');
+});
+
+test('an import started during cloud loading is saved and cannot be overwritten',async()=>{
+  const {run}=app();
+  run(`remoteEnabled=true;globalThis.releaseRead=null;globalThis.draftSaves=0;
+    saveLocalState=async()=>{draftSaves++;};
+    api=async()=>new Promise(resolve=>releaseRead=()=>resolve({revision:2,state:{datasets:[],runs:[{id:'remote'}]}}));
+    globalThis.loading=connectCloud();`);
+  await run("addDataset('New import',[{ID:'NEW'}],{save:false})");
+  assert.equal(run('draftSaves'),1);
+  await run('releaseRead();loading');
+  assert.equal(run('state.datasets[0].name'),'New import');
+  assert.equal(run('localStorage.getItem(pendingKey())'),'1');
+});
+
+test('CSRF refresh retries only a rejected request for the same account',async()=>{
+  const {run}=app();
+  run(`currentAccount={id:'alice'};csrfToken='stale';globalThis.requests=[];
+    fetch=async(path,opts)=>{requests.push({path,token:opts?.headers?.['X-CSRF-Token']});
+      if(path==='/api/auth/session')return Response.json({user:{id:'alice'},csrf:'fresh'});
+      return opts.headers['X-CSRF-Token']==='fresh'?Response.json({ok:true}):Response.json({error:'stale',code:'CSRF_STALE'},{status:403});};`);
+  const result=await run("api('predict',{rows:[]})");
+  assert.equal(result.ok,true);
+  assert.equal(run('requests.length'),3);
+});
+
+test('large cloud snapshots use requests below one MiB and commit only at the end',async()=>{
+  const {run}=app();
+  run(`globalThis.uploaded=[];api=async(path,data)=>{uploaded.push({path,size:data instanceof Blob?data.size:JSON.stringify(data).length});
+    return path.endsWith('/uploads')?{upload_id:'upload'}:{revision:1};};`);
+  await run("sendCloudSnapshot({datasets:[],runs:[{id:'big',note:'x'.repeat(5*1024*1024)}]},0)");
+  assert.ok(run('uploaded.length')>=7);
+  assert.equal(run('uploaded.every(r=>r.size<=1024*1024)'),true);
+  assert.match(run('uploaded.at(-1).path'),/commit$/);
+});
+
+test('a changed account or real permission denial is never retried',async()=>{
+  const {run}=app();
+  run(`currentAccount={id:'alice'};csrfToken='old';globalThis.calls=0;
+    fetch=async(path)=>{calls++;return path==='/api/auth/session'?Response.json({user:{id:'bob'},csrf:'new'}):Response.json({error:'stale',code:'CSRF_STALE'},{status:403});};`);
+  await assert.rejects(run("api('predict',{})"),/Tài khoản/);
+  assert.equal(run('calls'),2);
+  run(`calls=0;fetch=async()=>{calls++;return Response.json({error:'forbidden',code:'ROLE_FORBIDDEN'},{status:403});};`);
+  await assert.rejects(run("api('predict',{})"),/forbidden/);
+  assert.equal(run('calls'),1);
 });
 
 test('changing model recomputes an existing single prediction on the same input',async()=>{

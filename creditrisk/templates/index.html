@@ -4,9 +4,9 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0b1626"><meta name="description" content="Dự báo và phân tích rủi ro tín dụng với Random Forest, Logistic Regression và XGBoost.">
   <title>CreditRisk AI · Dự báo rủi ro tín dụng</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v='20261102-syncfix') }}">
   <link rel="stylesheet" href="/static/auth.css">
-  <script src="{{ url_for('static', filename='app.js', v='20261102-performance') }}" defer></script>
+  <script src="{{ url_for('static', filename='app.js', v='20261102-syncfix') }}" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Đến nội dung chính</a>
@@ -31,6 +31,7 @@
       <button class="button secondary compact" id="workspace-settings">Kho dữ liệu</button>
       <button class="button secondary compact" id="sample-top"><span data-icon="file"></span> Dùng dữ liệu mẫu</button>
     </header>
+    <div id="sync-status" class="notice" role="status" hidden><span id="sync-message"></span><button id="retry-sync" class="button secondary compact">Thử đồng bộ lại</button><button id="backup-pending" class="button secondary compact">Sao lưu JSON</button><button id="open-cloud-version" class="button secondary compact" hidden>Mở bản trên kho</button></div>
     <div id="account-banner" class="account-banner" hidden></div>
     <main id="main" tabindex="-1">
       <div id="alert" class="alert" role="alert" hidden></div>

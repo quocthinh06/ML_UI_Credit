@@ -25,11 +25,12 @@ let models = [], features = [], selectedDataset = null, selectedVersion = null, 
 let singleResult = null, singleInputs = null, singleConfig = null, editId = null, database;
 let selectedRunId = null;
 let resultsPage = 0, dataPage = 0, toastTimer;
-let remoteEnabled = false, cloudRevision = 0;
+let remoteEnabled = false, cloudRevision = 0, revisionKnown = false;
+let syncReady=false, cloudSyncTask=null, cloudReadTask=null, localGeneration=0;
 let currentAccount = null, csrfToken = null, workspaceAccount = null;
 const PAGE_SIZE = 25;
 
-function cloudPath() { return workspaceAccount ? 'workspace?account_id='+encodeURIComponent(workspaceAccount) : 'workspace'; }
+function cloudPath(suffix='') { const owner=workspaceAccount||currentAccount?.id;return 'workspace'+suffix+(owner?'?account_id='+encodeURIComponent(owner):''); }
 function pendingKey() { return 'creditrisk-cloud-pending'+(currentAccount?'-'+currentAccount.id+'-'+(workspaceAccount||currentAccount.id):''); }
 
 function workspaceKey() {
@@ -54,9 +55,10 @@ async function busy(title, fn) {
   elapsed();const timer=setInterval(elapsed,1000);
   try { return await fn(); } finally { clearInterval(timer);$('busy').hidden = true; document.querySelector('.workspace').inert = false; $('sidebar').inert = false; }
 }
-async function api(path, data, options = {}) {
+async function api(path, data, options = {}, retried=false) {
   let headers = csrfToken ? {'X-CSRF-Token':csrfToken} : {}, body;
-  if (data instanceof FormData) body = data;
+  if(data instanceof Blob){body=data;headers['Content-Type']='application/octet-stream';}
+  else if (data instanceof FormData) body = data;
   else if (data !== undefined) {
     headers['Content-Type'] = 'application/json'; body = JSON.stringify(data);
     if (body.length > 100000 && 'CompressionStream' in window) {
@@ -64,15 +66,34 @@ async function api(path, data, options = {}) {
       headers['Content-Encoding'] = 'gzip';
     }
   }
-  const response = await fetch(`/api/${path}`, {method: data === undefined ? 'GET' : 'POST', body,
-    ...options, headers:{...headers,...options.headers}});
-  if (!response.ok) {
-    if (response.status === 401 && currentAccount) { location.assign('/login'); throw new Error('Phiên đăng nhập đã hết hạn.'); }
-    const type = response.headers.get('Content-Type') || '';
-    const error = type.includes('json') ? (await response.json()).error : `Máy chủ trả lỗi ${response.status}. Vui lòng thử lại.`;
-    throw new Error(error || 'Không thể xử lý yêu cầu.');
-  }
-  return response.headers.get('Content-Type')?.includes('json') ? response.json() : response.blob();
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),options.timeoutMs||25000);
+  let response;
+  try{
+    response=await fetch(`/api/${path}`,{method:data===undefined?'GET':'POST',body,...options,signal:controller.signal,headers:{...headers,...options.headers}});
+    if(response.status===403&&!retried){
+      const denied=await response.clone().json().catch(()=>({}));
+      if(denied.code==='CSRF_STALE'){
+        const refreshed=await fetch('/api/auth/session',{signal:controller.signal,cache:'no-store'});
+        const auth=await refreshed.json();
+        if(!auth.user||auth.user.id!==currentAccount?.id){
+          throw new Error('Tài khoản đăng nhập đã thay đổi. Dữ liệu cục bộ vẫn được giữ; hãy tải lại trang.');
+        }
+        csrfToken=auth.csrf;clearTimeout(timer);
+        return api(path,data,options,true);
+      }
+    }
+    // Read the body while the timeout still covers a stalled download.
+    const type=response.headers.get('Content-Type')||'';
+    const result=type.includes('json')?await response.json():await response.blob();
+    if(!response.ok){
+      if(response.status===401&&currentAccount)throw Object.assign(new Error('Phiên đăng nhập hết hạn. Dữ liệu cục bộ vẫn được giữ; hãy đăng nhập lại.'),{status:401});
+      throw Object.assign(new Error(type.includes('json')?(result.error||'Không thể xử lý yêu cầu.'):`Máy chủ trả lỗi ${response.status}. Dữ liệu cục bộ vẫn được giữ.`),{status:response.status,code:result.code});
+    }
+    return result;
+  }catch(error){
+    if(error.name==='AbortError')throw Object.assign(new Error('Máy chủ phản hồi quá chậm. Dữ liệu cục bộ vẫn được giữ; có thể thử lại.'),{code:'REQUEST_TIMEOUT'});
+    throw error;
+  }finally{clearTimeout(timer);}
 }
 async function openStorage() {
   database = await new Promise((resolve, reject) => {
@@ -85,38 +106,122 @@ async function openStorage() {
     req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
   });
   if (saved) state = saved;
+  const revision=await new Promise((resolve,reject)=>{const req=database.transaction('app').objectStore('app').get('cloudRevision');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
+  if(Number.isInteger(revision)){cloudRevision=revision;revisionKnown=true;}
 }
-async function persist() {
-  try {
-    await new Promise((resolve, reject) => {
-      const tx = database.transaction('app', 'readwrite'); tx.objectStore('app').put(state, 'state');
-      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
+async function saveLocalState(){
+  try{
+    await new Promise((resolve,reject)=>{
+      const tx=database.transaction('app','readwrite'),store=tx.objectStore('app');store.put(state,'state');
+      if(revisionKnown)store.put(cloudRevision,'cloudRevision');
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
     });
-  } catch { throw new Error('Không lưu được dữ liệu vào trình duyệt. Có thể đã hết dung lượng; hãy sao lưu JSON và thử lại.'); }
-  if (remoteEnabled) {
-    localStorage.setItem(pendingKey(), '1');
-    try {
-      const result = await api(cloudPath(), {state, revision:cloudRevision},
-        {method:'PUT',headers:{Authorization:`Bearer ${workspaceKey()}`}});
-      cloudRevision = result.revision; localStorage.removeItem(pendingKey());
-      $('connection').innerHTML = '<span class="status-dot"></span> API & MongoDB đã đồng bộ';
-    } catch(error) { $('connection').textContent = 'Đã lưu cục bộ · chưa đồng bộ'; showError(error); }
+  }catch{throw new Error('Không lưu được dữ liệu vào trình duyệt. Hãy sao lưu JSON trước khi đóng trang.');}
+}
+function syncMessage(message,problem=false){
+  $('connection').textContent=problem?'Cục bộ · chưa đồng bộ':message.includes('đã đồng bộ')?'API & MongoDB đã đồng bộ':'API đã kết nối · đồng bộ nền';$('sync-status').hidden=false;
+  $('sync-message').textContent=message;
+  $('retry-sync').disabled=!!(cloudSyncTask||cloudReadTask);
+  $('open-cloud-version').hidden=!problem;
+}
+function workspaceHeaders(){return currentAccount?{}:{Authorization:`Bearer ${workspaceKey()}`};}
+async function persist(){
+  localGeneration++;
+  if(remoteEnabled)localStorage.setItem(pendingKey(),'1');
+  await saveLocalState();
+  if(remoteEnabled){
+    syncMessage(syncReady?'Đã lưu trên thiết bị · đang chờ đồng bộ':'Đã lưu trên thiết bị · cloud chưa sẵn sàng. Có thể tiếp tục làm việc.',!syncReady);
+    startCloudSync();
   }
 }
-
-async function connectCloud() {
-  const result = await api(cloudPath(), undefined, {headers:{Authorization:`Bearer ${workspaceKey()}`}});
-  cloudRevision = result.revision;
-  if (result.state) {
-    const pending = localStorage.getItem(pendingKey()) && state.datasets.length;
-    if (!pending || !confirm('Có thay đổi cục bộ chưa đồng bộ. Giữ bản cục bộ và thay thế bản trên kho? Chọn Hủy để mở bản trên kho.')) {
-      state = result.state;
-      await new Promise((resolve,reject)=>{const tx=database.transaction('app','readwrite');tx.objectStore('app').put(state,'state');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
-      localStorage.removeItem(pendingKey());
-    } else await persist();
-  } else if (state.datasets.length) await persist();
-  document.querySelector('.sidebar-footer').lastChild.textContent = ' MongoDB Atlas · kho riêng';
-  $('app-version').textContent = $('app-version').textContent.replace('Dữ liệu riêng trên trình duyệt','MongoDB Atlas · kho riêng');
+function startCloudSync(){
+  if(cloudSyncTask||!syncReady||!localStorage.getItem(pendingKey()))return;
+  cloudSyncTask=(async()=>{
+    try{
+      while(syncReady&&localStorage.getItem(pendingKey())){
+        const generation=localGeneration,snapshot=structuredClone(state);
+        syncMessage('Đã lưu trên thiết bị · đang đồng bộ nền');
+        const result=await sendCloudSnapshot(snapshot,cloudRevision);
+        cloudRevision=result.revision;revisionKnown=true;
+        await saveLocalState();
+        if(generation===localGeneration)localStorage.removeItem(pendingKey());
+      }
+      syncMessage('API & MongoDB đã đồng bộ');$('sync-status').hidden=true;
+    }catch(error){
+      // A timed-out write may have committed: re-read the revision before retrying.
+      syncReady=false;
+      syncMessage(`${error.message} Chưa đồng bộ; bản cục bộ được giữ nguyên.`,true);
+    }finally{cloudSyncTask=null;$('retry-sync').disabled=false;}
+  })();
+  $('retry-sync').disabled=true;
+}
+async function sendCloudSnapshot(snapshot,revision){
+  let content=new Blob([JSON.stringify({state:snapshot,revision})],{type:'application/json'});
+  if(content.size>128*1024*1024)throw new Error('Kho vượt 128 MB. Bản cục bộ vẫn được giữ; hãy sao lưu JSON.');
+  if(content.size<=1024*1024)return api(cloudPath(),{state:snapshot,revision},{method:'PUT',headers:workspaceHeaders(),timeoutMs:20000});
+  let encoding='json';
+  if('CompressionStream' in window){content=await new Response(content.stream().pipeThrough(new CompressionStream('gzip'))).blob();encoding='gzip';}
+  const size=1024*1024,parts=Math.ceil(content.size/size);
+  const upload=await api(cloudPath('/uploads'),{revision,encoding,size:content.size,parts},{headers:workspaceHeaders(),timeoutMs:20000});
+  for(let i=0;i<parts;i++){
+    await api(cloudPath(`/uploads/${upload.upload_id}/${i}`),content.slice(i*size,(i+1)*size),{method:'PUT',headers:workspaceHeaders(),timeoutMs:20000});
+    syncMessage(`Đã lưu trên thiết bị · đồng bộ nền ${i+1}/${parts} phần`);
+  }
+  return api(cloudPath(`/uploads/${upload.upload_id}/commit`),{},{headers:workspaceHeaders(),timeoutMs:20000});
+}
+function sameValue(a,b){
+  if(a===b)return true;
+  if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+  const keys=Object.keys(a);
+  return keys.length===Object.keys(b).length&&keys.every(k=>Object.hasOwn(b,k)&&sameValue(a[k],b[k]));
+}
+function containsCloud(local,remote){
+  if(!remote)return true;
+  const equal=sameValue;
+  return remote.runs.every(r=>local.runs.some(item=>item.id===r.id&&equal(item,r)))&&remote.datasets.every(d=>{
+    const own=local.datasets.find(item=>item.id===d.id);
+    if(!own)return false;
+    const {versions:remoteVersions,...remoteMeta}=d,{versions:localVersions,...localMeta}=own;
+    return equal(localMeta,remoteMeta)&&remoteVersions.every(v=>localVersions.some(item=>item.id===v.id&&equal(item,v)));
+  });
+}
+function connectCloud(){
+  if(cloudReadTask)return cloudReadTask;
+  cloudReadTask=readCloud().finally(()=>{cloudReadTask=null;$('retry-sync').disabled=!!cloudSyncTask;});
+  $('retry-sync').disabled=true;return cloudReadTask;
+}
+async function readCloud(){
+  syncReady=false;syncMessage('Đang đọc kho dữ liệu · có thể tiếp tục làm việc');
+  try{
+    const result=await api(cloudPath(),undefined,{headers:workspaceHeaders(),timeoutMs:20000});
+    let pending=!!localStorage.getItem(pendingKey());
+    if(pending&&sameValue(state,result.state)){localStorage.removeItem(pendingKey());pending=false;}
+    if(pending&&result.state){
+      if(!(revisionKnown&&cloudRevision===result.revision)&&!containsCloud(state,result.state)){
+        syncMessage('Có thay đổi ở cả thiết bị và kho. Bản cục bộ được giữ nguyên; hãy sao lưu hoặc chọn mở bản trên kho.',true);
+        return;
+      }
+    }else if(result.state){
+      state=result.state;await saveLocalState();
+      selectDataset(state.datasets.find(d=>!d.deleted)?.id);
+    }
+    cloudRevision=result.revision;revisionKnown=true;syncReady=true;
+    await saveLocalState();
+    if(pending||(!result.state&&(state.datasets.length||state.runs.length))){
+      localStorage.setItem(pendingKey(),'1');startCloudSync();
+    }else{syncMessage('API & MongoDB đã đồng bộ');$('sync-status').hidden=true;}
+  }catch(error){syncMessage(`${error.message} Có thể tiếp tục dùng dữ liệu trên thiết bị.`,true);}
+}
+async function openCloudVersion(){
+  if(cloudSyncTask||cloudReadTask)throw new Error('Đang đồng bộ nền. Vui lòng chờ kết thúc hoặc thử lại.');
+  if(!confirm('Mở bản trên kho sẽ thay bản làm việc trên thiết bị. Bản hiện tại được sao lưu JSON và giữ một bản phục hồi trên thiết bị. Tiếp tục?'))return;
+  await busy('Đang mở bản trên kho',async()=>{
+    const result=await api(cloudPath(),undefined,{headers:workspaceHeaders(),timeoutMs:20000});
+    await new Promise((resolve,reject)=>{const tx=database.transaction('app','readwrite');tx.objectStore('app').put(state,'recovery-before-cloud');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    backup();state=result.state||{datasets:[],runs:[]};cloudRevision=result.revision;revisionKnown=syncReady=true;
+    await saveLocalState();localStorage.removeItem(pendingKey());
+    selectDataset(state.datasets.find(d=>!d.deleted)?.id);$('sync-status').hidden=true;
+  });
 }
 function dataset() { return state.datasets.find(d => d.id === selectedDataset); }
 function version() { const d = dataset(); return d?.versions.find(v => v.id === selectedVersion) || d?.versions.at(-1); }
@@ -332,7 +437,7 @@ function renderModels() {
 }
 function renderAll() { selectors();setModelInfo();renderDatasets();renderResults();renderOverview();renderHistory();if(location.hash==='#models')renderModels(); }
 
-async function addDataset(name,rows,{save=true}={}){const id=crypto.randomUUID(),vid=crypto.randomUUID();state.datasets.unshift({id,name,versions:[{id:vid,revision:1,created:new Date().toISOString(),rows}]});if(save)await persist();selectDataset(id,vid);return id;}
+async function addDataset(name,rows,{save=true}={}){const id=crypto.randomUUID(),vid=crypto.randomUUID();state.datasets.unshift({id,name,versions:[{id:vid,revision:1,created:new Date().toISOString(),rows}]});if(save)await persist();else{localGeneration++;if(remoteEnabled)localStorage.setItem(pendingKey(),'1');await saveLocalState();}selectDataset(id,vid);return id;}
 async function inferRows(rows,selected=model(),config=configuration()) {
   const chunks=Array.from({length:Math.ceil(rows.length/500)},(_,i)=>rows.slice(i*500,(i+1)*500));
   const outputs=new Array(chunks.length);let next=0,completed=0,failure=null;
@@ -356,6 +461,7 @@ async function inferRows(rows,selected=model(),config=configuration()) {
 async function ensureRun(d,v,m,config){
   const cached=state.runs.find(r=>r.versionId===v.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config));
   if(cached)return {run:cached,cached:true};
+  localGeneration++;if(remoteEnabled)localStorage.setItem(pendingKey(),'1');
   const started=performance.now(),rows=await inferRows(v.rows,m,config),id=crypto.randomUUID(),created=new Date().toISOString();
   rows.forEach(r=>{r.run_id=id;r.prediction_time_utc=created;r.dataset_version_id=v.id;});
   const run={id,datasetId:d.id,versionId:v.id,name:d.name,created,modelName:m.name,modelVersion:m.version,modelHash:m.digest,thresholds:{...config},rows,elapsedMs:performance.now()-started};
@@ -485,6 +591,9 @@ $('workspace-settings').addEventListener('click',()=>{
   $('storage-description').textContent=remoteEnabled?'MongoDB Atlas đã được cấu hình. Dữ liệu được lưu cục bộ và đồng bộ vào kho riêng theo mã.':'Hiện lưu riêng trong trình duyệt. Cấu hình MONGODB_URI trên Vercel để bật đồng bộ MongoDB Atlas.';
   $('storage-dialog').showModal();
 });
+$('retry-sync').addEventListener('click',guarded(connectCloud));
+$('backup-pending').addEventListener('click',backup);
+$('open-cloud-version').addEventListener('click',guarded(openCloudVersion));
 $('close-storage').addEventListener('click',()=>$('storage-dialog').close());
 $('copy-workspace-key').addEventListener('click',guarded(async()=>{await navigator.clipboard.writeText($('workspace-key').value);notify('Đã sao chép mã kho. Giữ riêng mã này.');}));
 $('storage-form').addEventListener('submit',guarded(async event=>{
@@ -512,6 +621,6 @@ async function initialize(){
     const change=document.createElement('a');change.href='/change-password';change.className='button secondary';change.textContent='Đổi mật khẩu';banner.append(change);
     const logout=document.createElement('button');logout.className='button secondary';logout.textContent='Đăng xuất';logout.addEventListener('click',guarded(async()=>{await api('auth/logout',{});location.assign('/login');}));banner.append(logout);
   }
-  await openStorage();const [meta,health]=await Promise.all([api('models'),api('health')]);models=meta.models;features=meta.features;if(!models.length)throw new Error('Chưa tải được model thật. Kiểm tra bước build trên Vercel.');$('model-choice').replaceChildren(...models.map(m=>new Option(m.name,m.name)));if(meta.default_model)$('model-choice').value=meta.default_model;$('model-choice').disabled=false;$('decision').value=model().threshold*100;$('connection').innerHTML='<span class="status-dot"></span> API dự báo đã kết nối';$('app-version').textContent=`v${health.version} · Dữ liệu riêng trên trình duyệt`;remoteEnabled=health.storage==='mongodb';if(remoteEnabled){try{await connectCloud();}catch(error){showError(error);}}inputFields('single-fields','single');selectedDataset=state.datasets.find(d=>!d.deleted)?.id;selectedVersion=dataset()?.versions.at(-1)?.id;renderAll();
+  await openStorage();const [meta,health]=await Promise.all([api('models'),api('health')]);models=meta.models;features=meta.features;if(!models.length)throw new Error('Chưa tải được model thật. Kiểm tra bước build trên Vercel.');$('model-choice').replaceChildren(...models.map(m=>new Option(m.name,m.name)));if(meta.default_model)$('model-choice').value=meta.default_model;$('model-choice').disabled=false;$('decision').value=model().threshold*100;$('connection').innerHTML='<span class="status-dot"></span> API dự báo đã kết nối';$('app-version').textContent=`v${health.version} · Dữ liệu riêng trên trình duyệt`;remoteEnabled=health.storage==='mongodb';inputFields('single-fields','single');selectedDataset=state.datasets.find(d=>!d.deleted)?.id;selectedVersion=dataset()?.versions.at(-1)?.id;renderAll();if(remoteEnabled)void connectCloud();
 }
 initialize().catch(error=>{$('connection').textContent='Chưa kết nối được API';showError(error);});
