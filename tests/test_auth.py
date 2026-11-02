@@ -174,3 +174,37 @@ def test_model_activation_and_rollback_are_admin_only(auth_app, monkeypatch):
     assert admin.post("/api/admin/models/rollback", json={"reason": "Restore prior version"}, headers=csrf).status_code == 200
     assert admin.get("/api/models").json["default_model"] == "Random Forest"
     assert admin.get("/api/admin/models").json["training_available"] is False
+def test_active_model_is_used_when_prediction_omits_model(auth_app, monkeypatch):
+    from types import SimpleNamespace
+    from creditrisk.web import selected_model
+    app, db = auth_app
+    candidates = {name: SimpleNamespace(name=name) for name in ['Random Forest', 'Logistic Regression']}
+    monkeypatch.setattr('creditrisk.web.model_registry', lambda: candidates)
+    db.system_settings.insert_one({'_id': 'active_model', 'name': 'Logistic Regression'})
+    with app.test_request_context('/'):
+        from flask import g
+        g.user = db.accounts.find_one({'_id': 'analyst_a'})
+        assert selected_model({}).name == 'Logistic Regression'
+
+
+def test_operator_check_reports_account_readiness_without_credentials(auth_app, monkeypatch):
+    from tools.verify_mongodb import check
+    app, db = auth_app
+    monkeypatch.setattr('tools.verify_mongodb.create_app', lambda: app)
+    monkeypatch.setattr(db, 'command', lambda *_: {'ok': 1})
+    result = check()
+    assert result['ok'] and result['code'] == 'READY'
+    assert TEST_PASSWORD not in str(result) and 'rootadmin' not in str(result)
+
+
+def test_operator_check_redacts_database_errors(auth_app, monkeypatch):
+    from tools.verify_mongodb import check
+    from pymongo.errors import OperationFailure
+    app, db = auth_app
+    monkeypatch.setattr('tools.verify_mongodb.create_app', lambda: app)
+    def fail(*_):
+        raise OperationFailure('secret-connection-string', code=18)
+    monkeypatch.setattr(db, 'command', fail)
+    result = check()
+    assert not result['ok'] and result['code'] == 'MONGO_AUTH_FAILED'
+    assert 'secret-connection-string' not in str(result)

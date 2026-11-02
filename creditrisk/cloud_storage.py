@@ -23,10 +23,26 @@ def workspace_id(authorization):
 @lru_cache(maxsize=1)
 def database():
     from pymongo import MongoClient
+    from pymongo.errors import ConfigurationError, InvalidURI
     if not enabled():
         raise ServiceUnavailable("Chưa cấu hình MONGODB_URI trên Vercel.")
-    client = MongoClient(os.environ["MONGODB_URI"], serverSelectionTimeoutMS=8000,
-                         connectTimeoutMS=8000, maxPoolSize=5)
+    uri = os.environ["MONGODB_URI"]
+    if (not uri.startswith(("mongodb://", "mongodb+srv://")) or any(c.isspace() for c in uri)
+            or "<" in uri or ">" in uri):
+        raise ConfigurationError("MONGODB_URI phải là URI MongoDB đầy đủ, không chứa placeholder hoặc khoảng trắng.")
+    credentials = {}
+    user, password = os.environ.get("MONGODB_USERNAME"), os.environ.get("MONGODB_PASSWORD")
+    if user or password:
+        if not user or not password:
+            raise ConfigurationError("Cần cấu hình cả MONGODB_USERNAME và MONGODB_PASSWORD.")
+        # Driver parameters accept raw passwords, avoiding manual/double URI encoding.
+        credentials = {"username": user, "password": password,
+                       "authSource": os.environ.get("MONGODB_AUTH_SOURCE", "admin")}
+    try:
+        client = MongoClient(uri, serverSelectionTimeoutMS=8000, connectTimeoutMS=8000,
+                             maxPoolSize=5, **credentials)
+    except (ConfigurationError, InvalidURI, ValueError):
+        raise ConfigurationError("MONGODB_URI hoặc cấu hình xác thực MongoDB không hợp lệ.") from None
     return client[os.environ.get("MONGODB_DATABASE", "creditrisk_ai")]
 
 

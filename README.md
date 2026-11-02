@@ -31,6 +31,10 @@ Nút **Kho dữ liệu** cung cấp mã truy cập riêng 256-bit; cùng mã m�
 
 ## Chức năng
 
+Đối chiếu phạm vi BRD web và các giới hạn nghiệm thu: [BRD web](docs/BRD_WEB_ALIGNMENT.md).
+
+Nút **Thêm vào dự báo hàng loạt** mở chọn dataset nhận hoặc bản sao, thêm riêng đầu vào và giữ lịch sử. Trùng ID bị từ chối. Có đổi tên/xóa dataset khỏi danh sách làm việc; các phiên bản và lượt dự báo cũ vẫn mở được từ lịch sử. Artifact mặc định hỗ trợ `models/best_model.pkl`, dự phòng `best_model_v1.pkl` do script tải về; chỉ dùng pickle từ nguồn tin cậy.
+
 Đăng nhập hai vai trò, quyền dữ liệu riêng theo tài khoản và Admin Console đã có trong mã nguồn. Xem [cấu hình đăng nhập và Admin](docs/AUTH_ADMIN.md). Cần MongoDB Atlas, khóa phiên và tài khoản Admin ban đầu để bật `AUTH_ENABLED=1`; chưa tự bật khi các giá trị này chưa được cấu hình.
 
 - Tổng quan: danh mục theo model, phân bố rủi ro/PD, thống kê theo tuổi, khám phá dữ liệu, ma trận nhầm lẫn và ROC khi đủ nhãn.

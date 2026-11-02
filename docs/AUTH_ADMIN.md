@@ -36,6 +36,30 @@ Khi chưa có MongoDB/khóa phiên, màn hình login hiển thị chưa cấu h�
 
 ## Kiểm soát bảo mật và kiểm thử
 
+### Chẩn đoán lỗi Atlas từ chối xác thực
+
+`MONGO_AUTH_FAILED` xảy ra ở kết nối **Database User**, trước khi kiểm tra tài khoản web. Đổi `INITIAL_ADMIN_PASSWORD` không sửa mật khẩu Database User. Không dùng mật khẩu đăng nhập website Atlas để kết nối database.
+
+1. Atlas → Database Access → chọn Database User của ứng dụng, ví dụ `creditrisk_app`. Kiểm tra đúng project/cluster và đặt lại mật khẩu tại đây nếu không chắc mật khẩu hiện tại. Ứng dụng chỉ cần `readWrite` trên database đích.
+2. Atlas → cluster → Connect → Drivers: lấy URI. Thay cả `<db_username>` và `<db_password>`; không giữ dấu `< >`. Nếu mật khẩu nằm trong URI, percent-encode riêng mật khẩu đúng một lần. Kiểm tra `authSource` phù hợp; SCRAM Database Users Atlas dùng `admin`.
+3. Hoặc dùng URI chỉ chứa host/options cùng **hai Secret** `MONGODB_USERNAME`, `MONGODB_PASSWORD`. Driver nhận mật khẩu nguyên bản, không encode; `MONGODB_AUTH_SOURCE` mặc định `admin`. Nếu URI đã có user/password thì hai biến riêng sẽ ghi đè thông tin đó; chọn một cách và bỏ các override cũ không dùng.
+4. Cập nhật Secret trực tiếp trong Vercel → project → Settings → Environment Variables → Production. Không đưa URI/mật khẩu vào chat, issue hoặc PR. Redeploy để deployment mới nhận cấu hình.
+5. Đăng nhập bằng `INITIAL_ADMIN_USERNAME` và mật khẩu ứng dụng ban đầu, rồi đổi mật khẩu theo yêu cầu. Mật khẩu này khác Database User.
+
+Nguồn: [MongoDB Atlas troubleshooting](https://www.mongodb.com/docs/atlas/troubleshoot-connection/).
+
+Local: sao chép `.env.example` thành `.env`, điền bí mật trên máy riêng. `python main.py` và script bên dưới tự đọc `.env`, không ghi đè biến đã được hệ điều hành cấp. `.env` bị Git bỏ qua. Không đóng gói `.env` vào deploy; dùng biến môi trường Vercel.
+
+```powershell
+python tools/verify_mongodb.py
+# Chỉ khi cần khởi tạo tài khoản Admin và chỉ mục (có ghi database):
+python tools/verify_mongodb.py --bootstrap
+```
+
+Lệnh mặc định chỉ ping và đọc kiểm tra Admin, không in URI, mật khẩu hoặc tên tài khoản. `READY` xác nhận kết nối/đọc tài khoản, chưa thay thế kiểm thử đăng nhập và lưu snapshot/transaction thật. Mã khác: `AUTH_CONFIGURATION_MISSING`, `MONGO_CONFIGURATION_INVALID`, `MONGO_AUTH_FAILED`, `MONGO_PERMISSION_DENIED`, `MONGO_UNREACHABLE`, `ADMIN_NOT_INITIALIZED`. HTTP lỗi MongoDB trả `code` tương ứng; log server chỉ ghi mã lỗi, không ghi exception chứa connection string.
+
+Vercel chỉ tự bắt buộc đăng nhập khi không đặt `AUTH_ENABLED`. Giá trị `AUTH_ENABLED=0` vẫn là lựa chọn demo công khai; đặt rõ `1` cho môi trường nhiều người dùng.
+
 Mật khẩu dùng scrypt của Werkzeug. Cookie phiên HttpOnly, SameSite=Lax và Secure trên Vercel; session ngẫu nhiên chỉ lưu hash phía MongoDB, hết hạn sau 8 giờ. Kiểm tra tài khoản đang hoạt động và phiên bản quyền ở mỗi yêu cầu. Các request ghi đã đăng nhập cần CSRF token. Giới hạn đăng nhập sai 5 lần trong 15 phút theo tài khoản/địa chỉ yêu cầu.
 
 Test `tests/test_auth.py` dùng MongoDB mock để kiểm tra đăng nhập, quyền API, phân tách dữ liệu, CRUD qua phiên bản, thu hồi phiên, Admin cuối cùng, CSRF, tài khoản mới, đổi mật khẩu, nhật ký, giới hạn đăng nhập và kích hoạt/rollback model. MongoDB transaction/GridFS với Atlas thật cần kiểm thử tích hợp sau khi có connection string. Không mô tả MongoDB mock là kết quả nghiệm thu production.
