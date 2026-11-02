@@ -231,7 +231,7 @@ test('slow successful requests are not aborted by a short client deadline',async
 
 test('profile details predict only canonical inputs without changing dataset or batch history',async()=>{
   const {run}=app();
-  run(`features=['AGE'];location.hash='#datasets';$('batch-panel').hidden=true;
+  run(`features=['AGE'];location.hash='#datasets';$('batch-panel').hidden=true;dataPage=1;resultsPage=2;
     globalThis.filled=null;globalThis.predictions=0;
     inputFields=(_,prefix,row)=>{filled={prefix,row};};
     predictSingle=async()=>{predictions++;singleInputs=filled.row;};navigate=()=>{};batchTab=()=>{};
@@ -246,8 +246,10 @@ test('profile details predict only canonical inputs without changing dataset or 
   assert.equal(run('predictions'),2);
   assert.equal(run('batchCalls'),0);
   assert.equal(run('location.hash'),'predict');
-  run('returnToProfiles()');
+  run('dataPage=0;resultsPage=0;returnToProfiles()');
   assert.equal(run('location.hash'),'#datasets');
   assert.equal(run('selectedDataset'),'a');
   assert.equal(run('selectedVersion'),'v1');
+  assert.equal(run('dataPage'),1);
+  assert.equal(run('resultsPage'),2);
 });

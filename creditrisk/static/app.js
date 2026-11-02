@@ -472,7 +472,7 @@ function formRow(prefix){const row={ID:$(`${prefix}-ID`).value.trim()};features.
 function clearProfileContext(){profileOrigin=null;$('profile-context').hidden=true;}
 async function openProfileDetails(row){
   const inputs=Object.fromEntries(['ID',...features].map(key=>[key,row[key]]));
-  profileOrigin={hash:location.hash||'#datasets',batch:!$('batch-panel').hidden,datasetId:selectedDataset,versionId:version()?.id,customerId:row.ID,runId:selectedRunId,modelName:model()?.name,thresholds:model()?configuration():null};
+  profileOrigin={hash:location.hash||'#datasets',batch:!$('batch-panel').hidden,datasetId:selectedDataset,versionId:version()?.id,customerId:row.ID,runId:selectedRunId,dataPage,resultsPage,modelName:model()?.name,thresholds:model()?configuration():null};
   invalidateSingle();inputFields('single-fields','single',inputs);
   const actual=row['default.payment.next.month'];
   $('profile-source').textContent=`Hồ sơ ${row.ID} · ${dataset()?.name||'Tập dữ liệu'} · Phiên bản ${version()?.revision??'—'}${[0,1].includes(actual)?` · Nhãn thực tế nguồn: ${actual}`:''}`;
@@ -483,7 +483,7 @@ async function openProfileDetails(row){
 function returnToProfiles(){
   if(!profileOrigin)return;
   const origin=profileOrigin;clearProfileContext();
-  selectedDataset=origin.datasetId;selectedVersion=origin.versionId;selectedCustomer=origin.customerId;selectedRunId=origin.runId;
+  selectedDataset=origin.datasetId;selectedVersion=origin.versionId;selectedCustomer=origin.customerId;selectedRunId=origin.runId;dataPage=origin.dataPage;resultsPage=origin.resultsPage;
   if(origin.modelName)$('model-choice').value=origin.modelName;
   if(origin.thresholds){$('decision-basis').value=origin.thresholds.basis;['decision','low','high'].forEach(k=>$(k).value=origin.thresholds[k]*100);}
   location.hash=origin.hash;navigate();batchTab(origin.batch);renderAll();
