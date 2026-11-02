@@ -2,6 +2,7 @@
 from functools import lru_cache
 from hashlib import sha256
 from io import BytesIO
+import gzip
 import json
 import os
 import re
@@ -54,7 +55,7 @@ def read_snapshot(owner):
         return {"revision": 0, "state": None}
     output = BytesIO()
     GridFSBucket(db).download_to_stream(doc["snapshot"], output)
-    return {"revision": doc["revision"], "state": json.loads(output.getvalue())}
+    return {"revision": doc["revision"], "state": json.loads(gzip.decompress(output.getvalue()) if doc.get("encoding") == "gzip" else output.getvalue())}
 
 
 def write_snapshot(owner, state, revision):
@@ -68,15 +69,16 @@ def write_snapshot(owner, state, revision):
     previous = db.workspaces.find_one({"_id": owner})
     if (previous or {}).get("revision", 0) != revision:
         raise Conflict("Kho dữ liệu đã thay đổi ở thiết bị khác. Hãy sao lưu JSON rồi tải lại trang.")
-    snapshot = bucket.upload_from_stream("workspace.json", BytesIO(json.dumps(state, ensure_ascii=False).encode()))
+    snapshot = bucket.upload_from_stream("workspace.json.gz", BytesIO(gzip.compress(
+        json.dumps(state, ensure_ascii=False, separators=(",", ":")).encode(), compresslevel=1)))
     try:
         if previous:
             result = db.workspaces.update_one({"_id": owner, "revision": revision},
-                                             {"$set": {"snapshot": snapshot, "revision": revision + 1}})
+                                             {"$set": {"snapshot": snapshot, "revision": revision + 1, "encoding": "gzip"}})
             if result.modified_count != 1:
                 raise Conflict("Kho dữ liệu đã thay đổi. Hãy sao lưu JSON rồi tải lại trang.")
         else:
-            db.workspaces.insert_one({"_id": owner, "snapshot": snapshot, "revision": 1})
+            db.workspaces.insert_one({"_id": owner, "snapshot": snapshot, "revision": 1, "encoding": "gzip"})
     except (Conflict, DuplicateKeyError):
         bucket.delete(snapshot)
         raise Conflict("Kho dữ liệu đã thay đổi. Hãy sao lưu JSON rồi tải lại trang.") from None

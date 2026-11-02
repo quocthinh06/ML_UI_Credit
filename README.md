@@ -47,7 +47,7 @@ Nút **Thêm vào dự báo hàng loạt** mở chọn dataset nhận hoặc b�
 
 ### Giới hạn triển khai
 
-Batch gửi tối đa hai nhóm 500 hồ sơ song song và ghép đầu ra đúng thứ tự ban đầu. Upload thành công lưu dữ liệu/kết quả trong một lần đồng bộ; nếu dự báo lỗi, đầu vào vẫn được lưu để chạy lại. Tiến trình hiển thị số hồ sơ đã xử lý và thời gian đã chờ, không thêm thời gian chờ giả.
+Batch gửi tối đa hai nhóm 500 hồ sơ song song và ghép đầu ra đúng thứ tự ban đầu. Upload lưu dữ liệu/kết quả trên thiết bị trước, rồi đồng bộ cloud ở nền; nếu dự báo lỗi, đầu vào vẫn được lưu để chạy lại. Tiến trình hiển thị số hồ sơ đã xử lý và thời gian đã chờ, không thêm thời gian chờ giả.
 
 Màn hình **Hiệu năng mô hình** cho chọn dataset và chạy đối chiếu cả ba model. Kết quả được lưu vào lịch sử theo phiên bản dữ liệu, hash model và ngưỡng để sử dụng lại. Tệp không có nhãn vẫn hiển thị số hồ sơ, PD trung bình, cảnh báo và phân bố rủi ro; tệp có nhãn `default.payment.next.month` 0/1 có thêm Accuracy/Precision/Recall/F1, ma trận nhầm lẫn và AUC/ROC khi có cả hai lớp. Không tự gán nhãn thực tế cho file mẫu. Thời gian hiển thị là thời gian suy luận/giao tiếp API ở lần chạy đó, không gồm upload và đồng bộ; không phải benchmark huấn luyện hoặc cam kết tốc độ production.
 
@@ -67,3 +67,11 @@ Bộ test có contract dữ liệu, dịch vụ phiên bản, 3 model thật, b�
 ## Bản desktop tùy chọn
 
 Bản PyQt6 vẫn ở `desktop_main.py`; `Setup.cmd` cài `requirements-desktop.txt`, `Run.cmd` mở bản desktop với MySQL như trước. Xem [hướng dẫn desktop](docs/DESKTOP.md).
+
+### Đồng bộ kho lớn và phục hồi
+
+Kết quả được trả về sau khi IndexedDB lưu thành công, không chờ toàn bộ kho MongoDB tải lên. Thanh trạng thái phân biệt lưu trên thiết bị với đã đồng bộ cloud. Giữ trang mở đến khi báo đã đồng bộ nếu cần mở dữ liệu ở thiết bị khác. Các request đồng bộ có giới hạn chờ 20 giây; lỗi/timeout giữ bản cục bộ và dừng tự thử lại. Dùng **Thử đồng bộ lại** để đọc phiên bản hiện tại trước khi gửi tiếp.
+
+Snapshot lớn được truyền bằng các phần tối đa 1 MiB rồi kiểm tra và commit hoàn chỉnh, tránh lỗi 413 do một request vượt giới hạn proxy. Snapshot MongoDB mới được gzip, vẫn đọc được dữ liệu JSON cũ. Giới hạn snapshot là 128 MiB sau giải nén; phần upload chưa hoàn tất tự hết hạn sau 30 phút. Giới hạn file nhập 4 MB giữ nguyên.
+
+Không tự ghi đè khi hai bản có thay đổi khác nhau. Bản cục bộ được giữ để tiếp tục làm việc và sao lưu JSON. **Mở bản trên kho** là thao tác chủ động, có xác nhận, lưu bản phục hồi trên thiết bị và tải bản sao JSON trước khi thay bản làm việc. Lỗi `CSRF_STALE` chỉ được làm mới và thử lại một lần cho cùng tài khoản; lỗi quyền thật không được bỏ qua. Những thay đổi này không đổi mô hình hoặc công thức dự báo.

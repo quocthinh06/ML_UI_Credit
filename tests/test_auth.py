@@ -127,6 +127,69 @@ def test_final_admin_protected_and_csrf_required(auth_app):
     assert db.accounts.find_one({"_id": "rootadmin"})["active"]
 
 
+def test_stale_csrf_is_identifiable_without_weakening_permissions(auth_app):
+    app, _ = auth_app
+    client = app.test_client()
+    login(client, 'analyst_a')
+    response = client.post('/api/predict', headers={'X-CSRF-Token': 'old-token'}, json={})
+    assert response.status_code == 403
+    assert response.json['code'] == 'CSRF_STALE'
+    refreshed = client.get('/api/auth/session').json['csrf']
+    response = client.post('/api/admin/users', headers={'X-CSRF-Token': refreshed}, json={})
+    assert response.status_code == 403
+    assert response.json['code'] == 'ROLE_FORBIDDEN'
+
+
+def test_large_workspace_upload_is_scoped_complete_and_preserves_history(auth_app):
+    import json
+    app, _ = auth_app
+    alice, bob = app.test_client(), app.test_client()
+    headers = login(alice, 'analyst_a')
+    bob_headers = login(bob, 'analyst_b')
+    state = {'datasets': [{'id': 'ds', 'name': 'Large', 'versions': [
+        {'id': 'v1', 'revision': 1, 'rows': [{'ID': 'A', 'note': 'x' * 1100000}]}]}], 'runs': []}
+    content = json.dumps({'state': state, 'revision': 0}).encode()
+    result = alice.post('/api/workspace/uploads', headers=headers, json={
+        'revision': 0, 'encoding': 'json', 'size': len(content), 'parts': 2})
+    assert result.status_code == 201
+    path = '/api/workspace/uploads/' + result.json['upload_id']
+    assert bob.put(path + '/0', headers=bob_headers, data=b'bad').status_code == 404
+    assert alice.post(path + '/commit', headers=headers, json={}).status_code == 400
+    assert alice.get('/api/workspace').json['state'] is None
+    for i in range(2):
+        part = content[i * 1024 * 1024:(i + 1) * 1024 * 1024]
+        assert alice.put(path + '/' + str(i), headers=headers, data=part,
+                         content_type='application/octet-stream').status_code == 200
+    assert alice.post(path + '/commit', headers=headers, json={}).status_code == 200
+    assert alice.get('/api/workspace').json['state'] == state
+    assert bob.get('/api/workspace').json['state'] is None
+    assert alice.post(path + '/commit', headers=headers, json={}).status_code == 404
+
+
+def test_gzip_upload_accepts_large_state_but_rejects_history_removal(auth_app):
+    import gzip
+    import json
+    app, _ = auth_app
+    client = app.test_client()
+    headers = login(client, 'analyst_a')
+    state = {'datasets': [{'id': 'ds', 'name': 'Large', 'versions': [
+        {'id': 'v1', 'rows': [{'ID': 'A', 'note': 'x' * (6 * 1024 * 1024)}]}]}],
+        'runs': [{'id': 'keep-history'}]}
+    def upload(revision):
+        data = gzip.compress(json.dumps({'state': state, 'revision': revision}).encode())
+        result = client.post('/api/workspace/uploads', headers=headers, json={
+            'revision': revision, 'encoding': 'gzip', 'size': len(data), 'parts': 1})
+        assert result.status_code == 201
+        path = '/api/workspace/uploads/' + result.json['upload_id']
+        assert client.put(path + '/0', headers=headers, data=data,
+                          content_type='application/octet-stream').status_code == 200
+        return client.post(path + '/commit', headers=headers, json={})
+    assert upload(0).status_code == 200
+    state['runs'] = []
+    assert upload(1).status_code == 400
+    assert client.get('/api/workspace').json['state']['runs'] == [{'id': 'keep-history'}]
+
+
 def test_create_user_password_reset_and_audit(auth_app):
     app, db = auth_app
     admin, new = app.test_client(), app.test_client()

@@ -146,7 +146,10 @@ def create_app(test_config=None):
             app.logger.error("MongoDB failure: %s", code)
             return jsonify(error=message, code=code), 503
         if isinstance(exc, HTTPException):
-            return jsonify(error="Tệp hoặc yêu cầu quá lớn." if exc.code == 413 else exc.description), exc.code
+            body = {"error": "Tệp hoặc yêu cầu quá lớn." if exc.code == 413 else exc.description}
+            if getattr(exc, "reason", None):
+                body["code"] = exc.reason
+            return jsonify(body), exc.code
         if isinstance(exc, (ValueError, TypeError, KeyError, OSError, BadZipFile)):
             return jsonify(error=str(exc) if not isinstance(exc, OSError) else "Không thể đọc tệp dữ liệu."), 400
         app.logger.exception("Request failed")
@@ -161,8 +164,7 @@ def create_app(test_config=None):
         return jsonify(status="ok", storage="mongodb" if cloud_storage.enabled() else "browser",
                        version=(ROOT / "VERSION").read_text().strip())
 
-    @app.route("/api/workspace", methods=["GET", "PUT"])
-    def workspace():
+    def workspace_identity():
         user = getattr(g, "user", None)
         if user:
             from hashlib import sha256
@@ -173,48 +175,120 @@ def create_app(test_config=None):
             owner = sha256(f"account:{account_id}".encode()).hexdigest()
         else:
             owner = cloud_storage.workspace_id(request.headers.get("Authorization", ""))
-        try:
-            if request.method == "GET":
-                return jsonify(cloud_storage.read_snapshot(owner))
-            data = payload()
-            incoming = data.get("state")
-            if user:
-                if (not isinstance(incoming, dict) or not isinstance(incoming.get("datasets"), list)
-                        or not isinstance(incoming.get("runs"), list)):
-                    raise ValidationError("Cấu trúc kho dữ liệu không hợp lệ.")
-                for item in incoming["datasets"]:
-                    if (not isinstance(item, dict) or not isinstance(item.get("id"), str)
-                            or not isinstance(item.get("versions"), list) or not item["versions"]
-                            or any(not isinstance(v, dict) or not isinstance(v.get("id"), str)
-                                   or not isinstance(v.get("rows"), list) for v in item["versions"])):
-                        raise ValidationError("Cấu trúc phiên bản dữ liệu không hợp lệ.")
-                if any(not isinstance(r, dict) or not isinstance(r.get("id"), str) for r in incoming["runs"]):
-                    raise ValidationError("Cấu trúc lịch sử không hợp lệ.")
-                previous = cloud_storage.read_snapshot(owner)["state"]
-                if previous and isinstance(incoming, dict):
-                    old_runs = {r["id"]: r for r in previous.get("runs", [])}
-                    new_runs = {r["id"]: r for r in incoming.get("runs", [])}
-                    if any(new_runs.get(key) != row for key, row in old_runs.items()):
-                        raise ValidationError("Không được xóa hoặc sửa kết quả lịch sử đã lưu.")
-                    old_versions = {v["id"]: v for d in previous.get("datasets", []) for v in d["versions"]}
-                    for d in incoming.get("datasets", []):
-                        for v in d.get("versions", []):
-                            if v.get("id") in old_versions and v != old_versions[v["id"]]:
-                                raise ValidationError("Dữ liệu đã lưu cần được chỉnh sửa bằng phiên bản mới.")
-            result = cloud_storage.write_snapshot(owner, incoming, data.get("revision"))
-            if user:
-                cloud_storage.database().workspaces.update_one({"_id": owner}, {"$set": {
-                    "account_id": account_id, "dataset_count": len(incoming["datasets"]),
-                    "version_count": sum(len(d["versions"]) for d in incoming["datasets"]),
-                    "run_count": len(incoming["runs"]), "updated_at": auth.now(),
-                }})
-                auth.audit("data_version_save", account_id, detail=f"datasets={len(incoming['datasets'])}, runs={len(incoming['runs'])}")
-            return jsonify(result)
-        except (HTTPException, ValidationError):
-            raise
-        except Exception:
-            app.logger.error("MongoDB workspace unavailable; connection or snapshot operation failed")
-            return jsonify(error="Không kết nối được MongoDB Atlas. Dữ liệu cục bộ vẫn được giữ."), 503
+        return owner, user, account_id if user else None
+
+    def save_workspace(owner, user, account_id, data):
+        incoming = data.get("state")
+        if user:
+            if (not isinstance(incoming, dict) or not isinstance(incoming.get("datasets"), list)
+                    or not isinstance(incoming.get("runs"), list)):
+                raise ValidationError("Cấu trúc kho dữ liệu không hợp lệ.")
+            for item in incoming["datasets"]:
+                if (not isinstance(item, dict) or not isinstance(item.get("id"), str)
+                        or not isinstance(item.get("versions"), list) or not item["versions"]
+                        or any(not isinstance(v, dict) or not isinstance(v.get("id"), str)
+                               or not isinstance(v.get("rows"), list) for v in item["versions"])):
+                    raise ValidationError("Cấu trúc phiên bản dữ liệu không hợp lệ.")
+            if any(not isinstance(r, dict) or not isinstance(r.get("id"), str) for r in incoming["runs"]):
+                raise ValidationError("Cấu trúc lịch sử không hợp lệ.")
+            previous = cloud_storage.read_snapshot(owner)["state"]
+            if previous and isinstance(incoming, dict):
+                old_runs = {r["id"]: r for r in previous.get("runs", [])}
+                new_runs = {r["id"]: r for r in incoming.get("runs", [])}
+                if any(new_runs.get(key) != row for key, row in old_runs.items()):
+                    raise ValidationError("Không được xóa hoặc sửa kết quả lịch sử đã lưu.")
+                old_versions = {v["id"]: v for d in previous.get("datasets", []) for v in d["versions"]}
+                for d in incoming.get("datasets", []):
+                    for v in d.get("versions", []):
+                        if v.get("id") in old_versions and v != old_versions[v["id"]]:
+                            raise ValidationError("Dữ liệu đã lưu cần được chỉnh sửa bằng phiên bản mới.")
+        result = cloud_storage.write_snapshot(owner, incoming, data.get("revision"))
+        if user:
+            cloud_storage.database().workspaces.update_one({"_id": owner}, {"$set": {
+                "account_id": account_id, "dataset_count": len(incoming["datasets"]),
+                "version_count": sum(len(d["versions"]) for d in incoming["datasets"]),
+                "run_count": len(incoming["runs"]), "updated_at": auth.now(),
+            }})
+            auth.audit("data_version_save", account_id, detail=f"datasets={len(incoming['datasets'])}, runs={len(incoming['runs'])}")
+        return jsonify(result)
+
+    @app.route("/api/workspace", methods=["GET", "PUT"])
+    def workspace():
+        owner, user, account_id = workspace_identity()
+        if request.method == "GET":
+            return jsonify(cloud_storage.read_snapshot(owner))
+        return save_workspace(owner, user, account_id, payload())
+
+    @app.post("/api/workspace/uploads")
+    def begin_workspace_upload():
+        from datetime import timedelta
+        from uuid import uuid4
+        from werkzeug.exceptions import BadRequest, Conflict
+        owner, _, _ = workspace_identity()
+        data = payload()
+        size, count, revision = data.get("size"), data.get("parts"), data.get("revision")
+        if (type(size) is not int or not 1 <= size <= 128 * 1024 * 1024
+                or type(count) is not int or count != (size + 1024 * 1024 - 1) // (1024 * 1024)
+                or type(revision) is not int or revision < 0 or data.get("encoding") not in ("json", "gzip")):
+            raise BadRequest("Thông tin đồng bộ chia nhỏ không hợp lệ; kho tối đa 128 MB.")
+        db = cloud_storage.database()
+        current = db.workspaces.find_one({"_id": owner}, {"revision": 1})
+        if (current or {}).get("revision", 0) != revision:
+            raise Conflict("Kho đã thay đổi. Hãy thử đồng bộ lại để kiểm tra phiên bản.")
+        for collection in (db.workspace_uploads, db.workspace_upload_chunks):
+            collection.create_index("expires_at", expireAfterSeconds=0)
+        upload_id = uuid4().hex
+        db.workspace_uploads.insert_one({"_id": upload_id, "owner": owner, "size": size, "parts": count,
+            "revision": revision, "encoding": data["encoding"], "expires_at": auth.now() + timedelta(minutes=30)})
+        return jsonify(upload_id=upload_id), 201
+
+    def pending_upload(upload_id, owner):
+        from werkzeug.exceptions import NotFound
+        doc = cloud_storage.database().workspace_uploads.find_one({"_id": upload_id, "owner": owner,
+            "expires_at": {"$gt": auth.now()}})
+        if not doc:
+            raise NotFound("Lần đồng bộ không tồn tại hoặc đã hết hạn. Hãy thử lại.")
+        return doc
+
+    @app.put("/api/workspace/uploads/<upload_id>/<int:part>")
+    def workspace_upload_part(upload_id, part):
+        from werkzeug.exceptions import BadRequest
+        owner, _, _ = workspace_identity()
+        doc = pending_upload(upload_id, owner)
+        content = request.get_data()
+        expected = min(1024 * 1024, doc["size"] - part * 1024 * 1024)
+        if not 0 <= part < doc["parts"] or len(content) != expected:
+            raise BadRequest("Phần dữ liệu đồng bộ không hợp lệ.")
+        cloud_storage.database().workspace_upload_chunks.replace_one({"_id": f"{upload_id}:{part}"},
+            {"_id": f"{upload_id}:{part}", "upload_id": upload_id, "part": part, "content": content,
+             "expires_at": doc["expires_at"]}, upsert=True)
+        return jsonify(ok=True)
+
+    @app.post("/api/workspace/uploads/<upload_id>/commit")
+    def commit_workspace_upload(upload_id):
+        from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
+        owner, user, account_id = workspace_identity()
+        doc = pending_upload(upload_id, owner)
+        db = cloud_storage.database()
+        chunks = list(db.workspace_upload_chunks.find({"upload_id": upload_id}).sort("part", 1))
+        if [item["part"] for item in chunks] != list(range(doc["parts"])):
+            raise BadRequest("Chưa nhận đủ dữ liệu; kho hiện tại chưa bị thay đổi.")
+        content = b"".join(item["content"] for item in chunks)
+        if len(content) != doc["size"]:
+            raise BadRequest("Kích thước dữ liệu đồng bộ không khớp.")
+        if doc["encoding"] == "gzip":
+            with gzip.GzipFile(fileobj=BytesIO(content)) as stream:
+                content = stream.read(128 * 1024 * 1024 + 1)
+        if len(content) > 128 * 1024 * 1024:
+            raise RequestEntityTooLarge("Kho vượt giới hạn 128 MB; bản cục bộ vẫn được giữ.")
+        data = json.loads(content)
+        if not isinstance(data, dict) or data.get("revision") != doc["revision"]:
+            raise BadRequest("Phiên bản đồng bộ không khớp.")
+        # Only a complete, authenticated and validated snapshot becomes visible.
+        result = save_workspace(owner, user, account_id, data)
+        db.workspace_upload_chunks.delete_many({"upload_id": upload_id})
+        db.workspace_uploads.delete_one({"_id": upload_id, "owner": owner})
+        return result
 
     @app.get("/api/models")
     def models():
