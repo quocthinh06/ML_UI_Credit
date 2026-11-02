@@ -14,7 +14,7 @@ function app() {
     }, querySelectorAll(){return [];}, addEventListener(){}
   };
   const context = vm.createContext({document, window:{addEventListener(){}}, location:{hash:''},
-    crypto:webcrypto, structuredClone, setTimeout, clearTimeout, console, Option:function(text,value){this.text=text;this.value=value;}});
+    crypto:webcrypto, structuredClone, performance, FormData, File, setTimeout, clearTimeout, console, Option:function(text,value){this.text=text;this.value=value;}});
   const source = fs.readFileSync('creditrisk/static/app.js','utf8');
   vm.runInContext(source.slice(0, source.lastIndexOf('initialize().catch')), context);
   vm.runInContext(`persist=async()=>{};renderAll=()=>{};notify=()=>{};
@@ -89,4 +89,58 @@ test('history opens the selected run even when a newer run has the same model an
     setModelInfo=()=>{};resetFilters=()=>{};invalidateSingle=()=>{};batchTab=()=>{};
     openRun(state.runs[1]);`);
   assert.equal(run('activeRun().id'),'old');
+});
+
+test('performance compares unlabelled inputs, saves separate runs and reuses them',async()=>{
+  const {run}=app();
+  run(`models=[{name:'RF',digest:'rf',version:'v1',threshold:.39},{name:'LR',digest:'lr',version:'v1',threshold:.42}];
+    configuration=()=>({decision:.39,low:.2,high:.5,basis:'raw'});
+    globalThis.saves=0;persist=async()=>{saves++;};
+    busy=async(_,fn)=>fn();renderModels=()=>{};globalThis.calls=[];
+    inferRows=async(rows,m,config)=>{calls.push({name:m.name,decision:config.decision});return rows.map(r=>({...r,probability:.25,raw_score:.4,default_label:1,risk_level:'Medium'}));};`);
+  await run('compareModels()');
+  assert.equal(run('state.runs.length'),2);
+  assert.equal(run('calls[1].decision'),.42);
+  assert.equal(run('saves'),1);
+  assert.equal(run('performanceRows()[0].mean_pd'),'25.00%');
+  assert.equal(run('performanceRows()[0].Accuracy'),'—');
+  await run('compareModels()');
+  assert.equal(run('calls.length'),2);
+  assert.equal(run('saves'),1);
+  run("selectedDataset='b';selectedVersion='v2'");
+  assert.equal(run("performanceRows().every(r=>r.status==='Chưa chạy')"),true);
+});
+
+test('batch progress counts completed records including the last chunk',async()=>{
+  const {run}=app();
+  run(`api=async(_,data)=>({rows:data.rows});`);
+  await run("inferRows(Array.from({length:1000},(_,i)=>({ID:String(i)})),{name:'RF'},{})");
+  assert.equal(run("$('busy-progress').value"),100);
+  assert.match(run("$('busy-detail').textContent"),/1[.,]?000/);
+});
+
+test('concurrent batches preserve output order and never exceed two requests',async()=>{
+  const {run}=app();
+  run(`globalThis.pending=0;globalThis.peak=0;
+    api=async(_,data)=>{pending++;peak=Math.max(peak,pending);await new Promise(resolve=>setTimeout(resolve,data.rows[0].ID==='0'?20:1));pending--;return {rows:data.rows};};`);
+  const output=await run("inferRows(Array.from({length:1200},(_,i)=>({ID:String(i)})),{name:'RF'},{})");
+  assert.equal(run('peak'),2);
+  assert.deepEqual(Array.from(output,r=>r.ID),Array.from({length:1200},(_,i)=>String(i)));
+});
+
+test('upload synchronizes the dataset and prediction together once',async()=>{
+  const {run}=app();
+  run(`globalThis.saves=0;persist=async()=>{saves++;};busy=async(_,fn)=>fn();
+    api=async()=>({rows:[{ID:'new',AGE:40}]});runBatch=async()=>{await persist();};`);
+  await run("upload({target:{files:[new File(['data'],'sample.csv')],value:'sample.csv'}})");
+  assert.equal(run('saves'),1);
+});
+
+test('upload keeps imported inputs if prediction fails',async()=>{
+  const {run}=app();
+  run(`globalThis.saves=0;persist=async()=>{saves++;};busy=async(_,fn)=>fn();
+    api=async()=>({rows:[{ID:'new',AGE:40}]});runBatch=async()=>{throw new Error('Prediction failed');};`);
+  await assert.rejects(run("upload({target:{files:[new File(['data'],'sample.csv')],value:'sample.csv'}})"),/Prediction failed/);
+  assert.equal(run('saves'),1);
+  assert.equal(run('state.datasets[0].versions[0].rows[0].ID'),'new');
 });

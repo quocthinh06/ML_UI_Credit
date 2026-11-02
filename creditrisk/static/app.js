@@ -24,7 +24,7 @@ let state = {datasets: [], runs: []};
 let models = [], features = [], selectedDataset = null, selectedVersion = null, selectedCustomer = null;
 let singleResult = null, singleInputs = null, singleConfig = null, editId = null, database;
 let selectedRunId = null;
-let resultsPage = 0, dataPage = 0, comparison = [], toastTimer;
+let resultsPage = 0, dataPage = 0, toastTimer;
 let remoteEnabled = false, cloudRevision = 0;
 let currentAccount = null, csrfToken = null, workspaceAccount = null;
 const PAGE_SIZE = 25;
@@ -49,7 +49,10 @@ async function busy(title, fn) {
   $('busy-title').textContent = title; $('busy-detail').textContent = 'Vui lòng giữ trang mở.';
   $('busy-progress').removeAttribute('value'); $('busy').hidden = false;
   document.querySelector('.workspace').inert = true; $('sidebar').inert = true;
-  try { return await fn(); } finally { $('busy').hidden = true; document.querySelector('.workspace').inert = false; $('sidebar').inert = false; }
+  const started=performance.now();
+  const elapsed=()=>{$('busy-elapsed').textContent=`Đã chờ ${Math.floor((performance.now()-started)/1000)} giây · Giữ trang mở để nhận kết quả.`;};
+  elapsed();const timer=setInterval(elapsed,1000);
+  try { return await fn(); } finally { clearInterval(timer);$('busy').hidden = true; document.querySelector('.workspace').inert = false; $('sidebar').inert = false; }
 }
 async function api(path, data, options = {}) {
   let headers = csrfToken ? {'X-CSRF-Token':csrfToken} : {}, body;
@@ -136,6 +139,7 @@ function navigate() {
   document.querySelectorAll('.page').forEach(el => el.hidden = el.id !== `page-${current}`);
   document.querySelectorAll('[data-page]').forEach(el => { el.classList.toggle('active', el.dataset.page === current); if (el.dataset.page === current) el.setAttribute('aria-current','page'); else el.removeAttribute('aria-current'); });
   $('sidebar').classList.remove('open'); $('menu-toggle').setAttribute('aria-expanded','false');
+  if(current==='models'&&models.length)renderModels();
   document.title = `${({overview:'Tổng quan',datasets:'Quản lý dữ liệu',predict:'Dự báo rủi ro',history:'Kết quả & Lịch sử',models:'Hiệu năng mô hình'})[current]} · CreditRisk AI`;
 }
 function batchTab(show) { $('single-panel').hidden = show; $('batch-panel').hidden = !show; $('tab-single').classList.toggle('active', !show); $('tab-batch').classList.toggle('active', show); $('tab-single').setAttribute('aria-selected', String(!show)); $('tab-batch').setAttribute('aria-selected', String(show)); }
@@ -287,27 +291,85 @@ function renderOverview() {
   }
   $('charts').innerHTML=charts.join('');
 }
+function performanceConfig(m){
+  const config=configuration();
+  return {...config,decision:config.basis==='raw'&&m.name!==model()?.name?m.threshold:config.decision};
+}
+function performanceRun(m){
+  const config=performanceConfig(m);
+  return state.runs.find(r=>r.versionId===version()?.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config));
+}
+function performanceRows(){
+  return models.map(m=>{
+    const run=performanceRun(m),values=run?metrics(run.rows):null,summary=run?stats(run.rows):null;
+    return {name:m.name,status:run?'Đã có kết quả':'Chưa chạy',count:run?.rows.length??'—',
+      mean_pd:summary?pct(summary.mean):'—',warnings:summary?.warnings??'—',high:summary?.high??'—',
+      decision:performanceConfig(m).decision.toFixed(4),labelled:values?.labelled??0,
+      ...Object.fromEntries(['Accuracy','Precision','Recall','F1','AUC'].map(k=>[k,values?.[k]==null?'—':values[k].toFixed(4)])),
+      elapsed:run?.elapsedMs==null?'—':`${(run.elapsedMs/1000).toFixed(2)} s`};
+  });
+}
 function renderModels() {
   table('model-table',[['name','Mô hình'],['version','Phiên bản'],['cv_auc','CV AUC gốc'],['test_auc','Test AUC gốc'],['threshold','Ngưỡng điểm thô']],models.map(m=>({...m,cv_auc:m.cv_auc?.toFixed(4),test_auc:m.test_auc?.toFixed(4),threshold:m.threshold.toFixed(4)})));
-  table('comparison-table',[['name','Mô hình'],['labelled','Nhãn hợp lệ'],['Accuracy','Accuracy'],['Precision','Precision'],['Recall','Recall'],['F1','F1'],['AUC','AUC']],comparison);
+  const outputs=performanceRows();
+  table('comparison-table',[['name','Mô hình'],['status','Trạng thái'],['count','Số hồ sơ'],['mean_pd','PD trung bình'],['warnings','Cảnh báo'],['high','Rủi ro cao'],['decision','Ngưỡng nhãn'],['elapsed','Thời gian dự báo lần đầu']],outputs);
+  table('evaluation-table',[['name','Mô hình'],['labelled','Nhãn hợp lệ'],['Accuracy','Accuracy'],['Precision','Precision'],['Recall','Recall'],['F1','F1'],['AUC','AUC']],outputs);
+  $('compare-models').disabled=!version()?.rows.length;
+  const labelled=version()?.rows.filter(r=>[0,1].includes(r['default.payment.next.month'])).length||0;
+  $('performance-context').textContent=version()?`${dataset().name} · Phiên bản ${version().revision} · ${fmt(version().rows.length)} hồ sơ · ${fmt(labelled)} nhãn hợp lệ`:'Chọn hoặc tải tập dữ liệu để đối chiếu ba mô hình.';
+  $('performance-note').textContent=labelled?'Các chỉ số được tính trên nhãn thực tế hợp lệ. AUC/ROC cần cả hai lớp 0 và 1. Kết quả đã lưu được sử dụng lại khi dữ liệu, model và ngưỡng không đổi.':'Tệp chưa có nhãn thực tế default.payment.next.month (0/1). Vẫn xem được PD và cảnh báo; Accuracy, Precision, Recall, F1, AUC chưa thể tính nên hiển thị —.';
+  const charts=[];
+  for(const m of models){
+    const run=performanceRun(m);if(!run)continue;
+    const summary=stats(run.rows),values=metrics(run.rows);
+    charts.push(barChart(`${m.name} · kết quả dự báo`,`${fmt(run.rows.length)} hồ sơ · ${run.thresholds.basis} ≥ ${run.thresholds.decision.toFixed(4)}`,['Thấp','Trung bình','Cao'],['Low','Medium','High'].map(k=>run.rows.filter(r=>r.risk_level===k).length),{colors:['#087f83','#d49727','#bd2946']}));
+    if(values){
+      charts.push(barChart(`${m.name} · ma trận nhầm lẫn`,`${fmt(summary.labelled.length)} nhãn thực tế hợp lệ`,['TN (0/0)','FP (0/1)','FN (1/0)','TP (1/1)'],[values.tn,values.fp,values.fn,values.tp]));
+      charts.push(`<div><h3>${escapeHTML(m.name)}</h3>${rocChart(run.rows)}</div>`);
+    }
+  }
+  $('performance-charts').innerHTML=charts.join('');
 }
-function renderAll() { selectors();setModelInfo();renderDatasets();renderResults();renderOverview();renderHistory();renderModels(); }
+function renderAll() { selectors();setModelInfo();renderDatasets();renderResults();renderOverview();renderHistory();if(location.hash==='#models')renderModels(); }
 
-async function addDataset(name,rows){const id=crypto.randomUUID(),vid=crypto.randomUUID();state.datasets.unshift({id,name,versions:[{id:vid,revision:1,created:new Date().toISOString(),rows}]});await persist();selectDataset(id,vid);return id;}
+async function addDataset(name,rows,{save=true}={}){const id=crypto.randomUUID(),vid=crypto.randomUUID();state.datasets.unshift({id,name,versions:[{id:vid,revision:1,created:new Date().toISOString(),rows}]});if(save)await persist();selectDataset(id,vid);return id;}
 async function inferRows(rows,selected=model(),config=configuration()) {
-  const output=[];
-  for(let i=0;i<rows.length;i+=500){$('busy-detail').textContent=`${selected.name} · ${fmt(Math.min(i+500,rows.length))}/${fmt(rows.length)} hồ sơ`;$('busy-progress').value=Math.round((i/rows.length)*100);const result=await api('predict',{rows:rows.slice(i,i+500),model:selected.name,thresholds:config});output.push(...result.rows);}
-  return output;
+  const chunks=Array.from({length:Math.ceil(rows.length/500)},(_,i)=>rows.slice(i*500,(i+1)*500));
+  const outputs=new Array(chunks.length);let next=0,completed=0,failure=null;
+  $('busy-progress').value=0;
+  $('busy-detail').textContent=`${selected.name} · Đang xử lý ${fmt(rows.length)} hồ sơ…`;
+  async function worker(){
+    while(next<chunks.length&&!failure){
+      const index=next++;
+      try{
+        const result=await api('predict',{rows:chunks[index],model:selected.name,thresholds:config});
+        outputs[index]=result.rows;completed+=result.rows.length;
+        $('busy-progress').value=Math.round(completed/rows.length*100);
+        $('busy-detail').textContent=`${selected.name} · Đã xử lý ${fmt(completed)}/${fmt(rows.length)} hồ sơ`;
+      }catch(error){failure=error;}
+    }
+  }
+  await Promise.all([worker(),worker()]);
+  if(failure)throw failure;
+  return outputs.flat();
+}
+async function ensureRun(d,v,m,config){
+  const cached=state.runs.find(r=>r.versionId===v.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config));
+  if(cached)return {run:cached,cached:true};
+  const started=performance.now(),rows=await inferRows(v.rows,m,config),id=crypto.randomUUID(),created=new Date().toISOString();
+  rows.forEach(r=>{r.run_id=id;r.prediction_time_utc=created;r.dataset_version_id=v.id;});
+  const run={id,datasetId:d.id,versionId:v.id,name:d.name,created,modelName:m.name,modelVersion:m.version,modelHash:m.digest,thresholds:{...config},rows,elapsedMs:performance.now()-started};
+  state.runs.unshift(run);return {run,cached:false};
 }
 async function runBatch({go=true}={}){
   if(!version()?.rows.length)throw new Error('Chọn tập hồ sơ có dữ liệu trước khi dự báo.');
   const d=dataset(),v=version(),config=configuration(),m=model();
   if(!m)throw new Error('Chưa tải được mô hình.');
   let run=activeRun();
-  if(!run){run=await busy('Đang dự báo tập hồ sơ',async()=>{const rows=await inferRows(v.rows,m,config),id=crypto.randomUUID(),created=new Date().toISOString();rows.forEach(r=>{r.run_id=id;r.prediction_time_utc=created;r.dataset_version_id=v.id;});const record={id,datasetId:d.id,versionId:v.id,name:d.name,created,modelName:m.name,modelVersion:m.version,modelHash:m.digest,thresholds:config,rows};state.runs.unshift(record);await persist();return record;});}
+  if(!run){run=await busy('Đang dự báo tập hồ sơ',async()=>{const result=await ensureRun(d,v,m,config);if(!result.cached)await persist();return result.run;});}
   renderAll();if(go){location.hash='predict';batchTab(true);}notify(`Đã có kết quả ${fmt(run.rows.length)} hồ sơ · ${run.modelName}`);
 }
-async function upload(event){const file=event.target.files?.[0];if(!file)return;event.target.value='';if(file.size>4*1024*1024)throw new Error('Tệp tối đa 4 MB khi tải lên Vercel.');const data=new FormData();data.append('file',file);const result=await busy('Đang kiểm tra tệp',()=>api('import',data));await addDataset(file.name,result.rows);await runBatch();const changes=Object.entries(result.normalization||{}).filter(([,v])=>v);if(changes.length)notify(`Đã chuẩn hóa theo notebook: ${changes.map(([k,v])=>`${k}: ${v}`).join(', ')}`);}
+async function upload(event){const file=event.target.files?.[0];if(!file)return;event.target.value='';if(file.size>4*1024*1024)throw new Error('Tệp tối đa 4 MB khi tải lên Vercel.');const data=new FormData();data.append('file',file);const result=await busy('Đang kiểm tra tệp',()=>api('import',data));await addDataset(file.name,result.rows,{save:false});try{await runBatch();}catch(error){await persist();throw error;}const changes=Object.entries(result.normalization||{}).filter(([,v])=>v);if(changes.length)notify(`Đã chuẩn hóa theo notebook: ${changes.map(([k,v])=>`${k}: ${v}`).join(', ')}`);}
 async function loadSample(){const result=await busy('Đang tải dữ liệu mẫu UCI',()=>api('sample'));await addDataset('Hồ sơ mẫu UCI',result.rows);await runBatch({go:false});location.hash='overview';}
 function inputFields(container,prefix,row={}){
   const names={LIMIT_BAL:'Hạn mức tín dụng (TWD)',SEX:'Giới tính',EDUCATION:'Trình độ học vấn',MARRIAGE:'Tình trạng hôn nhân',AGE:'Tuổi'};
@@ -366,7 +428,23 @@ async function deleteDataset(){
   d.deleted=true;await persist();selectDataset(state.datasets.find(item=>!item.deleted)?.id);notify('Đã xóa tập dữ liệu khỏi danh sách làm việc.');
 }
 async function explainSingle(){if(!singleInputs)throw new Error('Chạy dự báo trước khi giải thích.');const result=await busy('Đang phân tích đóng góp đặc trưng',()=>api('explain',{rows:[singleInputs],model:model().name}));const max=Math.max(...result.rows.map(r=>Math.abs(r.contribution)),.00001);$('explanation').innerHTML=`<h3>Đóng góp đặc trưng</h3><p>${escapeHTML(result.scale)}</p>${result.rows.map(r=>`<div class="contribution ${r.contribution<0?'negative':''}"><div><span>${escapeHTML(r.feature)}</span><strong>${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}</strong></div><meter min="0" max="${max}" value="${Math.abs(r.contribution)}">${r.contribution}</meter></div>`).join('')}`;$('explanation').hidden=false;}
-async function compareModels(){if(!version()?.rows.length)throw new Error('Chọn tập hồ sơ trước.');if(!version().rows.some(r=>[0,1].includes(r['default.payment.next.month'])))throw new Error('Tệp cần nhãn thực tế 0/1 để so sánh.');const config=configuration();comparison=await busy('Đang đối chiếu mô hình',async()=>{const results=[];for(const m of models){const rows=await inferRows(version().rows,m,config),values=metrics(rows);results.push({name:m.name,...Object.fromEntries(Object.entries(values).map(([k,v])=>[k,typeof v==='number'&&k!=='labelled'?v.toFixed(4):v]))});}return results;});renderModels();}
+async function compareModels(){
+  if(!version()?.rows.length)throw new Error('Chọn tập hồ sơ trước.');
+  const d=dataset(),v=version();
+  await busy('Đang đối chiếu mô hình',async()=>{
+    let changed=false;
+    try{
+      for(const m of models){
+        const result=await ensureRun(d,v,m,performanceConfig(m));
+        changed=changed||!result.cached;
+        renderModels();
+      }
+    }finally{
+      if(changed){$('busy-detail').textContent='Đang lưu kết quả và lịch sử…';await persist();}
+    }
+  });
+  renderModels();notify('Đã có đầu ra của các mô hình; kết quả và lịch sử được giữ riêng.');
+}
 function backup(){download(new Blob([JSON.stringify({format:'creditrisk-ai-backup-v1',...state})],{type:'application/json'}),`creditrisk_sao_luu_${new Date().toISOString().slice(0,10)}.json`);}
 async function restore(event){const file=event.target.files?.[0];if(!file)return;event.target.value='';if(file.size>100*1024*1024)throw new Error('Bản sao lưu tối đa 100 MB.');const data=JSON.parse(await file.text());if(data.format!=='creditrisk-ai-backup-v1'||!Array.isArray(data.datasets)||!Array.isArray(data.runs)||data.datasets.some(d=>!d.id||typeof d.name!=='string'||!Array.isArray(d.versions)||!d.versions.length||d.versions.some(v=>!v.id||!Array.isArray(v.rows)||v.rows.length>30000))||data.runs.some(r=>!r.id||!Array.isArray(r.rows)||!r.thresholds))throw new Error('Tệp không đúng định dạng sao lưu CreditRisk AI.');if(!confirm('Khôi phục sẽ thay thế dữ liệu đang lưu trên trình duyệt này. Tiếp tục?'))return;state={datasets:data.datasets,runs:data.runs};await persist();selectDataset(state.datasets[0]?.id);notify('Đã khôi phục dữ liệu và lịch sử.');}
 
@@ -383,7 +461,7 @@ $('version-choice').addEventListener('change',()=>selectDataset(selectedDataset,
 $('model-choice').addEventListener('change',guarded(async()=>{
   const hadSingle=singleInputs!==null;
   selectedRunId=null;$('decision').value=$('decision-basis').value==='raw'?model().threshold*100:50;
-  invalidateSingle();comparison=[];renderAll();
+  invalidateSingle();renderAll();
   if(hadSingle)await predictSingle({preventDefault(){}});
   if(version()?.rows.length)await runBatch({go:false});
 }));
