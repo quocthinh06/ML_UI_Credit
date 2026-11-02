@@ -19,7 +19,7 @@ function app() {
     Option:function(text,value){this.text=text;this.value=value;}});
   const source = fs.readFileSync('creditrisk/static/app.js','utf8');
   vm.runInContext(source.slice(0, source.lastIndexOf('initialize().catch')), context);
-  vm.runInContext(`globalThis.originalPersist=persist;globalThis.originalApi=api;persist=async()=>{};renderAll=()=>{};notify=()=>{};
+  vm.runInContext(`globalThis.originalPersist=persist;globalThis.originalApi=api;persist=async()=>{};saveLocalState=async()=>{};renderAll=()=>{};notify=()=>{};
     state={datasets:[{id:'a',name:'A',versions:[{id:'v1',revision:1,rows:[{ID:'old',AGE:30}]}]},
       {id:'b',name:'B',versions:[{id:'v2',revision:1,rows:[]}]}],runs:[]};
     selectedDataset='a';selectedVersion='v1';singleInputs={ID:'new',AGE:40};`, context);
@@ -61,6 +61,19 @@ test('startup keeps conflicting local edits without asking to overwrite cloud',a
   assert.equal(run('state.datasets[0].id'),'a');
   assert.equal(run('puts'),0);
   assert.equal(run('syncReady'),false);
+  assert.equal(run('localStorage.getItem(pendingKey())'),'1');
+});
+
+test('an import started during cloud loading is saved and cannot be overwritten',async()=>{
+  const {run}=app();
+  run(`remoteEnabled=true;globalThis.releaseRead=null;globalThis.draftSaves=0;
+    saveLocalState=async()=>{draftSaves++;};
+    api=async()=>new Promise(resolve=>releaseRead=()=>resolve({revision:2,state:{datasets:[],runs:[{id:'remote'}]}}));
+    globalThis.loading=connectCloud();`);
+  await run("addDataset('New import',[{ID:'NEW'}],{save:false})");
+  assert.equal(run('draftSaves'),1);
+  await run('releaseRead();loading');
+  assert.equal(run('state.datasets[0].name'),'New import');
   assert.equal(run('localStorage.getItem(pendingKey())'),'1');
 });
 

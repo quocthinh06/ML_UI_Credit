@@ -437,7 +437,7 @@ function renderModels() {
 }
 function renderAll() { selectors();setModelInfo();renderDatasets();renderResults();renderOverview();renderHistory();if(location.hash==='#models')renderModels(); }
 
-async function addDataset(name,rows,{save=true}={}){const id=crypto.randomUUID(),vid=crypto.randomUUID();state.datasets.unshift({id,name,versions:[{id:vid,revision:1,created:new Date().toISOString(),rows}]});if(save)await persist();selectDataset(id,vid);return id;}
+async function addDataset(name,rows,{save=true}={}){const id=crypto.randomUUID(),vid=crypto.randomUUID();state.datasets.unshift({id,name,versions:[{id:vid,revision:1,created:new Date().toISOString(),rows}]});if(save)await persist();else{localGeneration++;if(remoteEnabled)localStorage.setItem(pendingKey(),'1');await saveLocalState();}selectDataset(id,vid);return id;}
 async function inferRows(rows,selected=model(),config=configuration()) {
   const chunks=Array.from({length:Math.ceil(rows.length/500)},(_,i)=>rows.slice(i*500,(i+1)*500));
   const outputs=new Array(chunks.length);let next=0,completed=0,failure=null;
@@ -461,6 +461,7 @@ async function inferRows(rows,selected=model(),config=configuration()) {
 async function ensureRun(d,v,m,config){
   const cached=state.runs.find(r=>r.versionId===v.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config));
   if(cached)return {run:cached,cached:true};
+  localGeneration++;if(remoteEnabled)localStorage.setItem(pendingKey(),'1');
   const started=performance.now(),rows=await inferRows(v.rows,m,config),id=crypto.randomUUID(),created=new Date().toISOString();
   rows.forEach(r=>{r.run_id=id;r.prediction_time_utc=created;r.dataset_version_id=v.id;});
   const run={id,datasetId:d.id,versionId:v.id,name:d.name,created,modelName:m.name,modelVersion:m.version,modelHash:m.digest,thresholds:{...config},rows,elapsedMs:performance.now()-started};
