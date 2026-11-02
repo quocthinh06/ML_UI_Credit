@@ -47,6 +47,10 @@ Nút **Thêm vào dự báo hàng loạt** mở chọn dataset nhận hoặc b�
 
 ### Giới hạn triển khai
 
+Batch gửi tối đa hai nhóm 500 hồ sơ song song và ghép đầu ra đúng thứ tự ban đầu. Upload thành công lưu dữ liệu/kết quả trong một lần đồng bộ; nếu dự báo lỗi, đầu vào vẫn được lưu để chạy lại. Tiến trình hiển thị số hồ sơ đã xử lý và thời gian đã chờ, không thêm thời gian chờ giả.
+
+Màn hình **Hiệu năng mô hình** cho chọn dataset và chạy đối chiếu cả ba model. Kết quả được lưu vào lịch sử theo phiên bản dữ liệu, hash model và ngưỡng để sử dụng lại. Tệp không có nhãn vẫn hiển thị số hồ sơ, PD trung bình, cảnh báo và phân bố rủi ro; tệp có nhãn `default.payment.next.month` 0/1 có thêm Accuracy/Precision/Recall/F1, ma trận nhầm lẫn và AUC/ROC khi có cả hai lớp. Không tự gán nhãn thực tế cho file mẫu. Thời gian hiển thị là thời gian suy luận/giao tiếp API ở lần chạy đó, không gồm upload và đồng bộ; không phải benchmark huấn luyện hoặc cam kết tốc độ production.
+
 Tối đa 30.000 hồ sơ mỗi dataset, file upload 4 MB, nội dung giải nén 64 MB và file Excel tải về 4 MB. Request JSON lớn được nén gzip; bảng phân trang 25 dòng. Khi file Excel quá lớn, giao diện yêu cầu lọc nhóm nhỏ hơn. Kết quả hỗ trợ theo dõi; hệ thống không tự quyết định cấp hoặc từ chối tín dụng.
 
 ## Kiểm thử
