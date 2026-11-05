@@ -7,9 +7,9 @@
   <title>
    Quản trị hệ thống · CreditRisk AI
   </title>
-  <link href="static/app.css?v=20261105-html" rel="stylesheet"/>
-  <link href="static/auth.css?v=20261105-html" rel="stylesheet"/>
-  <script defer="" src="static/admin.js?v=20261105-html">
+  <link href="static/app.css?v=20261105-sidebar" rel="stylesheet"/>
+  <link href="static/auth.css?v=20261105-sidebar" rel="stylesheet"/>
+  <script defer="" src="static/admin.js?v=20261105-sidebar">
   </script>
  </head>
  <body>
@@ -73,6 +73,10 @@
      Mọi thay đổi quan trọng được ghi nhận người thực hiện và thời điểm.
     </p>
    </div>
+   <button class="sidebar-logout" id="admin-logout" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H4v16h5M14 8l4 4-4 4M8 12h10"/></svg>
+    Đăng xuất
+   </button>
   </aside>
   <div class="workspace">
    <header class="topbar">
@@ -86,9 +90,6 @@
      <a class="button secondary compact" href="/change-password">
       Đổi mật khẩu
      </a>
-     <button class="button secondary compact" id="admin-logout">
-      Đăng xuất
-     </button>
     </div>
    </header>
    <main class="admin-layout">
@@ -113,6 +114,7 @@
      <a href="/">
       Khu phân tích
      </a>
+     <button class="button secondary compact" id="admin-logout-mobile" type="button">Đăng xuất</button>
     </nav>
     <section id="admin-overview">
      <div class="page-heading">

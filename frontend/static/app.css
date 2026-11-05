@@ -340,3 +340,9 @@ h1{font-size:24px}
 .threshold-help p{margin-top:8px;max-width:80ch}
 .form-footer{flex-wrap:wrap}
 @media(max-width:700px){.form-footer>.button{width:100%}}
+
+.sidebar{overflow-y:auto}
+.sidebar-logout{display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;min-height:44px;margin-top:12px;padding:11px 14px;border:1px solid #24354d;border-radius:8px;background:transparent;color:#dce6f3;font-size:14px;font-weight:600;text-align:left}
+.sidebar-logout:hover{background:#1a2b43;color:#fff}
+.sidebar-logout:active{background:#24354d}
+.sidebar-logout svg{width:18px;height:18px}
