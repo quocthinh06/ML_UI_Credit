@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="vi">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <meta content="#0b1626" name="theme-color"/>
+  <title>
+   Đăng nhập · CreditRisk AI
+  </title>
+  <link href="static/app.css?v=20261105-html" rel="stylesheet"/>
+  <link href="static/auth.css?v=20261105-html" rel="stylesheet"/>
+  <script defer="" src="static/login.js?v=20261105-html">
+  </script>
+ </head>
+ <body class="auth-page" data-password-change="false">
+  <main class="auth-shell">
+   <section class="auth-story">
+    <a class="brand" href="/">
+     <span class="brand-icon">
+      <svg fill="none" stroke="currentColor" stroke-width="1.7" viewbox="0 0 24 24">
+       <path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z">
+       </path>
+       <path d="m8 12 3 3 5-6">
+       </path>
+      </svg>
+     </span>
+     <span>
+      CreditRisk AI
+      <small>
+       QUẢN LÝ RỦI RO TÍN DỤNG
+      </small>
+     </span>
+    </a>
+    <div class="auth-intro">
+     <h1>
+      Hiểu dữ liệu.
+      <br/>
+      Nhìn rõ rủi ro.
+     </h1>
+     <p>
+      Không gian phân tích tín dụng dành cho chuyên viên, với dữ liệu riêng và khả năng truy vết từng lần dự báo.
+     </p>
+    </div>
+    <div aria-hidden="true" class="auth-illustration">
+     <div class="mini-chart-title">
+      Phân tích rủi ro tín dụng
+     </div>
+     <svg viewbox="0 0 360 150">
+      <path d="M15 120H345M15 75H345M15 30H345" stroke="#314561" stroke-width="1">
+      </path>
+      <rect fill="#48b5ae" height="63" rx="6" width="49" x="35" y="57">
+      </rect>
+      <rect fill="#4c8cf6" height="86" rx="6" width="49" x="113" y="34">
+      </rect>
+      <rect fill="#8baaf5" height="46" rx="6" width="49" x="191" y="74">
+      </rect>
+      <rect fill="#eb9d9b" height="30" rx="6" width="49" x="269" y="90">
+      </rect>
+     </svg>
+     <p>
+      Random Forest · Logistic Regression · XGBoost
+     </p>
+    </div>
+    <p class="auth-disclaimer">
+     Hệ thống hỗ trợ phân tích. Quyết định tín dụng thuộc chuyên viên.
+    </p>
+   </section>
+   <section class="auth-card">
+    <div class="auth-card-content">
+     <div aria-hidden="true" class="auth-lock">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+       <rect height="11" rx="3" width="14" x="5" y="10">
+       </rect>
+       <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3">
+       </path>
+      </svg>
+     </div>
+     <h2>
+      Chào mừng trở lại
+     </h2>
+     <p>
+      Đăng nhập để vào không gian làm việc của bạn.
+     </p>
+     <div class="auth-notice" id="auth-notice" role="status">
+      Đang kiểm tra kết nối đăng nhập…
+     </div>
+     <form aria-busy="true" id="login-form">
+      <label for="username">
+       Tên đăng nhập hoặc email
+       <input autocomplete="username" disabled="" id="username" maxlength="100" name="username" placeholder="Nhập tên đăng nhập của bạn" required=""/>
+      </label>
+      <label for="password">
+       Mật khẩu
+       <span class="password-control">
+        <input autocomplete="current-password" disabled="" id="password" maxlength="128" name="password" placeholder="Nhập mật khẩu" required="" type="password"/>
+        <button aria-label="Hiện mật khẩu" id="toggle-password" type="button">
+         Hiện
+        </button>
+       </span>
+      </label>
+      <div class="auth-error" hidden="" id="auth-error" role="alert">
+      </div>
+      <button class="button auth-submit" disabled="" id="submit-login" type="submit">
+       Đăng nhập
+       <span aria-hidden="true">
+        →
+       </span>
+      </button>
+     </form>
+     <p class="auth-help">
+      Quên mật khẩu hoặc chưa có tài khoản?
+      <br/>
+      Liên hệ quản trị viên để được cấp hoặc đặt lại tài khoản.
+     </p>
+     <div class="auth-roles">
+      <div>
+       <strong>
+        Chuyên viên phân tích
+       </strong>
+       <span>
+        Dự báo và quản lý dữ liệu của mình
+       </span>
+      </div>
+      <div>
+       <strong>
+        Quản trị viên
+       </strong>
+       <span>
+        Quản lý tài khoản và hệ thống
+       </span>
+      </div>
+     </div>
+     <p class="auth-footnote">
+      Vai trò được xác định từ tài khoản đăng nhập.
+     </p>
+    </div>
+   </section>
+  </main>
+ </body>
+</html>

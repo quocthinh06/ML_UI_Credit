@@ -159,3 +159,25 @@ def test_web_real_models_predict_and_explain():
         assert explanation.status_code == 200
         assert len(explanation.json["rows"]) == 12
     assert len(set(probabilities)) == 3
+
+
+def test_frontend_pages_are_plain_html(client):
+    from pathlib import Path
+    frontend = Path(__file__).resolve().parents[1] / "frontend"
+    for name in ("index.html", "login.html", "change-password.html", "admin.html"):
+        source = (frontend / name).read_text(encoding="utf-8")
+        assert "{{" not in source and "{%" not in source
+        assert 'lang="vi"' in source
+        from html.parser import HTMLParser
+        from urllib.parse import urlsplit
+        class Assets(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                values = dict(attrs)
+                asset = values.get('src') if tag == 'script' else values.get('href') if tag == 'link' else None
+                if asset:
+                    assert (frontend / urlsplit(asset).path).is_file(), asset
+        Assets().feed(source)
+    assert client.get("/").data == (frontend / "index.html").read_bytes()
+    assert client.get("/login").data == (frontend / "login.html").read_bytes()
+    for name in ("app.css", "auth.css", "app.js", "login.js", "admin.js"):
+        assert client.get("/static/" + name).status_code == 200

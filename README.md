@@ -13,6 +13,20 @@ python -m venv .venv
 
 Mở http://127.0.0.1:5000. Trên Windows nên tạo venv trong đường dẫn không dấu nếu thư viện BLAS không tải được DLL.
 
+## Chỉnh sửa giao diện HTML
+
+Toàn bộ giao diện nằm trong frontend/, không cần Jinja hoặc bước build:
+
+- index.html: Tổng quan, Quản lý dữ liệu, Dự báo, Lịch sử và Hiệu năng.
+- login.html: Đăng nhập.
+- change-password.html: Đổi mật khẩu.
+- admin.html: Quản trị.
+- static/: CSS và JavaScript tương ứng.
+
+Chạy python main.py, mở http://127.0.0.1:5000 rồi chỉnh HTML/CSS/JavaScript và tải lại trang để xem thay đổi. Flask phục vụ HTML trực tiếp; các API /api/*, xác thực, model, MongoDB và xuất Excel giữ nguyên. Đăng nhập và đổi mật khẩu lấy trạng thái cấu hình từ /api/auth/session; quyền Admin vẫn được kiểm tra ở backend.
+
+Có thể mở HTML trực tiếp để xem cấu trúc và CSS. Để dự báo, đăng nhập, lưu dữ liệu và xuất báo cáo hoạt động đầy đủ, phải mở qua địa chỉ Flask ở trên; không chạy bằng file:// hoặc Live Server riêng vì API và phiên đăng nhập dùng cùng nguồn với backend.
+
 ## Deploy Vercel
 
 Import repo này và chọn branch `main`. `vercel.json` cấu hình Flask, entrypoint `main:app`, Python 3.12 và build command `python tools/download_model.py`. Không cần cấu hình Output Directory. Model được tải và kiểm tra SHA256 trong bước build. Runtime web không cài PyQt6/Matplotlib/SHAP; Linux dùng XGBoost CPU để giảm kích thước bundle.
@@ -61,7 +75,7 @@ Tối đa 30.000 hồ sơ mỗi dataset, file upload 4 MB, nội dung giải né
 python -m pip install -r requirements-dev.txt
 python -m pytest -q
 python -m ruff check .
-node --check creditrisk/static/app.js
+node --check frontend/static/app.js
 ```
 
 Bộ test có contract dữ liệu, dịch vụ phiên bản, 3 model thật, báo cáo Excel, API web, gzip, xuất file chống sửa điểm và mã kho MongoDB. CI giữ cả kiểm thử desktop và web.

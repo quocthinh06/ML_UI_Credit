@@ -5,10 +5,19 @@
   "functions": {
     "main.py": {
       "maxDuration": 60,
-      "excludeFiles": "{.venv/**,.test-tmp/**,.git/**,tests/**,docs/**,exports/**,logs/**,creditrisk/assets/**,creditrisk/ui.py,creditrisk/charts.py,desktop_main.py,config.local.json,models/*.ipynb,models/model_rf_v1.pkl}"
+      "excludeFiles": "{.venv/**,.test-tmp/**,.git/**,tests/**,docs/**,exports/**,logs/**,creditrisk/assets/**,creditrisk/ui.py,creditrisk/charts.py,desktop_main.py,config.local.json,models/*.ipynb,models/model_rf_v1.pkl}",
+      "includeFiles": "frontend/**"
     }
   },
   "headers": [
-    {"source": "/static/(.*)", "headers": [{"key": "Cache-Control", "value": "public, max-age=3600"}]}
+    {
+      "source": "/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
+      ]
+    }
   ]
 }

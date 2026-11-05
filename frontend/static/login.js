@@ -1,14 +1,34 @@
 'use strict';
-let csrf;
+let csrf, loginReady = false;
 const form = document.getElementById('login-form');
 document.getElementById('toggle-password').addEventListener('click', event => {
   const input = document.getElementById('password'); input.type = input.type === 'password' ? 'text' : 'password';
   event.target.textContent = input.type === 'password' ? 'Hiện' : 'Ẩn';
   event.target.setAttribute('aria-label', input.type === 'password' ? 'Hiện mật khẩu' : 'Ẩn mật khẩu');
 });
-fetch('/api/auth/session').then(r=>r.json()).then(data=>csrf=data.csrf).catch(()=>{});
+async function initializeLogin() {
+  const notice = document.getElementById('auth-notice');
+  try {
+    const response = await fetch('/api/auth/session', {cache:'no-store'});
+    if (!response.ok) throw new Error('Không tải được trạng thái đăng nhập.');
+    const data = await response.json();
+    csrf = data.csrf;
+    const change = document.body.dataset.passwordChange === 'true';
+    if (change && !data.user) { location.assign('/login'); return; }
+    loginReady = data.configured === true;
+    form.querySelectorAll('input, button[type="submit"]').forEach(input => input.disabled = !loginReady);
+    notice.hidden = loginReady;
+    notice.textContent = 'Đăng nhập chưa được kích hoạt. Quản trị viên cần cấu hình MongoDB Atlas và khóa phiên bảo mật trên Vercel.';
+  } catch (error) {
+    notice.hidden = false;
+    notice.textContent = 'Không kết nối được backend. Hãy mở trang qua địa chỉ Flask đang chạy và tải lại để thử lại.';
+  } finally {
+    form.setAttribute('aria-busy', 'false');
+  }
+}
+initializeLogin();
 form.addEventListener('submit', async event => {
-  event.preventDefault();const error=document.getElementById('auth-error'),button=document.getElementById('submit-login');
+  event.preventDefault();if(!loginReady)return;const error=document.getElementById('auth-error'),button=document.getElementById('submit-login');
   error.hidden=true;button.disabled=true;const previous=button.textContent;button.textContent='Đang xử lý…';
   try {
     const change=document.body.dataset.passwordChange==='true';

@@ -271,3 +271,19 @@ def test_operator_check_redacts_database_errors(auth_app, monkeypatch):
     result = check()
     assert not result['ok'] and result['code'] == 'MONGO_AUTH_FAILED'
     assert 'secret-connection-string' not in str(result)
+
+
+def test_static_html_pages_keep_server_access_checks(auth_app):
+    from pathlib import Path
+    app, _ = auth_app
+    client = app.test_client()
+    frontend = Path(__file__).resolve().parents[1] / "frontend"
+    assert client.get("/admin").location.endswith("/login")
+    assert client.get("/change-password").status_code == 401
+    login(client, "analyst_a")
+    assert client.get("/admin").status_code == 403
+    assert client.get("/change-password").data == (frontend / "change-password.html").read_bytes()
+    admin = app.test_client()
+    login(admin, "rootadmin")
+    assert admin.get("/admin").data == (frontend / "admin.html").read_bytes()
+    assert client.get("/static/admin.html").status_code == 404

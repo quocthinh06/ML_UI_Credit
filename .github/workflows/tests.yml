@@ -18,10 +18,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/web_workflows.test.cjs
-      - run: node --check creditrisk/static/app.js
-      - run: node --check creditrisk/static/admin.js
-      - run: node --check creditrisk/static/login.js
+      - run: node --test tests/web_workflows.test.cjs tests/login_workflows.test.cjs
+      - run: node --check frontend/static/app.js
+      - run: node --check frontend/static/admin.js
+      - run: node --check frontend/static/login.js
   tests:
     runs-on: windows-latest
     steps:

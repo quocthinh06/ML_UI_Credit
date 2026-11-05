@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="vi">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <meta content="#0b1626" name="theme-color"/>
+  <title>
+   Quản trị hệ thống · CreditRisk AI
+  </title>
+  <link href="static/app.css?v=20261105-html" rel="stylesheet"/>
+  <link href="static/auth.css?v=20261105-html" rel="stylesheet"/>
+  <script defer="" src="static/admin.js?v=20261105-html">
+  </script>
+ </head>
+ <body>
+  <aside class="sidebar">
+   <a class="brand" href="/admin">
+    <span class="brand-icon">
+     <svg fill="none" stroke="currentColor" stroke-width="1.7" viewbox="0 0 24 24">
+      <path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z">
+      </path>
+      <path d="m8 12 3 3 5-6">
+      </path>
+     </svg>
+    </span>
+    <span>
+     CreditRisk AI
+     <small>
+      ADMIN CONSOLE
+     </small>
+    </span>
+   </a>
+   <nav aria-label="Điều hướng quản trị">
+    <a data-tab="overview" href="#overview">
+     Tổng quan quản trị
+     <small>
+      Tài khoản &amp; trạng thái hệ thống
+     </small>
+    </a>
+    <a data-tab="users" href="#users">
+     Quản lý tài khoản
+     <small>
+      Vai trò &amp; quyền truy cập
+     </small>
+    </a>
+    <a data-tab="data" href="#data">
+     Dữ liệu hệ thống
+     <small>
+      Kho dữ liệu theo tài khoản
+     </small>
+    </a>
+    <a data-tab="models" href="#models">
+     Quản lý mô hình
+     <small>
+      Phiên bản &amp; kích hoạt
+     </small>
+    </a>
+    <a data-tab="audit" href="#audit">
+     Nhật ký hoạt động
+     <small>
+      Truy vết thao tác
+     </small>
+    </a>
+    <a href="/">
+     ← Khu phân tích rủi ro
+    </a>
+   </nav>
+   <div class="sidebar-footer">
+    <strong>
+     Quyền quản trị hệ thống
+    </strong>
+    <p>
+     Mọi thay đổi quan trọng được ghi nhận người thực hiện và thời điểm.
+    </p>
+   </div>
+  </aside>
+  <div class="workspace">
+   <header class="topbar">
+    <span class="tag primary">
+     ADMIN CONSOLE
+    </span>
+    <strong id="admin-name">
+     Đang tải…
+    </strong>
+    <div class="actions">
+     <a class="button secondary compact" href="/change-password">
+      Đổi mật khẩu
+     </a>
+     <button class="button secondary compact" id="admin-logout">
+      Đăng xuất
+     </button>
+    </div>
+   </header>
+   <main class="admin-layout">
+    <div class="alert" hidden="" id="admin-error" role="alert">
+    </div>
+    <nav aria-label="Các trang quản trị" class="admin-mobile-tabs">
+     <a data-tab="overview" href="#overview">
+      Tổng quan
+     </a>
+     <a data-tab="users" href="#users">
+      Tài khoản
+     </a>
+     <a data-tab="data" href="#data">
+      Dữ liệu
+     </a>
+     <a data-tab="models" href="#models">
+      Mô hình
+     </a>
+     <a data-tab="audit" href="#audit">
+      Nhật ký
+     </a>
+     <a href="/">
+      Khu phân tích
+     </a>
+    </nav>
+    <section id="admin-overview">
+     <div class="page-heading">
+      <div>
+       <h1>
+        Tổng quan quản trị
+       </h1>
+       <p>
+        Theo dõi tài khoản, dữ liệu và trạng thái vận hành.
+       </p>
+      </div>
+      <button class="button secondary" id="refresh-admin">
+       Tải lại số liệu
+      </button>
+     </div>
+     <div class="metrics" id="admin-metrics">
+     </div>
+     <div class="panel">
+      <div class="panel-heading">
+       <h2>
+        Phạm vi vận hành hiện tại
+       </h2>
+       <span class="tag low">
+        Dữ liệu thực
+       </span>
+      </div>
+      <div class="admin-state">
+       <p>
+        Tài khoản, quyền truy cập, khóa/mở khóa, đổi mật khẩu và nhật ký được lưu trong MongoDB Atlas. Mỗi chuyên viên có kho dữ liệu riêng; quyền truy cập được kiểm tra ở backend.
+       </p>
+       <br/>
+       <p>
+        Huấn luyện phiên bản mới chưa có worker chạy nền và kho artifact. Chức năng này chưa khả dụng; mô hình tích hợp hiện tại vẫn phục vụ dự báo.
+       </p>
+      </div>
+     </div>
+    </section>
+    <section hidden="" id="admin-users">
+     <div class="page-heading">
+      <div>
+       <h1>
+        Quản lý tài khoản
+       </h1>
+       <p>
+        Cấp quyền, khóa truy cập và đặt lại mật khẩu cho người dùng.
+       </p>
+      </div>
+      <button class="button" id="new-user">
+       + Tạo tài khoản
+      </button>
+     </div>
+     <div class="panel">
+      <div class="panel-heading">
+       <h2>
+        Danh sách tài khoản
+       </h2>
+       <input aria-label="Tìm tài khoản" id="user-search" placeholder="Tìm tên hoặc tài khoản…" type="search"/>
+      </div>
+      <div class="table-wrap" id="users-table">
+      </div>
+     </div>
+     <div class="notice">
+      <p>
+       Không thể khóa hoặc hạ quyền Admin cuối cùng. Thay đổi quyền, mật khẩu hoặc trạng thái sẽ làm hết hiệu lực các phiên đăng nhập cũ.
+      </p>
+     </div>
+    </section>
+    <section hidden="" id="admin-data">
+     <div class="page-heading">
+      <div>
+       <h1>
+        Dữ liệu hệ thống
+       </h1>
+       <p>
+        Các kho dữ liệu được phân tách theo tài khoản.
+       </p>
+      </div>
+     </div>
+     <div class="panel">
+      <div class="panel-heading">
+       <h2>
+        Kho dữ liệu người dùng
+       </h2>
+      </div>
+      <div class="table-wrap" id="admin-data-table">
+      </div>
+     </div>
+    </section>
+    <section hidden="" id="admin-models">
+     <div class="page-heading">
+      <div>
+       <h1>
+        Quản lý mô hình
+       </h1>
+       <p>
+        Đối chiếu mô hình tích hợp và quản lý model mặc định.
+       </p>
+      </div>
+      <button class="button secondary" id="rollback-model">
+       Quay lại model trước
+      </button>
+     </div>
+     <div class="panel">
+      <div class="panel-heading">
+       <h2>
+        Phiên bản mô hình đã tích hợp
+       </h2>
+      </div>
+      <div class="table-wrap" id="admin-model-table">
+      </div>
+     </div>
+     <div class="notice">
+      <p>
+       Kích hoạt chỉ thay model mặc định cho lượt dự báo mới. Lịch sử giữ nguyên model/phiên bản đã chạy. Các thuật toán vẫn được chuyên viên lựa chọn khi phân tích.
+      </p>
+     </div>
+     <div class="panel">
+      <div class="panel-heading">
+       <h2>
+        Huấn luyện phiên bản mới
+       </h2>
+       <span class="tag medium">
+        Chưa khả dụng
+       </span>
+      </div>
+      <div class="admin-state">
+       <p>
+        Chưa có worker huấn luyện, quy trình đánh giá và kho lưu artifact cho các phiên bản mới. Không mô phỏng tiến trình hoặc tự thay thế model Active.
+       </p>
+       <br/>
+       <button class="button" disabled="">
+        Khởi chạy huấn luyện
+       </button>
+      </div>
+     </div>
+    </section>
+    <section hidden="" id="admin-audit">
+     <div class="page-heading">
+      <div>
+       <h1>
+        Nhật ký hoạt động
+       </h1>
+       <p>
+        Tra cứu tối đa 200 sự kiện mới nhất theo bộ lọc.
+       </p>
+      </div>
+     </div>
+     <div class="panel">
+      <form class="action-toolbar admin-search" id="audit-filter">
+       <input aria-label="Lọc theo người thực hiện" id="audit-actor" placeholder="Tên đăng nhập"/>
+       <select aria-label="Loại hành động" id="audit-action">
+        <option value="">
+         Tất cả hành động
+        </option>
+        login
+        <option>
+         logout
+        </option>
+        <option>
+         account_create
+        </option>
+        <option>
+         account_update
+        </option>
+        <option>
+         password_change
+        </option>
+        <option>
+         prediction
+        </option>
+        <option>
+         data_version_save
+        </option>
+        <option>
+         model_activate
+        </option>
+        <option>
+         model_rollback
+        </option>
+       </select>
+       <label>
+        Từ ngày
+        <input id="audit-since" type="date"/>
+       </label>
+       <label>
+        Đến ngày
+        <input id="audit-until" type="date"/>
+       </label>
+       <button class="button" type="submit">
+        Lọc nhật ký
+       </button>
+      </form>
+      <div class="table-wrap" id="audit-table">
+      </div>
+     </div>
+    </section>
+   </main>
+   <footer class="site-footer">
+    <span>
+     CreditRisk AI · Quản trị hệ thống
+    </span>
+    <span>
+     Quyền Admin kiểm tra tại API
+    </span>
+   </footer>
+  </div>
+  <dialog id="user-dialog">
+   <form class="admin-form" id="user-form">
+    <div class="panel-heading">
+     <h2 id="user-dialog-title">
+      Tạo tài khoản
+     </h2>
+     <button aria-label="Đóng" class="icon-button" id="close-user-dialog" type="button">
+      ×
+     </button>
+    </div>
+    <label>
+     Tên hiển thị
+     <input id="user-name" maxlength="100" required=""/>
+    </label>
+    <label>
+     Tên đăng nhập/email
+     <input autocomplete="off" id="user-username" maxlength="100" pattern="[a-zA-Z0-9_.@+\-]{3,100}" required=""/>
+    </label>
+    <label>
+     Vai trò
+     <select id="user-role">
+      <option value="analyst">
+       Chuyên viên phân tích rủi ro
+      </option>
+      <option value="admin">
+       Quản trị viên
+      </option>
+     </select>
+    </label>
+    <label>
+     Trạng thái
+     <select id="user-active">
+      <option value="true">
+       Đang hoạt động
+      </option>
+      <option value="false">
+       Đã khóa
+      </option>
+     </select>
+    </label>
+    <label id="new-password-label">
+     Mật khẩu tạm thời
+     <input autocomplete="new-password" id="user-password" maxlength="128" minlength="10" type="password"/>
+    </label>
+    <p class="fine-print">
+     Tài khoản mới hoặc được đặt lại mật khẩu phải đổi mật khẩu khi đăng nhập.
+    </p>
+    <div class="alert" hidden="" id="user-form-error" role="alert">
+    </div>
+    <div class="form-footer">
+     <button class="button" id="save-user" type="submit">
+      Lưu tài khoản
+     </button>
+    </div>
+   </form>
+  </dialog>
+ </body>
+</html>

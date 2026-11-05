@@ -6,7 +6,7 @@ import os
 import re
 import secrets
 
-from flask import Blueprint, current_app, g, jsonify, redirect, render_template, request, session
+from flask import Blueprint, current_app, g, jsonify, redirect, request, send_from_directory, session
 from werkzeug.exceptions import BadRequest, Forbidden, ServiceUnavailable, Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -166,13 +166,13 @@ def install(app):
 
 @bp.get("/login")
 def login_page():
-    return render_template("login.html", password_change=False, configured=configured())
+    return send_from_directory(current_app.config["FRONTEND_FOLDER"], "login.html", max_age=0)
 
 
 @bp.get("/change-password")
 def password_page():
     require_user(allow_password_change=True)
-    return render_template("login.html", password_change=True, configured=configured())
+    return send_from_directory(current_app.config["FRONTEND_FOLDER"], "change-password.html", max_age=0)
 
 
 @bp.get("/api/auth/session")
@@ -254,7 +254,7 @@ def admin_page():
         return redirect("/login")
     g.user = user
     require_user(admin=True)
-    return render_template("admin.html")
+    return send_from_directory(current_app.config["FRONTEND_FOLDER"], "admin.html", max_age=0)
 
 
 @bp.get("/api/admin/users")

@@ -17,7 +17,7 @@ function app() {
     crypto:webcrypto, structuredClone, performance, FormData, File, Blob, Response, AbortController, setTimeout, clearTimeout, console,
     localStorage:{values:new Map(),getItem(k){return this.values.get(k)||null;},setItem(k,v){this.values.set(k,String(v));},removeItem(k){this.values.delete(k);}},
     Option:function(text,value){this.text=text;this.value=value;}});
-  const source = fs.readFileSync('creditrisk/static/app.js','utf8');
+  const source = fs.readFileSync('frontend/static/app.js','utf8');
   vm.runInContext(source.slice(0, source.lastIndexOf('initialize().catch')), context);
   vm.runInContext(`globalThis.originalPersist=persist;globalThis.originalApi=api;persist=async()=>{};saveLocalState=async()=>{};renderAll=()=>{};notify=()=>{};
     state={datasets:[{id:'a',name:'A',versions:[{id:'v1',revision:1,rows:[{ID:'old',AGE:30}]}]},

@@ -13,7 +13,7 @@ from zipfile import BadZipFile, ZipFile
 
 import numpy as np
 import pandas as pd
-from flask import Flask, g, jsonify, render_template, request, send_file
+from flask import Flask, g, jsonify, request, send_file, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 from .analytics import evaluation, summary
@@ -24,6 +24,7 @@ from .inference import load_models
 from .service import export_filename, export_frame, read_file
 from .validation import FEATURES, Thresholds, ValidationError, prepare_input
 
+FRONTEND = Path(__file__).resolve().parents[1] / "frontend"
 MODEL_LOCK = Lock()
 MAX_ROWS = 30000
 
@@ -111,8 +112,8 @@ def create_app(test_config=None):
     if not os.environ.get("VERCEL"):
         from dotenv import load_dotenv
         load_dotenv(ROOT / ".env", override=False)
-    app = Flask(__name__, template_folder="templates", static_folder="static")
-    app.config.update(MAX_CONTENT_LENGTH=4 * 1024 * 1024)
+    app = Flask(__name__, template_folder=None, static_folder=str(FRONTEND / "static"), static_url_path="/static")
+    app.config.update(MAX_CONTENT_LENGTH=4 * 1024 * 1024, FRONTEND_FOLDER=str(FRONTEND))
     auth.install(app)
     if test_config:
         app.config.update(test_config)
@@ -157,7 +158,7 @@ def create_app(test_config=None):
 
     @app.get("/")
     def home():
-        return render_template("index.html")
+        return send_from_directory(FRONTEND, "index.html", max_age=0)
 
     @app.get("/api/health")
     def health():
