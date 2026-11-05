@@ -21,3 +21,7 @@ Sidebar dùng SVG nét đồng nhất, trạng thái chọn xanh, focus bàn ph�
 Khác biệt có chủ đích với ảnh: dùng 23 trường UCI và đơn vị TWD thay DPD/DTI/VND; bỏ số liệu minh họa, khuyến nghị từ chối khoản vay và SHAP không có cơ sở tính toán.
 
 Dashboard mở rộng dùng Matplotlib nhúng Qt; biểu đồ trên tệp được chọn, số liệu danh mục theo mô hình được chọn. Chart và bảng hàng loạt có vùng cuộn ở cửa sổ nhỏ. Đã có Tree SHAP thật cho RF/XGB; không dùng phần trăm minh họa trong ảnh mẫu.
+
+## Cập nhật theo ZIP giao diện · 2026-11-05
+
+Hai ảnh trong ML_UI_Credit.zip là tham chiếu cho trang tổng quan và dự báo: sidebar navy 256px, nền #faf8ff, biểu đồ tổng quan tỷ lệ 2:1 và form/kết quả tỷ lệ 1.42:1. Lớp CSS riêng frontend/static/reference.css giữ thay đổi trong giao diện phân tích. Bổ sung thao tác nhanh và hướng dẫn chuyển sang dự báo hàng loạt; các nút dùng lại luồng hiện có. Mobile thu về một cột. Dữ liệu, 23 trường UCI, TWD, ngưỡng và chỉ số mô hình vẫn lấy từ hệ thống, không sao chép số liệu minh họa hoặc quyết định cấp tín dụng trong ảnh.

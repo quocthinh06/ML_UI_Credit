@@ -1,0 +1,73 @@
+/* Layout and palette from the supplied CreditRisk AI screen references. */
+:root{--bg:#faf8ff;--ink:#14213d;--muted:#566176;--line:#e2e5f2;--nav:#0c1828;--soft:#eef0ff;--red:#bd2028;--teal:#007c80}
+.sidebar{width:256px;padding:20px 12px 16px;background:var(--nav)}
+.brand{font-size:18px;padding:0 12px 20px;gap:12px;border-bottom:1px solid #ffffff12}
+.brand-icon{width:38px;height:38px;border-radius:9px;flex-shrink:0}
+.brand small{font-size:11px;letter-spacing:.35px;margin-top:2px}
+.nav-caption{font-size:11px;font-weight:600;letter-spacing:.6px;color:#9eafc5;padding:20px 12px 0}
+.sidebar nav{gap:5px;margin-top:8px}
+.sidebar nav a{min-height:56px;padding:10px 12px;border-radius:9px}
+.sidebar nav small{font-size:11px}
+.sidebar-footer{background:#101e30;border-color:#233248;border-radius:10px}
+.workspace{margin-left:256px}
+.topbar{min-height:64px;padding:12px 24px;gap:14px;box-shadow:0 2px 7px #18233804}
+.connection{background:#eeedff;color:#006f73;border:0;padding:4px 10px;font-weight:600;font-size:11px}
+.model-select select{background:#f3f2ff;border-color:#ecebfa}
+.threshold-badge{font-family:Consolas,monospace;color:#005fae;background:#f3f2ff;padding:4px 8px;border-radius:6px}
+main{max-width:2100px;padding:28px 24px 36px;margin:0 auto}
+h1{font-size:25px;letter-spacing:-.65px}
+.page-heading{margin-bottom:24px}
+.page-heading p{margin-top:5px}
+.panel{border-radius:12px;box-shadow:0 2px 3px #15233b06}
+.metrics{gap:16px;margin-bottom:24px}
+.metric{padding:18px 16px;min-height:125px;border-color:#f0eef8}
+.metric-label{font-size:11px;text-transform:uppercase;letter-spacing:.35px}
+.metric-value{font-family:Consolas,'Segoe UI',monospace;font-size:28px;letter-spacing:-.8px}
+.metric-icon{width:38px;height:38px;border-radius:9px;background:#edecff}
+.metric-note{margin-top:17px;font-size:11px}
+#charts{grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px}
+.chart-card{padding:24px}
+.chart-card h3{font-size:15px}
+.chart{margin-top:22px;min-height:220px}
+.status-chart{width:min(100%,225px);margin:22px auto}
+.chart-legend{border-top:1px solid var(--line);padding-top:16px;gap:15px}
+.quick-workflows{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:18px;margin-top:24px}
+.workflow-title{display:flex;align-items:center;gap:12px;min-width:0}
+.workflow-title>span{display:grid;place-items:center;flex-shrink:0;width:36px;height:36px;color:var(--deep);background:#ebedff;border-radius:8px}
+.workflow-title h2{font-size:15px}
+.workflow-title p{font-size:12px;margin-top:3px;max-width:65ch}
+.quick-workflows .actions{justify-content:flex-end}
+th{background:#f3f2ff;font-size:11px;letter-spacing:.2px}
+td{padding-block:19px}
+tbody tr:nth-child(even){background:#fff}
+tbody tr:hover{background:#f6f7ff}
+.table-footer{background:#f3f2ff}
+.model-banner{padding:24px;min-height:112px;box-shadow:0 3px 5px #15233b0c}
+.model-symbol{width:48px;height:48px;background:#edf2ff}
+.threshold-settings{background:#f5f4ff;border-color:#e5e4f5}
+.tabs{background:#eeecff;margin:24px 0;padding:7px;gap:8px}
+.tab{font-size:14px;padding:10px 18px}
+.tab.active{border-color:transparent;box-shadow:none}
+.single-layout{grid-template-columns:minmax(0,1.42fr) minmax(0,1fr);gap:24px}
+.profile-panel .panel-heading,.result-panel .panel-heading{padding:24px}
+.profile-panel fieldset{background:#f3f2ff;margin:0 24px 24px;padding:20px 16px}
+.profile-panel legend{font-size:12px;font-weight:700;color:var(--ink)}
+.profile-panel input,.profile-panel select{border-color:#ebeaf6;min-height:42px;box-shadow:0 1px 2px #15233b03}
+.field-grid{gap:18px 16px}
+.form-footer{padding:18px 24px;border-top:0}
+.result-panel{position:static;border-color:#e0e3ef;box-shadow:0 6px 16px #15233b09}
+.result-panel:has(.risk-result.high){border-color:#efb7bc}
+.risk-result{padding:22px;margin:20px 24px;background:#edf9f6}
+.risk-result.high{background:#faeaea;border-color:#f0aaaa}
+.pd-number{font-family:Consolas,'Segoe UI',monospace;font-size:42px}
+.result-actions{padding:0 24px 22px}
+.result-meta{margin:20px 24px}
+.batch-workflow{display:flex;align-items:center;justify-content:space-between;gap:22px;background:linear-gradient(110deg,#e1e7f6,#ddf9fc);border:1px solid #e7ecf7;border-radius:12px;padding:24px;margin:10px 0 24px}
+.batch-workflow .workflow-title>span{width:48px;height:48px;background:#0068ae;color:#fff}
+.batch-workflow ol{display:flex;gap:22px;flex-wrap:wrap;margin:0;padding-left:20px;font-size:11px;font-weight:600}
+#page-predict:has(#single-panel[hidden]) .batch-workflow{display:none}
+@media(min-width:1600px){main{padding:30px 32px}.topbar{padding-inline:24px}}
+@media(max-width:1200px){.sidebar{width:228px}.workspace{margin-left:228px}.topbar{gap:10px;padding:12px 20px}main{padding:24px 20px}.single-layout{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}.quick-workflows,.batch-workflow{flex-wrap:wrap}.quick-workflows .actions{justify-content:flex-start}.chart-card{padding:18px}.profile-panel fieldset{margin-inline:16px}.profile-panel .panel-heading,.result-panel .panel-heading{padding:20px}}
+@media(max-width:950px){#charts,.single-layout{grid-template-columns:1fr}.quick-workflows .actions{width:100%}.batch-workflow ol{flex:1 1 100%}.topbar{flex-wrap:wrap}.chart{min-height:180px}}
+@media(max-width:700px){.sidebar{width:256px}.workspace{margin-left:0}main{padding:22px 16px}.topbar{padding:12px 16px}.metrics{gap:10px}.metric{padding:15px 12px}.metric-value{font-size:25px}.metric-icon{width:26px;height:26px}.metric-label{font-size:11px}.metric-note{font-size:11px}.tabs{width:100%;gap:4px}.tab{font-size:12px;padding:10px}.chart-card{padding:18px 14px}.quick-workflows{padding:16px}.quick-workflows .actions{display:grid;grid-template-columns:1fr 1fr}.quick-workflows .button{white-space:normal;text-align:center}.batch-workflow{padding:18px;gap:18px}.batch-workflow>.button{width:100%}.batch-workflow ol{gap:18px}.workflow-title{align-items:flex-start}.workflow-title h2{font-size:14px}.profile-panel fieldset{padding:16px 12px}.field-grid{gap:14px 10px}.result-actions{padding-inline:18px}.risk-result,.result-meta{margin-inline:18px}.threshold-badge{display:none}}
+@media(max-width:380px){.field-grid{grid-template-columns:1fr}.quick-workflows .actions{grid-template-columns:1fr}}

@@ -596,6 +596,7 @@ $('back-to-profiles').addEventListener('click',guarded(returnToProfiles));
 $('single-form').addEventListener('submit',guarded(predictSingle));$('single-form').addEventListener('input',invalidateSingle);$('single-form').addEventListener('reset',clearSingle);
 $('fill-sample').addEventListener('click',guarded(async()=>{const sample=await api('sample');clearProfileContext();inputFields('single-fields','single',sample.rows[0]);invalidateSingle();}));
 $('save-single').addEventListener('click',guarded(saveSingle));$('export-single').addEventListener('click',guarded(()=>exportRows([singleResult],singleConfig)));$('explain-single').addEventListener('click',guarded(explainSingle));$('transfer-single').addEventListener('click',guarded(transferSingle));
+document.querySelectorAll('[data-predict-mode]').forEach(link=>link.addEventListener('click',()=>{batchTab(link.dataset.predictMode==='batch');}));
 $('tab-single').addEventListener('click',()=>batchTab(false));$('tab-batch').addEventListener('click',()=>batchTab(true));
 document.querySelectorAll('.dataset-select').forEach(el=>el.addEventListener('change',()=>selectDataset(el.value)));
 $('version-choice').addEventListener('change',()=>selectDataset(selectedDataset,$('version-choice').value));

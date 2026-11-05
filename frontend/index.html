@@ -8,9 +8,10 @@
   <title>
    CreditRisk AI · Dự báo rủi ro tín dụng
   </title>
-  <link href="static/app.css?v=20261105-sidebar" rel="stylesheet"/>
+  <link href="static/app.css?v=20261105-reference" rel="stylesheet"/>
   <link href="static/auth.css?v=20261105-sidebar" rel="stylesheet"/>
-  <script defer="" src="static/app.js?v=20261105-sidebar">
+  <link href="static/reference.css?v=20261105-reference" rel="stylesheet"/>
+  <script defer="" src="static/app.js?v=20261105-reference">
   </script>
  </head>
  <body>
@@ -28,6 +29,7 @@
      </small>
     </span>
    </a>
+   <p class="nav-caption">HỆ THỐNG NGHIỆP VỤ</p>
    <nav aria-label="Điều hướng chính">
     <a data-page="overview" href="#overview">
      <span data-icon="overview">
@@ -237,6 +239,15 @@
         <p id="insight-text">
         </p>
        </div>
+      </div>
+     </div>
+     <div class="panel quick-workflows">
+      <div class="workflow-title"><span data-icon="predict"></span><div><h2>Thao tác nhanh nghiệp vụ</h2><p>Khởi chạy các luồng công việc cho danh mục hiện tại</p></div></div>
+      <div class="actions">
+       <button class="button secondary compact" data-action="upload"><span data-icon="file"></span>Tải dữ liệu mới</button>
+       <a class="button secondary compact" href="#predict" data-predict-mode="single">Dự báo 1 hồ sơ</a>
+       <a class="button compact" href="#predict" data-predict-mode="batch">Dự báo hàng loạt</a>
+       <a class="button secondary compact" href="#datasets">Mở kho dữ liệu</a>
       </div>
      </div>
      <div class="section-heading">
@@ -488,6 +499,11 @@
         Nhãn 1 là cảnh báo rủi ro. Hệ thống không tự phê duyệt hoặc từ chối tín dụng.
        </p>
       </aside>
+     </div>
+     <div class="batch-workflow" id="batch-workflow">
+      <div class="workflow-title"><span data-icon="file"></span><div><h2>Cần dự báo cho nhiều khách hàng cùng lúc?</h2><p>Tải tệp CSV / Excel, kiểm tra dữ liệu và chạy mô hình cho toàn bộ danh sách.</p></div></div>
+      <ol><li>Tải tệp</li><li>Kiểm tra dữ liệu</li><li>Chạy &amp; lưu kết quả</li></ol>
+      <a class="button" href="#predict" data-predict-mode="batch">Chuyển sang hàng loạt <span data-icon="predict"></span></a>
      </div>
      <div aria-labelledby="tab-batch" hidden="" id="batch-panel" role="tabpanel">
       <div class="panel">
