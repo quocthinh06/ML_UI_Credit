@@ -8,10 +8,12 @@
   <title>
    CreditRisk AI · Dự báo rủi ro tín dụng
   </title>
-  <link href="static/app.css?v=20261105-reference" rel="stylesheet"/>
-  <link href="static/auth.css?v=20261105-sidebar" rel="stylesheet"/>
-  <link href="static/reference.css?v=20261105-reference" rel="stylesheet"/>
-  <script defer="" src="static/app.js?v=20261105-reference">
+  <link href="static/app.css?v=20261105-layout-v2" rel="stylesheet"/>
+  <link href="static/auth.css" rel="stylesheet"/>
+  <link href="static/theme-v2.css?v=20261105-layout-v2" rel="stylesheet"/>
+  <script defer="" src="static/app.js?v=20261105-layout-v2">
+  </script>
+  <script defer="" src="static/layout-v2.js?v=20261105-layout-v2">
   </script>
  </head>
  <body>
@@ -29,7 +31,6 @@
      </small>
     </span>
    </a>
-   <p class="nav-caption">HỆ THỐNG NGHIỆP VỤ</p>
    <nav aria-label="Điều hướng chính">
     <a data-page="overview" href="#overview">
      <span data-icon="overview">
@@ -93,8 +94,11 @@
     </span>
     Lưu riêng trên trình duyệt
    </div>
-   <button class="sidebar-logout" id="logout" type="button" hidden>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H4v16h5M14 8l4 4-4 4M8 12h10"/></svg>
+   <button class="sidebar-logout" hidden="" id="logout" type="button">
+    <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewbox="0 0 24 24">
+     <path d="M9 4H4v16h5M14 8l4 4-4 4M8 12h10">
+     </path>
+    </svg>
     Đăng xuất
    </button>
   </aside>
@@ -102,33 +106,37 @@
    <header class="topbar">
     <button aria-expanded="false" aria-label="Mở điều hướng" class="icon-button mobile-menu" data-icon="menu" id="menu-toggle">
     </button>
-    <span class="connection" id="connection">
-     <span class="status-dot">
+    <div class="topbar-status">
+     <span class="connection" id="connection">
+      <span class="status-dot">
+      </span>
+      Đang kết nối API
      </span>
-     Đang kết nối API
-    </span>
-    <label class="model-select">
-     Mô hình
-     <select aria-label="Mô hình dự báo" disabled="" id="model-choice">
-      <option>
-       Đang tải…
-      </option>
-     </select>
-    </label>
-    <span class="threshold-badge" id="model-meta">
-     —
-    </span>
-    <a class="button secondary compact" href="/login" id="sign-in-link">
-     Đăng nhập
-    </a>
-    <button class="button secondary compact" id="workspace-settings">
-     Kho dữ liệu
-    </button>
-    <button class="button secondary compact" id="sample-top">
-     <span data-icon="file">
+     <label class="model-select">
+      Mô hình
+      <select aria-label="Mô hình dự báo" disabled="" id="model-choice">
+       <option>
+        Đang tải…
+       </option>
+      </select>
+     </label>
+     <span class="threshold-badge" id="model-meta">
+      —
      </span>
-     Dùng dữ liệu mẫu
-    </button>
+    </div>
+    <div class="topbar-tools">
+     <a class="button secondary compact" href="/login" id="sign-in-link">
+      Đăng nhập
+     </a>
+     <button class="button secondary compact" id="workspace-settings">
+      Kho dữ liệu
+     </button>
+     <button class="button secondary compact" id="sample-top">
+      <span data-icon="file">
+      </span>
+      Dùng dữ liệu mẫu
+     </button>
+    </div>
    </header>
    <div class="notice" hidden="" id="sync-status" role="status">
     <span id="sync-message">
@@ -171,7 +179,51 @@
        </button>
       </div>
      </div>
-     <div class="panel selection-bar">
+     <div class="empty panel" id="dashboard-empty">
+      <h2>
+       Bắt đầu trong 3 bước
+      </h2>
+      <p>
+       Chưa có dữ liệu để hiển thị. Làm theo các bước dưới đây, mất chưa tới một phút.
+      </p>
+      <ol class="steps">
+       <li>
+        <b>
+         Tải tệp dữ liệu
+        </b>
+        <span>
+         CSV, Excel hoặc JSON, đủ 23 trường UCI.
+        </span>
+       </li>
+       <li>
+        <b>
+         Chạy dự báo
+        </b>
+        <span>
+         Mô hình đang chọn ở thanh trên sẽ chấm điểm từng hồ sơ.
+        </span>
+       </li>
+       <li>
+        <b>
+         Xem kết quả
+        </b>
+        <span>
+         Biểu đồ, hồ sơ rủi ro cao và lịch sử hiện ra tại đây.
+        </span>
+       </li>
+      </ol>
+      <div class="actions">
+       <button class="button" data-action="upload">
+        Tải tệp dữ liệu
+       </button>
+       <button class="button secondary" data-action="sample">
+        Khám phá dữ liệu mẫu
+       </button>
+      </div>
+     </div>
+     <div class="metrics needs-data" id="portfolio-metrics">
+     </div>
+     <div class="panel selection-bar needs-data">
       <label>
        Tập hồ sơ đang phân tích
        <select class="dataset-select" id="overview-dataset">
@@ -183,28 +235,6 @@
       <button class="button secondary" id="analyze-selected">
        Phân tích tệp đã chọn
       </button>
-     </div>
-     <div class="metrics" id="portfolio-metrics">
-     </div>
-     <div class="empty panel" id="dashboard-empty">
-      <span data-icon="performance">
-      </span>
-      <h2>
-       Bắt đầu từ dữ liệu của bạn
-      </h2>
-      <p>
-       Tải CSV, Excel hoặc JSON để dự báo bằng model đang chọn.
-       <br/>
-       Hoặc khám phá 3 hồ sơ mẫu UCI với kết quả tính thật.
-      </p>
-      <div class="actions">
-       <button class="button" data-action="upload">
-        Tải tệp dữ liệu
-       </button>
-       <button class="button secondary" data-action="sample">
-        Khám phá dữ liệu mẫu
-       </button>
-      </div>
      </div>
      <div hidden="" id="dashboard-content">
       <div class="section-heading">
@@ -227,8 +257,6 @@
         </option>
        </select>
       </div>
-      <div class="chart-grid" id="charts">
-      </div>
       <div class="panel insight-panel">
        <span data-icon="shield">
        </span>
@@ -240,14 +268,7 @@
         </p>
        </div>
       </div>
-     </div>
-     <div class="panel quick-workflows">
-      <div class="workflow-title"><span data-icon="predict"></span><div><h2>Thao tác nhanh nghiệp vụ</h2><p>Khởi chạy các luồng công việc cho danh mục hiện tại</p></div></div>
-      <div class="actions">
-       <button class="button secondary compact" data-action="upload"><span data-icon="file"></span>Tải dữ liệu mới</button>
-       <a class="button secondary compact" href="#predict" data-predict-mode="single">Dự báo 1 hồ sơ</a>
-       <a class="button compact" href="#predict" data-predict-mode="batch">Dự báo hàng loạt</a>
-       <a class="button secondary compact" href="#datasets">Mở kho dữ liệu</a>
+      <div class="chart-grid" id="charts">
       </div>
      </div>
      <div class="section-heading">
@@ -277,19 +298,6 @@
        Tải lên tệp mới
       </button>
      </div>
-     <div class="notice">
-      <span data-icon="shield">
-      </span>
-      <p>
-       Dữ liệu lưu trong trình duyệt trên thiết bị này, không đồng bộ giữa các thiết bị. Xuất bản sao JSON để giữ dữ liệu trước khi xóa dữ liệu trình duyệt.
-      </p>
-      <button class="button secondary compact" id="backup">
-       Sao lưu JSON
-      </button>
-      <button class="button secondary compact" id="restore">
-       Khôi phục
-      </button>
-     </div>
      <div class="panel">
       <div class="panel-heading">
        <h2>
@@ -313,38 +321,37 @@
        <select aria-label="Phiên bản dữ liệu" id="version-choice">
        </select>
       </div>
-      <div aria-label="Thao tác tập dữ liệu" class="action-toolbar dataset-actions" role="group">
-       <button class="button" id="predict-dataset">
-        Chạy dự báo
-       </button>
-       <button class="button secondary" id="add-customer">
-        Bổ sung hồ sơ
-       </button>
-       <details class="more-actions">
+      <div class="action-toolbar">
+       <div class="toolbar-main">
+        <button class="button" id="predict-dataset">
+         Chạy dự báo
+        </button>
+        <button class="button secondary" id="add-customer">
+         Bổ sung hồ sơ
+        </button>
+        <button class="button secondary" id="edit-customer">
+         Sửa hồ sơ đã chọn
+        </button>
+       </div>
+       <details class="more-menu">
         <summary class="button secondary">
-         Thao tác khác
-         <span aria-hidden="true">
-          ▾
-         </span>
+         Thao tác khác ▾
         </summary>
-        <div class="more-actions-panel">
-         <button class="button secondary" id="edit-customer">
-          Sửa hồ sơ đã chọn
-         </button>
-         <button class="button secondary" id="clone-dataset">
+        <div class="menu-list">
+         <button class="menu-item" id="clone-dataset">
           Lưu thành bản mới
          </button>
-         <button class="button secondary" id="rename-dataset">
+         <button class="menu-item" id="rename-dataset">
           Đổi tên tập dữ liệu
          </button>
-         <div aria-label="Thao tác xóa" class="danger-actions" role="group">
-          <button class="button danger" id="delete-customer">
-           Xóa dòng đã chọn…
-          </button>
-          <button class="button danger" id="delete-dataset">
-           Xóa tập dữ liệu…
-          </button>
+         <div class="menu-sep" role="separator">
          </div>
+         <button class="menu-item danger" id="delete-customer">
+          Xóa dòng đã chọn
+         </button>
+         <button class="menu-item danger" id="delete-dataset">
+          Xóa tập dữ liệu
+         </button>
         </div>
        </details>
       </div>
@@ -352,6 +359,19 @@
       </div>
       <div class="table-footer" id="data-footer">
       </div>
+     </div>
+     <div class="notice">
+      <span data-icon="shield">
+      </span>
+      <p>
+       Dữ liệu lưu trong trình duyệt trên thiết bị này, không đồng bộ giữa các thiết bị. Xuất bản sao JSON để giữ dữ liệu trước khi xóa dữ liệu trình duyệt.
+      </p>
+      <button class="button secondary compact" id="backup">
+       Sao lưu JSON
+      </button>
+      <button class="button secondary compact" id="restore">
+       Khôi phục
+      </button>
      </div>
     </section>
     <section class="page" hidden="" id="page-predict">
@@ -382,44 +402,46 @@
        23 trường UCI · TWD
       </span>
      </div>
-     <div class="panel threshold-settings">
-      <label>
-       Cách tính nhãn cảnh báo
-       <select id="decision-basis">
-        <option value="raw">
-         Điểm mô hình gốc
-        </option>
-        <option value="probability">
-         Xác suất vỡ nợ đã hiệu chỉnh
-        </option>
-       </select>
-      </label>
-      <label>
-       Ngưỡng cảnh báo (%)
-       <input id="decision" max="100" min="0" step="0.01" type="number" value="39"/>
-      </label>
-      <label>
-       Mốc rủi ro thấp (%)
-       <input id="low" max="100" min="0" step="0.01" type="number" value="20"/>
-      </label>
-      <label>
-       Mốc rủi ro cao (%)
-       <input id="high" max="100" min="0" step="0.01" type="number" value="50"/>
-      </label>
-     </div>
-     <details class="threshold-help">
+     <details class="panel advanced-settings">
       <summary>
-       Hiểu xác suất vỡ nợ và các ngưỡng
+       <span>
+        Cài đặt ngưỡng phân loại
+       </span>
+       <span class="hint">
+        Mặc định đã phù hợp với mô hình, chỉ chỉnh khi cần
+       </span>
       </summary>
-      <p>
-       PD là xác suất vỡ nợ dự báo. Ngưỡng cảnh báo dùng để gắn nhãn 0/1 theo điểm mô hình gốc hoặc PD đã hiệu chỉnh. Hai mốc rủi ro chia PD thành Thấp / Trung bình / Cao, độc lập với ngưỡng cảnh báo. Trạng thái trả nợ tháng gần nhất dùng mã UCI; −2, −1 và 0 không biểu thị số tháng trễ hạn.
-      </p>
+      <div class="threshold-settings">
+       <label>
+        Cách tính ngưỡng
+        <select id="decision-basis">
+         <option value="raw">
+          Điểm thô (theo notebook gốc)
+         </option>
+         <option value="probability">
+          PD đã hiệu chỉnh
+         </option>
+        </select>
+       </label>
+       <label>
+        Ngưỡng nhãn (%)
+        <input id="decision" max="100" min="0" step="0.01" type="number" value="39"/>
+       </label>
+       <label>
+        PD thấp (%)
+        <input id="low" max="100" min="0" step="0.01" type="number" value="20"/>
+       </label>
+       <label>
+        PD cao (%)
+        <input id="high" max="100" min="0" step="0.01" type="number" value="50"/>
+       </label>
+      </div>
      </details>
      <div aria-label="Loại dự báo" class="tabs" role="tablist">
       <button aria-controls="single-panel" aria-selected="true" class="tab active" id="tab-single" role="tab">
        Một hồ sơ đơn lẻ
       </button>
-      <button aria-controls="batch-panel" aria-selected="false" class="tab" id="tab-batch" role="tab" tabindex="-1">
+      <button aria-controls="batch-panel" aria-selected="false" class="tab" id="tab-batch" role="tab">
        Hàng loạt CSV / Excel
       </button>
      </div>
@@ -454,7 +476,7 @@
        </div>
        <div class="form-footer">
         <button class="button secondary" type="reset">
-         Xóa toàn bộ thông tin đã nhập
+         Xóa dữ liệu nhập
         </button>
         <button class="button" type="submit">
          <span data-icon="predict">
@@ -499,11 +521,6 @@
         Nhãn 1 là cảnh báo rủi ro. Hệ thống không tự phê duyệt hoặc từ chối tín dụng.
        </p>
       </aside>
-     </div>
-     <div class="batch-workflow" id="batch-workflow">
-      <div class="workflow-title"><span data-icon="file"></span><div><h2>Cần dự báo cho nhiều khách hàng cùng lúc?</h2><p>Tải tệp CSV / Excel, kiểm tra dữ liệu và chạy mô hình cho toàn bộ danh sách.</p></div></div>
-      <ol><li>Tải tệp</li><li>Kiểm tra dữ liệu</li><li>Chạy &amp; lưu kết quả</li></ol>
-      <a class="button" href="#predict" data-predict-mode="batch">Chuyển sang hàng loạt <span data-icon="predict"></span></a>
      </div>
      <div aria-labelledby="tab-batch" hidden="" id="batch-panel" role="tabpanel">
       <div class="panel">
@@ -579,7 +596,7 @@
           <input id="max-limit" min="0" type="number" value="10000000"/>
          </label>
          <label>
-          Trễ hạn tháng gần nhất (mã tối thiểu)
+          Trễ hạn tháng gần nhất (PAY_0) tối thiểu
           <input id="min-delay" max="8" min="-2" type="number" value="-2"/>
          </label>
          <label>
