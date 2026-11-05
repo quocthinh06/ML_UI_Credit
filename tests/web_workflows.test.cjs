@@ -253,3 +253,47 @@ test('profile details predict only canonical inputs without changing dataset or 
   assert.equal(run('dataPage'),1);
   assert.equal(run('resultsPage'),2);
 });
+
+test('clear inputs empties every control and removes previous prediction and profile context',()=>{
+  const {run}=app();
+  run(`globalThis.fields=[
+    {type:'text',value:'KH-001'},{type:'number',value:'0'},{type:'select-one',value:'2'},
+    {type:'checkbox',checked:true}
+  ];
+  fields.forEach(f=>{f.setCustomValidity=()=>{};f.removeAttribute=()=>{};});
+  $('single-form').querySelectorAll=()=>fields;
+  $('single-ID').focus=()=>{globalThis.focused=true;};
+  singleResult={probability:.8};singleConfig={decision:.39};profileOrigin={hash:'#datasets'};
+  clearSingle({preventDefault(){globalThis.prevented=true;}});
+  `);
+  assert.equal(run('fields.slice(0,3).every(f=>f.value==="")'),true);
+  assert.equal(run('fields[3].checked'),false);
+  assert.equal(run('singleResult===null&&singleInputs===null&&singleConfig===null'),true);
+  assert.equal(run('profileOrigin'),null);
+  assert.equal(run('focused&&prevented'),true);
+  assert.equal(run("$('save-single').disabled&&$('export-single').disabled&&$('explain-single').disabled&&$('transfer-single').disabled"),true);
+});
+
+test('a pending single response cannot restore a cleared or edited prediction',async()=>{
+  const {run}=app();
+  run(`models=[{name:'RF'}];$('model-choice').value='RF';
+    $('decision-basis').value='probability';$('decision').value='39';$('low').value='20';$('high').value='50';
+    formRow=()=>({ID:'one',AGE:30});busy=async(_,fn)=>fn();
+    globalThis.releaseSingle=null;api=()=>new Promise(resolve=>{releaseSingle=resolve;});
+    globalThis.pendingSingle=predictSingle({preventDefault(){}});
+    invalidateSingle();
+    releaseSingle({rows:[{probability:.8}]});`);
+  await run('pendingSingle');
+  assert.equal(run('singleResult'),null);
+  assert.equal(run("$('export-single').disabled"),true);
+});
+
+test('histogram threshold follows its domain and stays in bounds at either edge',()=>{
+  const {run}=app();
+  const html=run("barChart('PD','', ['0–50%','50–100%'],[1,2],{threshold:.39})");
+  assert.match(html,/x1="223\.74"/);
+  assert.match(html,/Ngưỡng τ = 39\.00%/);
+  assert.match(run("barChart('PD','', ['all'],[1],{threshold:0})"),/x1="42"/);
+  assert.match(run("barChart('PD','', ['all'],[1],{threshold:1})"),/x1="508"/);
+  assert.doesNotMatch(run("barChart('PD','', ['all'],[1])"),/threshold-marker/);
+});
