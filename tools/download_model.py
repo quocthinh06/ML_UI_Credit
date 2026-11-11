@@ -8,6 +8,8 @@ import urllib.request
 MODEL_URL = "https://drive.google.com/uc?export=download&id=1PpBMLvQrMJHmnt6ETPfjrnfeKG_ciBm0"
 SHA256 = "19d97aeff847a990ea1a3f6c27f95975e41df9275d7e8913084c16c98c865f48"
 MODELS = [
+    ("impute_stats_v1.pkl", None,
+     "7dab4cbe963f5366036fa5d4fc2af694180baad4ad929b11b61144da12f4e38c"),
     ("best_model_v1.pkl", MODEL_URL, SHA256),
     (
         "model_lr_v1.pkl",
@@ -37,6 +39,8 @@ def download(filename, url, digest, *, verify_only=False):
         return
     if verify_only:
         raise ValueError(f"{filename}: missing file or SHA256 mismatch.")
+    if url is None:
+        raise ValueError(f"{filename}: restore the trusted artifact from the repository.")
     with urllib.request.urlopen(url, timeout=90) as response:
         content = response.read()
     if hashlib.sha256(content).hexdigest() != digest:

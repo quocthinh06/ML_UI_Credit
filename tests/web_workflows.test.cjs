@@ -26,6 +26,38 @@ function app() {
   return {run: code=>vm.runInContext(code,context), elements};
 }
 
+test('filled values retain provenance across a new prediction until explicitly edited',()=>{
+  const {run}=app();
+  run("features=['AGE'];$('single-ID').value='one';$('single-AGE').dataset={};markImputed({rows:[{fields:['AGE'],values:{AGE:34}}]})");
+  assert.equal(run("$('single-AGE').value"),'34');
+  assert.equal(run("formRow('single').AGE"),null);
+  run("delete $('single-AGE').dataset.imputedValue");
+  assert.equal(run("formRow('single').AGE"),34);
+});
+
+test('only supplementary inputs may be left blank',()=>{
+  const {run}=app();
+  run("features=['LIMIT_BAL','SEX','EDUCATION','MARRIAGE','AGE','PAY_0','PAY_AMT6'];inputFields('single-fields','single')");
+  const html=run("$('single-fields').innerHTML");
+  assert.match(html, /name="LIMIT_BAL"[^>]*required/);
+  assert.match(html, /name="PAY_0"[^>]*required/);
+  for(const name of ['SEX','EDUCATION','MARRIAGE','AGE','PAY_AMT6']){
+    assert.doesNotMatch(html,new RegExp(`name="${name}"[^>]*required`));
+  }
+});
+
+test('SHAP uses readable names and opposite directions for positive and negative values',async()=>{
+  const {run}=app();
+  run(`models=[{name:'RF'}];$('model-choice').value='RF';singleInputs={ID:'one'};
+    api=async()=>({scale:'Tree SHAP · điểm thô',rows:[{feature:'PAY_1',contribution:.1},{feature:'PAY_RATIO_1',contribution:-.03}]});`);
+  await run('explainSingle()');
+  const html=run("$('explanation').innerHTML");
+  assert.match(html,/Trạng thái trả nợ tháng gần nhất/);
+  assert.match(html,/Tăng điểm/);
+  assert.match(html,/Giảm điểm/);
+  assert.match(html,/shap-bar/);
+});
+
 test('datasets and prediction history share one management page',()=>{
   const html=fs.readFileSync('frontend/index.html','utf8');
   const management=html.split('id="page-datasets"')[1].split('</section>')[0];

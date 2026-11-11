@@ -20,8 +20,9 @@ from . import cloud_storage
 from . import auth
 from .config import ROOT
 from .inference import load_models
+from .imputation import OPTIONAL, REQUIRED, prepare_missing
 from .service import export_filename, export_frame, read_file
-from .validation import FEATURES, Thresholds, ValidationError, prepare_input
+from .validation import FEATURES, Thresholds, ValidationError
 
 FRONTEND = Path(__file__).resolve().parents[1] / "frontend"
 MODEL_LOCK = Lock()
@@ -64,7 +65,9 @@ def input_frame(data, limit=MAX_ROWS):
         raise ValidationError(f"Cần từ 1 đến {limit:,} hồ sơ.")
     if not all(isinstance(row, dict) for row in rows):
         raise ValidationError("Mỗi hồ sơ phải là một đối tượng.")
-    return prepare_input(pd.DataFrame(rows))
+    frame, report = prepare_missing(pd.DataFrame(rows))
+    frame.attrs["imputation"] = report
+    return frame
 
 
 def default_model():
@@ -98,6 +101,7 @@ def predict(data, limit=500):
     model = selected_model(data)
     config = thresholds(data, model)
     result = pd.concat([frame, model.predict(frame, config)], axis=1)
+    result.attrs["imputation"] = frame.attrs["imputation"]
     for key, value in {
         "model_name": model.name, "model_version": model.version, "model_sha256": model.digest,
         "decision_threshold": config.decision, "decision_basis": config.basis,
@@ -295,7 +299,8 @@ def create_app(test_config=None):
         return jsonify(default_model=default_model(), models=[{
             "name": m.name, "version": m.version, "digest": m.digest, "threshold": m.threshold,
             "cv_auc": m.metadata.get("cv_auc"), "test_auc": m.metadata.get("test_auc"),
-        } for m in model_registry().values()], features=FEATURES)
+        } for m in model_registry().values()], features=FEATURES,
+                       required_features=REQUIRED, imputable_features=list(OPTIONAL))
 
     @app.get("/api/sample")
     def sample():
@@ -316,11 +321,12 @@ def create_app(test_config=None):
                 with ZipFile(path) as archive:
                     if sum(entry.file_size for entry in archive.infolist()) > 64 * 1024 * 1024:
                         raise ValidationError("Nội dung Excel giải nén vượt quá 64 MB.")
-            frame = read_file(path)
+            frame = read_file(path, fill_missing=True)
         if len(frame) > MAX_ROWS:
             raise ValidationError("Mỗi tệp tối đa 30.000 hồ sơ.")
         return jsonify(rows=records_json(frame), columns=list(frame.columns),
-                       normalization=frame.attrs.get("normalization", {}))
+                       normalization=frame.attrs.get("normalization", {}),
+                       imputation=frame.attrs["imputation"])
 
     @app.post("/api/predict")
     def inference():
@@ -336,10 +342,12 @@ def create_app(test_config=None):
                 "nhan_default": int(row["default_label"]),
                 "muc_rui_ro": row["risk_level"],
                 "nhan_xet": "Cần chuyên viên xem xét" if row["default_label"] else "Dưới ngưỡng cảnh báo",
-                "truong_da_dien": [],
+                "truong_da_dien": result.attrs["imputation"]["rows"][0]["fields"]
+                if result.attrs["imputation"]["rows"] else [],
             }
         return jsonify(rows=records_json(result), summary=summary(result),
-                       evaluation=evaluation(result), model=model.name, thresholds=asdict(config), **output)
+                       evaluation=evaluation(result), model=model.name, thresholds=asdict(config),
+                       imputation=result.attrs["imputation"], **output)
 
     @app.post("/api/export")
     def export():

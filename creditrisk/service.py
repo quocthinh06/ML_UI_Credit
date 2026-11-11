@@ -15,7 +15,7 @@ def run_parameters(thresholds):
     return {**asdict(thresholds), "performed_by": getpass.getuser()}
 
 
-def read_file(path):
+def read_file(path, *, fill_missing=False):
     path = Path(path)
     if path.suffix.lower() == ".csv":
         # Inspect the raw header: pandas otherwise silently renames duplicate columns.
@@ -37,6 +37,12 @@ def read_file(path):
     else:
         raise ValidationError("Chỉ hỗ trợ CSV UTF-8, Excel .xlsx hoặc JSON (danh sách hồ sơ).")
     frame.columns = [str(c).strip() for c in frame.columns]
+    if fill_missing:
+        from .imputation import prepare_missing
+
+        prepared, report = prepare_missing(frame)
+        prepared.attrs["imputation"] = report
+        return prepared
     return prepare_input(frame)
 
 

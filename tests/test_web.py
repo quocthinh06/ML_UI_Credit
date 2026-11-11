@@ -20,12 +20,33 @@ def client(monkeypatch, model):
 def test_web_entrypoint_and_assets(client):
     response = client.get("/")
     assert response.status_code == 200
-    for page in ["overview", "datasets", "predict", "history", "models"]:
+    for page in ["overview", "datasets", "predict", "models"]:
         assert f'id="page-{page}"'.encode() in response.data
     assert client.get("/static/app.js").status_code == 200
     assert client.get("/static/app.css").status_code == 200
     assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
     assert client.get("/api/health").json["storage"] == "browser"
+
+
+def test_prediction_reports_only_allowed_filled_fields(client, frame):
+    rows = frame.drop(columns=["AGE", "PAY_AMT6"]).to_dict("records")
+    response = client.post("/api/predict", json={"rows": rows})
+    assert response.status_code == 200
+    assert response.json["rows"][0]["AGE"] == 34
+    assert response.json["imputation"]["filled_cells"] == 2
+    assert set(response.json["ket_qua"]["truong_da_dien"]) == {"AGE", "PAY_AMT6"}
+    rows[0]["PAY_0"] = None
+    assert client.post("/api/predict", json={"rows": rows}).status_code == 400
+
+
+def test_import_fills_supplementary_columns_and_preserves_labels(client, frame):
+    frame = frame.drop(columns=["AGE", "EDUCATION"])
+    frame["default.payment.next.month"] = None
+    response = client.post("/api/import", data={"file": (BytesIO(frame.to_csv(index=False).encode()), "missing.csv")})
+    assert response.status_code == 200
+    assert response.json["rows"][0]["EDUCATION"] == 2
+    assert response.json["rows"][0]["default.payment.next.month"] is None
+    assert response.json["imputation"]["filled_rows"] == 1
 
 
 def test_web_models(client, model):

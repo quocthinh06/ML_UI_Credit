@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id);
 const fmt = n => Number(n || 0).toLocaleString('vi-VN', {maximumFractionDigits: 2});
 const pct = n => n == null || !Number.isFinite(Number(n)) ? '—' : `${(Number(n) * 100).toFixed(2)}%`;
 const date = s => new Date(s).toLocaleString('vi-VN');
+const imputableFeatures = ['SEX','EDUCATION','MARRIAGE','AGE','PAY_AMT6'];
 const riskNames = {Low: 'Thấp', Medium: 'Trung bình', High: 'Cao'};
 const escapeHTML = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icons = {
@@ -24,6 +25,7 @@ let state = {datasets: [], runs: []};
 let models = [], features = [], selectedDataset = null, selectedVersion = null, selectedCustomer = null;
 let singleResult = null, singleInputs = null, singleConfig = null, editId = null, database;
 let selectedRunId = null, profileOrigin = null;
+let displayedImputationReport = null;
 let resultsPage = 0, dataPage = 0, toastTimer;
 let singleGeneration = 0;
 let remoteEnabled = false, cloudRevision = 0, revisionKnown = false;
@@ -316,7 +318,7 @@ function renderDatasets() {
   const query = $('dataset-search').value.toLowerCase();
   const rows = workingDatasets().filter(d => d.name.toLowerCase().includes(query)).map(d => { const v = d.versions.at(-1), run = state.runs.find(r => r.datasetId === d.id && r.modelHash === model()?.digest); return {...d, count:v.rows.length, revision:v.revision, created:v.created, status: !run ? 'Chưa dự báo' : run.versionId === v.id ? 'Đã dự báo' : 'Cần dự báo lại'}; });
   table('datasets-table', [['name','Tên tập hồ sơ'],['count','Số hồ sơ'],['revision','Phiên bản'],['created','Cập nhật'],['status','Trạng thái model đang chọn']], rows, {action:{label:'Xem hồ sơ',run:r=>{selectDataset(r.id);$('data-title').focus({preventScroll:true});$('data-title').scrollIntoView({block:'center'});}},selected:r=>r.id===selectedDataset});
-  const v = version(); $('data-title').textContent = dataset()?.name || 'Nội dung tập hồ sơ';
+  const v = version(); renderImputationReport(v?.imputation); $('data-title').textContent = dataset()?.name || 'Nội dung tập hồ sơ';
   $('data-caption').textContent = v ? `Phiên bản ${v.revision} · ${fmt(v.rows.length)} dòng · ${Object.keys(v.rows[0] || {}).length} cột · Chọn dòng để sửa hoặc xóa` : 'Chọn một tập hồ sơ để xem.';
   const data=v?.rows||[],columns=[['ID','Mã hồ sơ'],['AGE','Tuổi'],['LIMIT_BAL','Hạn mức (TWD)'],['PAY_0','Trả nợ gần nhất']];
   if (dataPage >= Math.ceil(data.length / PAGE_SIZE)) dataPage = 0;
@@ -511,8 +513,8 @@ function versionHash(v) {
   if(!versionHashes.has(v))versionHashes.set(v,datasetHash(v.rows).then(hash=>{resolvedHashes.set(v,hash);return hash;}));
   return versionHashes.get(v);
 }
-async function addDataset(name, rows, {save=true}={}) {
-  const v={id:crypto.randomUUID(),revision:1,created:new Date().toISOString(),rows};
+async function addDataset(name, rows, {save=true,imputation=null}={}) {
+  const v={id:crypto.randomUUID(),revision:1,created:new Date().toISOString(),rows,imputation};
   const hash=await versionHash(v);
   for(const existing of workingDatasets()){
     const latest=existing.versions.at(-1);
@@ -569,10 +571,11 @@ async function upload(event){
   const data=new FormData();data.append('file',file);
   const result=await busy('Đang kiểm tra và lưu tệp',async()=>{
     const result=await api('import',data);
-    await addDataset(file.name,result.rows);
+    await addDataset(file.name,result.rows,{imputation:result.imputation});
     return result;
   });
   location.hash='datasets';
+  renderImputationReport(result.imputation);
   const changes=Object.entries(result.normalization||{}).filter(([,count])=>count);
   if(changes.length)notify(`Đã chuẩn hóa mã UCI: ${changes.map(([key,count])=>`${key}: ${count}`).join(', ')}.`);
 }
@@ -588,12 +591,13 @@ function inputFields(container,prefix,row={}){
   const hints={SEX:'1: Nam · 2: Nữ',EDUCATION:'1: Sau ĐH · 2: ĐH · 3: THPT · 4: Khác',MARRIAGE:'1: Đã kết hôn · 2: Độc thân · 3: Khác'};
   const groups=[['Thông tin khách hàng',features.slice(0,5)],['Trạng thái trả nợ 6 tháng · mã −2 đến 8',features.filter(f=>f.startsWith('PAY_')&&!f.includes('AMT'))],['Dư nợ sao kê 6 tháng · TWD',features.filter(f=>f.startsWith('BILL_AMT'))],['Tiền thanh toán 6 tháng · TWD',features.filter(f=>f.startsWith('PAY_AMT'))]];
   let html=`<div class="field-id"><label for="${prefix}-ID">Mã khách hàng (ID)<input id="${prefix}-ID" name="ID" maxlength="128" required placeholder="VD: KH-001" value="${escapeHTML(row.ID||'')}"></label></div>`;
-  groups.forEach(([title,keys])=>{html+=`<fieldset><legend>${title}</legend><div class="field-grid">`;keys.forEach(key=>{const categorical=['SEX','EDUCATION','MARRIAGE'].includes(key);let control;if(categorical){const options=key==='SEX'?[[1,'Nam'],[2,'Nữ']]:key==='EDUCATION'?[[1,'Sau đại học'],[2,'Đại học'],[3,'THPT'],[4,'Khác']]:[[1,'Đã kết hôn'],[2,'Độc thân'],[3,'Khác']];control=`<select id="${prefix}-${key}" name="${key}" required><option value="">Chọn…</option>${options.map(([v,t])=>`<option value="${v}" ${Number(row[key])===v?'selected':''}>${v} · ${t}</option>`).join('')}</select>`;}else{const min=key==='AGE'?18:key==='LIMIT_BAL'?1:key.startsWith('PAY_AMT')?0:key.startsWith('PAY_')?-2:null,max=key==='AGE'?100:key==='LIMIT_BAL'?10000000:key.startsWith('PAY_')&&!key.includes('AMT')?8:null;control=`<input id="${prefix}-${key}" name="${key}" type="number" required step="${key==='AGE'||(key.startsWith('PAY_')&&!key.includes('AMT'))?'1':'any'}" ${min!=null?`min="${min}"`:''} ${max!=null?`max="${max}"`:''} value="${escapeHTML(row[key]??'')}" placeholder="${key}">`;}html+=`<label for="${prefix}-${key}">${names[key]||key}${control}<small>${key}${hints[key]?` · ${hints[key]}`:''}</small></label>`;});html+='</div></fieldset>';});$(container).innerHTML=html;
+  groups.forEach(([title,keys])=>{html+=`<fieldset><legend>${title}</legend><div class="field-grid">`;keys.forEach(key=>{const categorical=['SEX','EDUCATION','MARRIAGE'].includes(key);let control;if(categorical){const options=key==='SEX'?[[1,'Nam'],[2,'Nữ']]:key==='EDUCATION'?[[1,'Sau đại học'],[2,'Đại học'],[3,'THPT'],[4,'Khác']]:[[1,'Đã kết hôn'],[2,'Độc thân'],[3,'Khác']];control=`<select id="${prefix}-${key}" name="${key}" ${imputableFeatures.includes(key)?'':'required'}><option value="">Chọn…</option>${options.map(([v,t])=>`<option value="${v}" ${Number(row[key])===v?'selected':''}>${v} · ${t}</option>`).join('')}</select>`;}else{const min=key==='AGE'?18:key==='LIMIT_BAL'?1:key.startsWith('PAY_AMT')?0:key.startsWith('PAY_')?-2:null,max=key==='AGE'?100:key==='LIMIT_BAL'?10000000:key.startsWith('PAY_')&&!key.includes('AMT')?8:null;control=`<input id="${prefix}-${key}" name="${key}" type="number" ${imputableFeatures.includes(key)?'':'required'} step="${key==='AGE'||(key.startsWith('PAY_')&&!key.includes('AMT'))?'1':'any'}" ${min!=null?`min="${min}"`:''} ${max!=null?`max="${max}"`:''} value="${escapeHTML(row[key]??'')}" placeholder="${key}">`;}html+=`<label for="${prefix}-${key}">${names[key]||key}${control}<small>${key}${imputableFeatures.includes(key)?' · Có thể để trống: điền từ thống kê train':' · Bắt buộc'}${hints[key]?` · ${hints[key]}`:''}</small></label>`;});html+='</div></fieldset>';});$(container).innerHTML=html;
 }
 function clearSingle(event) {
   event.preventDefault();
   clearProfileContext();
   $('single-form').querySelectorAll('input, select, textarea').forEach(field=>{
+    if(field.dataset)delete field.dataset.imputedValue;
     if(field.type==='checkbox'||field.type==='radio')field.checked=false;
     else field.value='';
     field.setCustomValidity('');field.removeAttribute('aria-invalid');
@@ -602,7 +606,13 @@ function clearSingle(event) {
   $('result-status').textContent='Chưa dự báo';$('single-ID')?.focus();
   notify('Đã xóa toàn bộ thông tin nhập và kết quả dự báo.');
 }
-function formRow(prefix){const row={ID:$(`${prefix}-ID`).value.trim()};features.forEach(f=>{const value=$(`${prefix}-${f}`).value;row[f]=value.trim()===''?null:Number(value);});return row;}
+function formRow(prefix){const row={ID:$(`${prefix}-ID`).value.trim()};features.forEach(f=>{const field=$(`${prefix}-${f}`),value=field.value;row[f]=value.trim()===''||field.dataset?.imputedValue===value?null:Number(value);});return row;}
+function markImputed(report){
+  for(const entry of report?.rows||[])for(const name of entry.fields){
+    if(!imputableFeatures.includes(name))continue;
+    const field=$(`single-${name}`);field.value=String(entry.values[name]);field.dataset.imputedValue=field.value;
+  }
+}
 function showDatasetProfile(row){
   $('profile-detail-title').textContent=`Hồ sơ ${row.ID}`;
   const keys=['ID',...features];
@@ -644,7 +654,7 @@ function restoreDraft(){
   try{
     const draft=JSON.parse(localStorage.getItem(draftKey()));
     if(!draft?.row)return;
-    inputFields('single-fields','single',draft.row);
+    inputFields('single-fields','single',draft.row);markImputed(draft.result?.imputation);
     const savedModel=models.find(m=>m.name===draft.model&&m.digest===draft.digest);
     if(!savedModel){$('draft-status').textContent='Đã khôi phục dữ liệu nhập. Hãy dự báo lại với mô hình hiện tại.';return;}
     $('model-choice').value=savedModel.name;
@@ -660,13 +670,16 @@ async function predictSingle(event){
   const generation=singleGeneration,row=formRow('single'),config=configuration(),m=model();
   const result=await busy('Đang chấm điểm hồ sơ',()=>api('predict',{rows:[row],model:m.name,thresholds:config}));
   if(generation!==singleGeneration)return;
-  singleResult=result.rows[0];singleInputs=row;singleConfig=config;
+  singleResult=result.rows[0];singleResult.imputation=result.imputation;singleInputs={...row};singleConfig=config;
+  features.forEach(name=>{singleInputs[name]=singleResult[name]??row[name];});
+  markImputed(result.imputation);
   renderSingle(m,config);
   if(!profileOrigin)saveDraft(m);
   await explainSingle();
 }
 function renderSingle(m,config){
   const r=singleResult,tone=r.risk_level.toLowerCase();$('single-result').className='';$('single-result').innerHTML=`<div class="risk-result ${tone}"><div class="result-label">XÁC SUẤT VỠ NỢ · PD ĐÃ HIỆU CHỈNH</div><div class="pd-number">${pct(r.probability)}</div><span class="tag ${tone}">Rủi ro ${riskNames[r.risk_level].toLowerCase()}</span></div><div class="result-meta"><div><span>Điểm thô</span><strong>${r.raw_score.toFixed(4)}</strong></div><div><span>Ngưỡng nhãn · ${escapeHTML(config.basis)}</span><strong>${config.decision.toFixed(4)}</strong></div><div><span>Nhãn cảnh báo</span><strong>${r.default_label} · ${r.default_label?'Cảnh báo':'Không cảnh báo'}</strong></div><div><span>Mô hình</span><strong>${escapeHTML(m.name)}</strong></div></div><p class="fine-print">Nhóm rủi ro dựa trên PD (Thấp dưới ${pct(config.low)}, Trung bình từ ${pct(config.low)} đến dưới ${pct(config.high)}, Cao từ ${pct(config.high)}). Nhãn cảnh báo dùng ngưỡng riêng, nên hồ sơ nhóm Trung bình vẫn có thể được cảnh báo.</p>`;
+  if(r.imputation?.filled_cells)$('single-result').innerHTML+=imputationSummary(r.imputation);
   $('result-status').textContent=r.default_label?'Nhãn 1 · Cảnh báo':'Nhãn 0';$('result-status').className=`tag ${tone}`;['save-single','export-single','explain-single','transfer-single'].forEach(id=>$(id).disabled=false);$('explanation').hidden=true;
 }
 async function saveSingle(){
@@ -674,7 +687,7 @@ async function saveSingle(){
   const row={...singleInputs},result=singleResult,config={...singleConfig},m=model();
   await busy('Đang lưu hồ sơ chính thức',async()=>{
     const previousDatasets=state.datasets.slice();
-    const id=await addDataset(`Hồ sơ ${row.ID}`,[row],{save:null});
+    const id=await addDataset(`Hồ sơ ${row.ID}`,[row],{save:null,imputation:result.imputation});
     const v=version(),d=dataset();
     if(state.runs.some(r=>r.datasetId===id&&r.versionId===v.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config)))return;
     const created=new Date().toISOString(),runId=crypto.randomUUID();
@@ -727,6 +740,25 @@ async function deleteDataset(){
   if(!confirm(`Xóa tập dữ liệu ${d.name}? Kết quả lịch sử vẫn được giữ và có thể mở lại.`))return;
   d.deleted=true;await persist();selectDataset(state.datasets.find(item=>!item.deleted)?.id);notify('Đã xóa tập dữ liệu khỏi danh sách làm việc.');
 }
+function featureLabel(feature){
+  const name=feature.split('__').at(-1);
+  const labels={LIMIT_BAL:'Hạn mức tín dụng',AGE:'Tuổi',SEX:'Giới tính',EDUCATION:'Trình độ học vấn',MARRIAGE:'Tình trạng hôn nhân',PAY_0:'Trạng thái trả nợ tháng gần nhất',PAY_1:'Trạng thái trả nợ tháng gần nhất',DELAY_MONTHS_COUNT:'Số tháng có trả nợ trễ',MAX_DELAY_MONTHS:'Mức trễ hạn lớn nhất',AVG_BILL_AMT:'Dư nợ sao kê trung bình 6 tháng',BILL_TREND:'Chênh lệch dư nợ tháng gần nhất so với trung bình'};
+  if(labels[name])return labels[name];
+  const match=name.match(/^(UTILIZATION_|PAY_RATIO_|BILL_AMT|PAY_AMT|PAY_)([1-6])$/);
+  if(match)return `${({'UTILIZATION_':'Tỷ lệ sử dụng hạn mức tháng','PAY_RATIO_':'Tỷ lệ thanh toán so với dư nợ kỳ trước · tháng','BILL_AMT':'Dư nợ sao kê tháng','PAY_AMT':'Tiền thanh toán tháng','PAY_':'Trạng thái trả nợ tháng'})[match[1]]} ${match[2]}`;
+  return name;
+}
+function imputationSummary(report){
+  const fields=[...new Set(report.rows.flatMap(row=>row.fields))];
+  return `<div class="notice imputation-summary"><p>Đã điền ${fmt(report.filled_cells)} giá trị thiếu trong ${fmt(report.filled_rows)} hồ sơ từ thống kê tập train (median/mode): ${fields.map(name=>escapeHTML(`${featureLabel(name)} (${name})`)).join(', ')}. Đây là giá trị ước lượng, cần xác minh trước khi ra quyết định.</p></div>`;
+}
+function renderImputationReport(report){
+  displayedImputationReport=report;
+  const box=$('dataset-imputation');box.hidden=!report?.filled_cells;
+  $('download-imputation-report').hidden=box.hidden;
+  if(box.hidden){box.replaceChildren();return;}
+  box.innerHTML=imputationSummary(report)+`<details><summary>Xem các giá trị đã điền (${fmt(report.filled_rows)} hồ sơ)</summary><p>Hiển thị tối đa 25 hồ sơ; tải báo cáo JSON để xem đầy đủ.</p>${report.rows.slice(0,25).map(row=>`<p><strong>${escapeHTML(row.ID)}</strong>: ${row.fields.map(name=>`${escapeHTML(name)} = ${escapeHTML(row.values[name])}`).join(', ')}</p>`).join('')}</details>`;
+}
 async function explainSingle(){
   if(!singleInputs)return;
   const generation=singleGeneration,inputs=singleInputs,m=model(),box=$('explanation');
@@ -738,7 +770,7 @@ async function explainSingle(){
     const result=await api('explain',{rows:[inputs],model:m.name});
     if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
     const max=Math.max(...result.rows.map(r=>Math.abs(r.contribution)),.00001);
-    box.innerHTML=`<h3>Giải thích dự báo (SHAP)</h3><p>${escapeHTML(result.scale)}. Dấu + làm tăng điểm mô hình, dấu − làm giảm điểm. Đây là đóng góp vào điểm mô hình trước hiệu chỉnh xác suất.</p>${result.rows.map(r=>`<div class="contribution ${r.contribution<0?'negative':''}"><div><span>${escapeHTML(r.feature)}</span><strong>${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}</strong></div><meter min="0" max="${max}" value="${Math.abs(r.contribution)}">${r.contribution}</meter></div>`).join('')}`;
+    box.innerHTML=`<h3>Vì sao mô hình đưa ra kết quả này?</h3><p>${escapeHTML(result.scale)} · ${result.rows.length} yếu tố có độ lớn đóng góp cao nhất. Đỏ (+): tăng điểm rủi ro; xanh (−): giảm điểm. Các giá trị SHAP giải thích điểm mô hình trước hiệu chỉnh, không phải phần trăm PD và không chứng minh quan hệ nhân quả.</p>${singleResult?.imputation?.filled_cells?'<p>Hồ sơ có dữ liệu được điền từ tập train. Giải thích này dựa trên đầu vào sau khi điền.</p>':''}${result.rows.map(r=>{const width=Math.abs(r.contribution)/max*50;return `<div class="contribution ${r.contribution<0?'negative':'positive'}"><div><span>${escapeHTML(featureLabel(r.feature))}<small>${escapeHTML(r.feature)}</small></span><strong>${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}<small>${r.contribution>=0?'Tăng điểm':'Giảm điểm'}</small></strong></div><svg class="shap-bar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="${r.contribution>=0?'Tăng':'Giảm'} điểm: ${r.contribution.toFixed(4)}"><rect class="shap-track" width="100" height="8" rx="2"/><rect class="shap-value" x="${r.contribution<0?50-width:50}" width="${width}" height="8"/><path class="shap-zero" d="M50 0V8"/></svg></div>`;}).join('')}`;
   }catch{
     if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
     box.textContent='Chưa tải được giải thích SHAP. Kết quả dự báo đã có.';
@@ -772,9 +804,10 @@ document.querySelectorAll('[data-action="export"]').forEach(el=>el.addEventListe
 document.querySelectorAll('[data-action="sample"]').forEach(el=>el.addEventListener('click',guarded(loadSample)));
 $('sample-top').addEventListener('click',guarded(loadSample));$('upload').addEventListener('change',guarded(upload));
 $('back-to-profiles').addEventListener('click',guarded(returnToProfiles));
-$('single-form').addEventListener('submit',guarded(predictSingle));$('single-form').addEventListener('input',()=>{invalidateSingle();if(!profileOrigin)clearDraft();});$('single-form').addEventListener('reset',clearSingle);
+$('single-form').addEventListener('submit',guarded(predictSingle));$('single-form').addEventListener('input',event=>{if(event.target.dataset)delete event.target.dataset.imputedValue;invalidateSingle();if(!profileOrigin)clearDraft();});$('single-form').addEventListener('reset',clearSingle);
 $('fill-sample').addEventListener('click',guarded(async()=>{const sample=await api('sample');clearProfileContext();inputFields('single-fields','single',sample.rows[0]);invalidateSingle();clearDraft();}));
 $('save-single').addEventListener('click',guarded(saveSingle));$('export-single').addEventListener('click',guarded(()=>exportRows([singleResult],singleConfig)));$('explain-single').addEventListener('click',guarded(explainSingle));$('transfer-single').addEventListener('click',guarded(transferSingle));
+$('download-imputation-report').addEventListener('click',()=>{const report=displayedImputationReport;if(report)download(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),'bao_cao_dien_thieu.json');});
 document.querySelectorAll('[data-page="predict"]').forEach(link=>link.addEventListener('click',()=>{batchTab(false);if(location.hash==='#predict')navigate();}));
 document.querySelectorAll('[data-predict-mode]').forEach(link=>link.addEventListener('click',()=>{batchTab(link.dataset.predictMode==='batch');}));
 $('tab-single').addEventListener('click',()=>batchTab(false));$('tab-batch').addEventListener('click',()=>batchTab(true));

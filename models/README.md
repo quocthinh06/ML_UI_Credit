@@ -8,7 +8,11 @@ Chạy `python tools/download_model.py` để tải cả Random Forest mặc đ�
 19d97aeff847a990ea1a3f6c27f95975e41df9275d7e8913084c16c98c865f48
 ```
 
-The three verified deployment bundles are tracked so Vercel can check SHA256 without contacting Google Drive. Pipeline dùng imbalanced-learn 0.14.2, scikit-learn 1.6.1 và pandas 2.2.3 theo metadata bàn giao. XGBoost 3.4.1 được cài để chạy mô hình XGBoost của nhóm.
+Ba mô hình và `impute_stats_v1.pkl` được lưu trong Git; `python tools/vercel_build.py` kiểm tra SHA256 khi build Vercel. Pipeline dùng imbalanced-learn 0.14.2, scikit-learn 1.6.1 và pandas 2.2.3 theo metadata bàn giao. XGBoost 3.4.1 được cài để chạy mô hình XGBoost của nhóm.
+
+Thống kê điền thiếu có SHA256 `7dab4cbe963f5366036fa5d4fc2af694180baad4ad929b11b61144da12f4e38c`. Theo yêu cầu cập nhật ngày 11/11/2026, web chỉ điền SEX, EDUCATION, MARRIAGE bằng mode; AGE và PAY_AMT6 bằng median tập train. 18 trường còn lại bắt buộc ở mọi dòng để tính đầy đủ các đặc trưng trong biểu đồ nhóm cung cấp; không nhận đặc trưng dẫn xuất thay cho dữ liệu gốc. Không điền nhãn và không thay dữ liệu sai bằng thống kê. Quy tắc này thay thế đề xuất cũ điền mọi trường nếu thiếu dưới 50%.
+
+API nhập tệp và dự báo trả báo cáo `imputation` gồm dòng/ID, trường, giá trị đã điền và hash bộ thống kê. Báo cáo nhập tệp được lưu theo phiên bản dataset và tải được dưới dạng JSON. Dự báo đơn lẻ lưu báo cáo trong bản nháp và kết quả lịch sử. SHAP tự xuất hiện dưới kết quả, giải thích đầu vào sau khi điền; đóng góp vào điểm trước hiệu chỉnh, không phải phần trăm PD hay quan hệ nhân quả.
 
 Bundle phải có `pipeline`, `threshold`, `features`, `calibrator`, `model_name`, `versions`. Tên 38 đặc trưng phải khớp đầu ra `creditrisk/features.py`. Công thức đặc trưng và 3 hồ sơ kiểm thử lấy từ `notebooks/04_use_model .ipynb` trên Drive, không thực thi các cell notebook khi chạy ứng dụng.
 

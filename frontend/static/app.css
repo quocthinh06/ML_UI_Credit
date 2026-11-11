@@ -186,8 +186,19 @@ dialog form>label{margin:15px 20px}
 #explanation p{font-size:12px;margin:8px 0 15px}
 .contribution{margin:12px 0;font-size:12px}
 .contribution>div{display:flex;justify-content:space-between;gap:8px}
-.contribution meter{width:100%;height:12px;accent-color:var(--red)}
-.contribution.negative meter{accent-color:var(--teal)}
+.contribution small{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-top:3px}
+.contribution strong{text-align:right;white-space:nowrap}
+.shap-bar{display:block;width:100%;height:12px;margin-top:7px}
+[data-imputed-value]{background:#fffbeb;border-style:dashed}
+.shap-track{fill:#edf1f7}
+.shap-value{fill:var(--red)}
+.negative .shap-value{fill:var(--teal)}
+.shap-zero{stroke:#64748b;stroke-width:.4}
+.imputation-report{padding:16px 22px}
+.imputation-report details{margin-top:12px;font-size:13px}
+.imputation-report summary{cursor:pointer;font-weight:600}
+#download-imputation-report{margin:0 22px 16px}
+.imputation-summary{font-size:13px;line-height:1.6}
 .tabular{font-variant-numeric:tabular-nums}
 .dataset-select:empty{min-width:170px}
 ::selection{background:#d4e3ff;color:#143d7a}

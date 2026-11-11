@@ -8,10 +8,10 @@
   <title>
    CreditRisk AI · Dự báo rủi ro tín dụng
   </title>
-  <link href="static/app.css?v=20261111-workflows" rel="stylesheet"/>
+  <link href="static/app.css?v=20261111-xai-imputation" rel="stylesheet"/>
   <link href="static/auth.css" rel="stylesheet"/>
   <link href="static/theme-v2.css?v=20261105-layout-v2" rel="stylesheet"/>
-  <script defer="" src="static/app.js?v=20261111-unified-history">
+  <script defer="" src="static/app.js?v=20261111-xai-imputation">
   </script>
   <script defer="" src="static/layout-v2.js?v=20261111-workflows">
   </script>
@@ -195,7 +195,7 @@
          Tải tệp dữ liệu
         </b>
         <span>
-         CSV, Excel hoặc JSON, đủ 23 trường UCI.
+         CSV, Excel hoặc JSON · 18 trường bắt buộc, 5 trường có thể điền từ thống kê train.
         </span>
        </li>
        <li>
@@ -280,7 +280,7 @@
         Quản lý dữ liệu lịch sử
        </h1>
        <p>
-        CSV, XLSX hoặc JSON · tối đa 4 MiB và 30.000 hồ sơ. Hoàn tất đủ 23 trường trước khi tải tệp.
+        CSV, XLSX hoặc JSON · tối đa 4 MiB và 30.000 hồ sơ. Cần đủ LIMIT_BAL, PAY_1–6 (hoặc PAY_0 thay PAY_1), BILL_AMT1–6 và PAY_AMT1–5 ở mọi dòng. SEX, EDUCATION, MARRIAGE, AGE và PAY_AMT6 được điền từ thống kê train nếu thiếu; có báo cáo sau khi nhập. Không tự điền nhãn vỡ nợ.
        </p>
       </div>
       <div class="actions">
@@ -315,6 +315,8 @@
        <select aria-label="Phiên bản dữ liệu" id="version-choice">
        </select>
       </div>
+      <div class="imputation-report" hidden id="dataset-imputation" role="status"></div>
+      <button class="button secondary compact" hidden id="download-imputation-report" type="button">Tải báo cáo điền thiếu (JSON)</button>
       <div class="action-toolbar">
        <div class="toolbar-main">
         <button class="button" id="predict-dataset">
@@ -490,7 +492,7 @@
           Dữ liệu đầu vào chấm điểm
          </h2>
          <p>
-          Nhập đủ 23 trường; không tự thay thế dữ liệu thiếu.
+          Cần đủ 18 trường bắt buộc. Có thể để trống SEX, EDUCATION, MARRIAGE, AGE và PAY_AMT6: web sẽ điền từ median/mode của tập train và báo rõ trong kết quả. Không dùng 0 để thay giá trị chưa biết.
          </p>
         </div>
         <button class="button secondary compact" id="fill-sample" type="button">
