@@ -11,7 +11,7 @@
   <link href="static/app.css?v=20261111-workflows" rel="stylesheet"/>
   <link href="static/auth.css" rel="stylesheet"/>
   <link href="static/theme-v2.css?v=20261105-layout-v2" rel="stylesheet"/>
-  <script defer="" src="static/app.js?v=20261111-view-profiles">
+  <script defer="" src="static/app.js?v=20261111-unified-history">
   </script>
   <script defer="" src="static/layout-v2.js?v=20261111-workflows">
   </script>
@@ -46,9 +46,9 @@
      <span data-icon="database">
      </span>
      <span>
-      Quản lý dữ liệu
+      Quản lý dữ liệu lịch sử
       <small>
-       Tập hồ sơ &amp; phiên bản
+       Tập hồ sơ &amp; lịch sử dự báo
       </small>
      </span>
     </a>
@@ -56,19 +56,9 @@
      <span data-icon="predict">
      </span>
      <span>
-      Dự báo rủi ro
+      Dự báo đơn lẻ
       <small>
-       Đơn lẻ &amp; hàng loạt
-      </small>
-     </span>
-    </a>
-    <a data-page="history" href="#history">
-     <span data-icon="history">
-     </span>
-     <span>
-      Kết quả &amp; Lịch sử
-      <small>
-       Tra cứu lần dự báo
+       Chấm điểm từng hồ sơ
       </small>
      </span>
     </a>
@@ -287,17 +277,20 @@
      <div class="page-heading">
       <div>
        <h1>
-        Quản lý dữ liệu
+        Quản lý dữ liệu lịch sử
        </h1>
        <p>
         CSV, XLSX hoặc JSON · tối đa 4 MiB và 30.000 hồ sơ. Hoàn tất đủ 23 trường trước khi tải tệp.
        </p>
       </div>
+      <div class="actions">
+       <a class="button secondary" href="#history">Xem lịch sử dự báo</a>
       <button class="button" data-action="upload">
        <span data-icon="plus">
        </span>
        Tải lên tệp mới
       </button>
+      </div>
      </div>
      <div class="panel">
       <div class="panel-heading">
@@ -371,15 +364,47 @@
        Khôi phục
       </button>
      </div>
+     <div class="page-heading">
+      <div>
+       <h2 id="history-title" tabindex="-1">
+        Lịch sử dự báo
+       </h2>
+       <p>
+        Lưu vết phiên bản dữ liệu, model, ngưỡng và thời điểm của mỗi lần chạy.
+       </p>
+      </div>
+      <button class="button secondary" id="history-backup">
+       <span data-icon="download">
+       </span>
+       Sao lưu lịch sử
+      </button>
+     </div>
+     <div class="panel">
+      <div class="panel-heading">
+       <h2>
+        Các lượt dự báo đã lưu
+       </h2>
+       <input aria-label="Tìm lịch sử" id="history-search" placeholder="Tìm tên tệp hoặc mô hình…" type="search"/>
+      </div>
+      <div class="table-wrap" id="history-table">
+      </div>
+     </div>
+     <div class="notice">
+      <span data-icon="history">
+      </span>
+      <p>
+       Các lượt dự báo giữ bản chụp dữ liệu và ngưỡng tại thời điểm chạy. Sửa tập hồ sơ không làm thay đổi kết quả lịch sử.
+      </p>
+     </div>
     </section>
     <section class="page" hidden="" id="page-predict">
      <div class="page-heading">
       <div>
        <h1>
-        Dự báo nguy cơ vỡ nợ
+        Dự báo đơn lẻ
        </h1>
        <p>
-        Chấm điểm một hồ sơ hoặc phân tích hàng loạt bằng model thực.
+        Nhập thông tin một hồ sơ để dự báo nguy cơ vỡ nợ.
        </p>
       </div>
       <button class="button secondary" id="goto-models">
@@ -625,40 +650,6 @@
        <div class="table-footer" id="results-footer">
        </div>
       </div>
-     </div>
-    </section>
-    <section class="page" hidden="" id="page-history">
-     <div class="page-heading">
-      <div>
-       <h1>
-        Kết quả &amp; Lịch sử
-       </h1>
-       <p>
-        Lưu vết phiên bản dữ liệu, model, ngưỡng và thời điểm của mỗi lần chạy.
-       </p>
-      </div>
-      <button class="button secondary" id="history-backup">
-       <span data-icon="download">
-       </span>
-       Sao lưu lịch sử
-      </button>
-     </div>
-     <div class="panel">
-      <div class="panel-heading">
-       <h2>
-        Các lượt dự báo đã lưu
-       </h2>
-       <input aria-label="Tìm lịch sử" id="history-search" placeholder="Tìm tên tệp hoặc mô hình…" type="search"/>
-      </div>
-      <div class="table-wrap" id="history-table">
-      </div>
-     </div>
-     <div class="notice">
-      <span data-icon="history">
-      </span>
-      <p>
-       Các lượt dự báo giữ bản chụp dữ liệu và ngưỡng tại thời điểm chạy. Sửa tập hồ sơ không làm thay đổi kết quả lịch sử.
-      </p>
      </div>
     </section>
     <section class="page" hidden="" id="page-models">

@@ -26,6 +26,28 @@ function app() {
   return {run: code=>vm.runInContext(code,context), elements};
 }
 
+test('datasets and prediction history share one management page',()=>{
+  const html=fs.readFileSync('frontend/index.html','utf8');
+  const management=html.split('id="page-datasets"')[1].split('</section>')[0];
+  assert.match(management,/id="datasets-table"/);
+  assert.match(management,/id="history-table"/);
+  assert.match(management,/Quản lý dữ liệu lịch sử/);
+  assert.doesNotMatch(html,/data-page="history"|id="page-history"/);
+  assert.doesNotMatch(html,/Đơn lẻ &amp; hàng loạt/);
+});
+
+test('old history links open the combined management page and its history',()=>{
+  const {run,elements}=app();
+  run("$('sidebar').classList={remove(){}};$('menu-toggle').setAttribute=()=>{};location.hash='#history'");
+  let scrolled=false;
+  run("$('history-title')");
+  elements.get('history-title').scrollIntoView=()=>{scrolled=true;};
+  elements.get('history-title').focus=()=>{};
+  run('navigate()');
+  assert.equal(run('document.title'),'Quản lý dữ liệu lịch sử · CreditRisk AI');
+  assert.equal(scrolled,true);
+});
+
 test('view dataset selects its latest version and brings its content into view',()=>{
   const {run,elements}=app();
   const calls=[];

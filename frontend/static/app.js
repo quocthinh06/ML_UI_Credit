@@ -237,13 +237,14 @@ function activeRun() {
 function selectDataset(id, vid) { selectedRunId=null; selectedDataset = id; selectedVersion = vid || dataset()?.versions.at(-1)?.id; selectedCustomer = null; resultsPage = dataPage = 0; renderAll(); }
 function navigate() {
   const page = location.hash.slice(1) || 'overview';
-  const current = ['overview','datasets','predict','history','models'].includes(page) ? page : 'overview';
+  const current = page==='history' ? 'datasets' : ['overview','datasets','predict','models'].includes(page) ? page : 'overview';
   document.querySelectorAll('.page').forEach(el => el.hidden = el.id !== `page-${current}`);
   document.querySelectorAll('[data-page]').forEach(el => { el.classList.toggle('active', el.dataset.page === current); if (el.dataset.page === current) el.setAttribute('aria-current','page'); else el.removeAttribute('aria-current'); });
   $('sidebar').classList.remove('open'); $('menu-toggle').setAttribute('aria-expanded','false');
   if(current==='models'&&models.length)renderModels();
   if(current==='predict'&&!$('single-panel').hidden&&singleResult&&$('explanation').hidden)void explainSingle();
-  document.title = `${({overview:'Tổng quan',datasets:'Quản lý dữ liệu',predict:'Dự báo rủi ro',history:'Kết quả & Lịch sử',models:'Hiệu năng mô hình'})[current]} · CreditRisk AI`;
+  if(page==='history'){$('history-title').focus({preventScroll:true});$('history-title').scrollIntoView({block:'center'});}
+  document.title = `${({overview:'Tổng quan',datasets:'Quản lý dữ liệu lịch sử',predict:'Dự báo đơn lẻ',models:'Hiệu năng mô hình'})[current]} · CreditRisk AI`;
 }
 function batchTab(show) { if(show)clearProfileContext(); $('tab-batch').hidden=!show; $('single-panel').hidden = show; $('batch-panel').hidden = !show; $('tab-single').classList.toggle('active', !show); $('tab-batch').classList.toggle('active', show); $('tab-single').setAttribute('aria-selected', String(!show)); $('tab-batch').setAttribute('aria-selected', String(show)); $('tab-single').tabIndex=show?-1:0; $('tab-batch').tabIndex=show?0:-1; }
 function setModelInfo() {
