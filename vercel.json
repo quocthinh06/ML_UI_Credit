@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "flask",
-  "buildCommand": "python tools/download_model.py --verify-only",
+  "buildCommand": "python tools/vercel_build.py",
   "functions": {
     "main.py": {
       "maxDuration": 60,
