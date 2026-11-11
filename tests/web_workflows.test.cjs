@@ -26,6 +26,20 @@ function app() {
   return {run: code=>vm.runInContext(code,context), elements};
 }
 
+test('view dataset selects its latest version and brings its content into view',()=>{
+  const {run,elements}=app();
+  const calls=[];
+  run("globalThis.datasetAction=null;table=(id,columns,rows,options)=>{if(id==='datasets-table')datasetAction=options.action.run;};pagination=()=>{};renderDatasets()");
+  const title=elements.get('data-title');
+  title.focus=options=>calls.push(['focus',options.preventScroll]);
+  title.scrollIntoView=options=>calls.push(['scroll',options.block]);
+  run("dataPage=4;datasetAction({id:'b'})");
+  assert.equal(run('selectedDataset'),'b');
+  assert.equal(run('selectedVersion'),'v2');
+  assert.equal(run('dataPage'),0);
+  assert.deepEqual(calls,[['focus',true],['scroll','center']]);
+});
+
 test('single transfer asks for destination and appends inputs to its latest version', async()=>{
   const {run,elements}=app();
   run('transferSingle()');

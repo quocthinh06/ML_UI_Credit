@@ -314,7 +314,7 @@ function renderHistory() {
 function renderDatasets() {
   const query = $('dataset-search').value.toLowerCase();
   const rows = workingDatasets().filter(d => d.name.toLowerCase().includes(query)).map(d => { const v = d.versions.at(-1), run = state.runs.find(r => r.datasetId === d.id && r.modelHash === model()?.digest); return {...d, count:v.rows.length, revision:v.revision, created:v.created, status: !run ? 'Chưa dự báo' : run.versionId === v.id ? 'Đã dự báo' : 'Cần dự báo lại'}; });
-  table('datasets-table', [['name','Tên tập hồ sơ'],['count','Số hồ sơ'],['revision','Phiên bản'],['created','Cập nhật'],['status','Trạng thái model đang chọn']], rows, {action:{label:'Xem hồ sơ',run:r=>selectDataset(r.id)},selected:r=>r.id===selectedDataset});
+  table('datasets-table', [['name','Tên tập hồ sơ'],['count','Số hồ sơ'],['revision','Phiên bản'],['created','Cập nhật'],['status','Trạng thái model đang chọn']], rows, {action:{label:'Xem hồ sơ',run:r=>{selectDataset(r.id);$('data-title').focus({preventScroll:true});$('data-title').scrollIntoView({block:'center'});}},selected:r=>r.id===selectedDataset});
   const v = version(); $('data-title').textContent = dataset()?.name || 'Nội dung tập hồ sơ';
   $('data-caption').textContent = v ? `Phiên bản ${v.revision} · ${fmt(v.rows.length)} dòng · ${Object.keys(v.rows[0] || {}).length} cột · Chọn dòng để sửa hoặc xóa` : 'Chọn một tập hồ sơ để xem.';
   const data=v?.rows||[],columns=[['ID','Mã hồ sơ'],['AGE','Tuổi'],['LIMIT_BAL','Hạn mức (TWD)'],['PAY_0','Trả nợ gần nhất']];
