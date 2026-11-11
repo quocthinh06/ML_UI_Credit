@@ -26,6 +26,30 @@ function app() {
   return {run: code=>vm.runInContext(code,context), elements};
 }
 
+test('AI commentary escapes text, caches the same result and preserves missing-field provenance',async()=>{
+  const {run}=app();
+  run(`models=[{name:'RF'}];$('model-choice').value='RF';singleInputs={ID:'one',AGE:34};singleConfig={decision:.39};
+    singleResult={imputation:{rows:[{fields:['AGE'],values:{AGE:34}}]}};globalThis.calls=0;
+    api=async(path,data)=>{calls++;if(data.rows[0].AGE!==null)throw new Error('lost provenance');return {
+      status:'ok',provider:'Groq',model:'test',insights:[{text:'<script>alert(1)</script>',features:['PAY_1']}],
+      checks:[{text:'Xác minh trả nợ'}],evidence:[{feature:'PAY_1',value:2,contribution:.1}]};};`);
+  await run('generateInsights();');
+  await run('generateInsights();');
+  assert.equal(run('calls'),1);
+  assert.match(run("$('ai-insights').innerHTML"),/&lt;script&gt;/);
+  assert.doesNotMatch(run("$('ai-insights').innerHTML"),/<script>/);
+});
+
+test('a delayed AI response cannot attach to edited input',async()=>{
+  const {run}=app();
+  run(`models=[{name:'RF'}];$('model-choice').value='RF';singleInputs={ID:'one'};singleResult={};singleConfig={};
+    globalThis.releaseAI=null;api=async()=>new Promise(resolve=>releaseAI=()=>resolve({status:'ok'}));
+    globalThis.pendingAI=generateInsights();invalidateSingle();`);
+  await run('releaseAI();pendingAI');
+  assert.equal(run('singleResult'),null);
+  assert.equal(run("$('generate-insights').disabled"),true);
+});
+
 test('filled values retain provenance across a new prediction until explicitly edited',()=>{
   const {run}=app();
   run("features=['AGE'];$('single-ID').value='one';$('single-AGE').dataset={};markImputed({rows:[{fields:['AGE'],values:{AGE:34}}]})");

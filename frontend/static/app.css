@@ -183,6 +183,10 @@ dialog form>label{margin:15px 20px}
 .check{flex-direction:row;align-items:center}
 .check input{min-height:auto}
 #explanation{padding:0 20px 20px}
+.ai-insights-panel{padding:20px;border-top:1px solid var(--line)}
+.ai-insight{padding:12px;margin:10px 0;background:var(--soft);border-radius:8px}
+.ai-insight p{margin:0 0 8px}
+.ai-insight small{color:var(--muted)}
 #explanation p{font-size:12px;margin:8px 0 15px}
 .contribution{margin:12px 0;font-size:12px}
 .contribution>div{display:flex;justify-content:space-between;gap:8px}

@@ -29,6 +29,8 @@ Có thể mở HTML trực tiếp để xem cấu trúc và CSS. Để dự báo
 
 ## Deploy Vercel
 
+Phân tích insight bằng mô hình ngôn ngữ là tùy chọn: cấu hình `GROQ_API_KEY` ở server, mặc định dùng `openai/gpt-oss-20b`. Xem [hướng dẫn từng bước](docs/GROQ_SETUP.md). Chỉ gọi Groq khi bấm nút dưới SHAP; không cấu hình key hoặc hết quota vẫn dùng dự báo và SHAP bình thường.
+
 Import repo này và chọn branch `main`. `vercel.json` cấu hình Flask, entrypoint `main:app`, Python 3.12 và build command `python tools/download_model.py`. Không cần cấu hình Output Directory. Model được tải và kiểm tra SHA256 trong bước build. Runtime web không cài PyQt6/Matplotlib/SHAP; Linux dùng XGBoost CPU để giảm kích thước bundle.
 
 Website hoạt động ngay khi chưa cấu hình database: dữ liệu, phiên bản và lịch sử lưu vào **IndexedDB của trình duyệt hiện tại**. API dự báo không lưu hồ sơ lên ổ đĩa server. Chọn **Quản lý dữ liệu → Sao lưu JSON** để tạo bản sao toàn bộ dữ liệu/lịch sử; có chức năng khôi phục.

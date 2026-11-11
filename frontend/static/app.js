@@ -256,6 +256,7 @@ function setModelInfo() {
   $('predict-model-detail').textContent = `${model().version} · CV AUC: ${model().cv_auc?.toFixed(4) ?? '—'} · Test AUC: ${model().test_auc?.toFixed(4) ?? '—'}`;
 }
 function invalidateSingle() {
+  $('ai-insights').replaceChildren();$('generate-insights').disabled=true;
   $('explain-single').hidden=true;
   singleGeneration++;
   $('explanation').replaceChildren();$('draft-status').textContent='';
@@ -678,6 +679,8 @@ async function predictSingle(event){
   await explainSingle();
 }
 function renderSingle(m,config){
+  $('generate-insights').disabled=false;$('ai-insights').replaceChildren();
+  if(singleResult.insights)renderInsights(singleResult.insights);
   const r=singleResult,tone=r.risk_level.toLowerCase();$('single-result').className='';$('single-result').innerHTML=`<div class="risk-result ${tone}"><div class="result-label">XÁC SUẤT VỠ NỢ · PD ĐÃ HIỆU CHỈNH</div><div class="pd-number">${pct(r.probability)}</div><span class="tag ${tone}">Rủi ro ${riskNames[r.risk_level].toLowerCase()}</span></div><div class="result-meta"><div><span>Điểm thô</span><strong>${r.raw_score.toFixed(4)}</strong></div><div><span>Ngưỡng nhãn · ${escapeHTML(config.basis)}</span><strong>${config.decision.toFixed(4)}</strong></div><div><span>Nhãn cảnh báo</span><strong>${r.default_label} · ${r.default_label?'Cảnh báo':'Không cảnh báo'}</strong></div><div><span>Mô hình</span><strong>${escapeHTML(m.name)}</strong></div></div><p class="fine-print">Nhóm rủi ro dựa trên PD (Thấp dưới ${pct(config.low)}, Trung bình từ ${pct(config.low)} đến dưới ${pct(config.high)}, Cao từ ${pct(config.high)}). Nhãn cảnh báo dùng ngưỡng riêng, nên hồ sơ nhóm Trung bình vẫn có thể được cảnh báo.</p>`;
   if(r.imputation?.filled_cells)$('single-result').innerHTML+=imputationSummary(r.imputation);
   $('result-status').textContent=r.default_label?'Nhãn 1 · Cảnh báo':'Nhãn 0';$('result-status').className=`tag ${tone}`;['save-single','export-single','explain-single','transfer-single'].forEach(id=>$(id).disabled=false);$('explanation').hidden=true;
@@ -778,6 +781,27 @@ async function explainSingle(){
     $('explain-single').hidden=false;
   }
 }
+function renderInsights(result){
+  const box=$('ai-insights');
+  if(result.status!=='ok'){box.textContent=result.message;return;}
+  box.innerHTML=`<h3>Insight hỗ trợ chuyên viên</h3><p class="fine-print">Bản diễn giải do ${escapeHTML(result.provider)} · ${escapeHTML(result.model)} tạo. Cần chuyên viên kiểm chứng; không phải quyết định phê duyệt hoặc từ chối tín dụng.</p>${result.insights.map(item=>`<article class="ai-insight"><p>${escapeHTML(item.text)}</p><small>Bằng chứng: ${item.features.map(name=>{const evidence=result.evidence.find(row=>row.feature===name);return escapeHTML(`${featureLabel(name)} = ${fmt(evidence.value)} · SHAP ${evidence.contribution>=0?'+':''}${evidence.contribution.toFixed(4)}`);}).join('; ')}</small></article>`).join('')}<h4>Gợi ý bước kiểm tra tiếp</h4><ul>${result.checks.map(check=>`<li>${escapeHTML(check.text)}</li>`).join('')}</ul>`;
+}
+async function generateInsights(){
+  if(!singleResult||!singleInputs)return;
+  if(singleResult.insights?.status==='ok'){renderInsights(singleResult.insights);return;}
+  const generation=singleGeneration,snapshot=singleResult,m=model(),row={...singleInputs},config={...singleConfig};
+  for(const entry of snapshot.imputation?.rows||[])for(const name of entry.fields)if(imputableFeatures.includes(name))row[name]=null;
+  const button=$('generate-insights'),box=$('ai-insights');button.disabled=true;box.textContent='Đang phân tích bằng chứng SHAP bằng AI…';
+  try{
+    const result=await api('insights',{rows:[row],model:m.name,thresholds:config});
+    if(generation!==singleGeneration||snapshot!==singleResult)return;
+    renderInsights(result);
+    if(result.status==='ok'){snapshot.insights=result;if(!profileOrigin)saveDraft(m);}
+  }catch{
+    if(generation===singleGeneration&&snapshot===singleResult)box.textContent='Chưa tải được insight AI. Kết quả dự báo và SHAP vẫn sử dụng được.';
+  }finally{if(generation===singleGeneration&&snapshot===singleResult)button.disabled=false;}
+}
+$('generate-insights').addEventListener('click',guarded(generateInsights));
 async function compareModels(){
   if(!version()?.rows.length)throw new Error('Chọn tập hồ sơ trước.');
   const d=dataset(),v=version();

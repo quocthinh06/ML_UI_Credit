@@ -381,4 +381,16 @@ def create_app(test_config=None):
         top = explanation.sort_values("contribution", key=lambda values: values.abs(), ascending=False).head(12)
         return jsonify(rows=records_json(top.drop(columns="scale")), scale=scale)
 
+    @app.post("/api/insights")
+    def insights():
+        from .insights import generate_insights
+
+        result, model, config = predict(payload(), limit=1)
+        explanation = model.explain(result)
+        row = result.iloc[0]
+        prediction = {key: float(row[key]) for key in ("raw_score", "probability")}
+        prediction.update(default_label=int(row["default_label"]), risk_level=row["risk_level"], thresholds=asdict(config))
+        return jsonify(generate_insights(result, explanation, prediction, model.name,
+                                         bool(result.attrs["imputation"]["filled_cells"])))
+
     return app

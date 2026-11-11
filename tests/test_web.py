@@ -39,6 +39,22 @@ def test_prediction_reports_only_allowed_filled_fields(client, frame):
     assert client.post("/api/predict", json={"rows": rows}).status_code == 400
 
 
+def test_insights_recompute_scores_and_report_imputation(client, frame, model, monkeypatch):
+    monkeypatch.setattr(model, "explain", lambda values: pd.DataFrame([{"feature": "PAY_1", "contribution": .1}]), raising=False)
+    seen = {}
+    def commentary(values, explanation, prediction, name, has_imputed):
+        seen.update(prediction=prediction, imputed=has_imputed)
+        return {"status": "unavailable", "message": "test only"}
+    monkeypatch.setattr("creditrisk.insights.generate_insights", commentary)
+    rows = frame.drop(columns="AGE").to_dict("records")
+    rows[0].update(probability=.99, raw_score=.99)
+    response = client.post("/api/insights", json={"rows": rows})
+    assert response.status_code == 200
+    assert seen["prediction"]["probability"] == .25
+    assert seen["imputed"] is True
+    assert client.post("/api/insights", json={"rows": rows * 2}).status_code == 400
+
+
 def test_import_fills_supplementary_columns_and_preserves_labels(client, frame):
     frame = frame.drop(columns=["AGE", "EDUCATION"])
     frame["default.payment.next.month"] = None
