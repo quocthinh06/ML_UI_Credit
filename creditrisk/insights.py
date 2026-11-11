@@ -48,7 +48,8 @@ def generate_insights(frame, explanation, prediction, model_name, has_imputed):
     if model.startswith("openai/gpt-oss"):
         body["reasoning_effort"] = "low"
     request = Request("https://api.groq.com/openai/v1/chat/completions", data=json.dumps(body).encode(),
-                      headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+                      headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                               "User-Agent": "CreditRiskAI/0.4"})
     try:
         with urlopen(request, timeout=20) as response:
             raw = response.read(65537)

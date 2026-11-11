@@ -14,6 +14,7 @@ def test_groq_receives_only_server_evidence_without_identity(monkeypatch, frame)
     explanation = pd.DataFrame([{"feature": "PAY_1", "contribution": .1}, {"feature": "SEX", "contribution": .2}])
     captured = {}
     def request(req, timeout):
+        assert req.get_header("User-agent") == "CreditRiskAI/0.4"
         captured.update(json.loads(req.data))
         return BytesIO(json.dumps({"choices": [{"message": {"content": json.dumps({
             "insights": [{"text": "Trả nợ gần nhất làm tăng điểm.", "features": ["PAY_1"]}],
