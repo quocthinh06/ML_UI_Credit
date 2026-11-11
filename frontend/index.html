@@ -8,12 +8,12 @@
   <title>
    CreditRisk AI · Dự báo rủi ro tín dụng
   </title>
-  <link href="static/app.css?v=20261105-layout-v2" rel="stylesheet"/>
+  <link href="static/app.css?v=20261111-workflows" rel="stylesheet"/>
   <link href="static/auth.css" rel="stylesheet"/>
   <link href="static/theme-v2.css?v=20261105-layout-v2" rel="stylesheet"/>
-  <script defer="" src="static/app.js?v=20261105-layout-v2">
+  <script defer="" src="static/app.js?v=20261111-selected-dataset">
   </script>
-  <script defer="" src="static/layout-v2.js?v=20261105-layout-v2">
+  <script defer="" src="static/layout-v2.js?v=20261111-workflows">
   </script>
  </head>
  <body>
@@ -157,6 +157,19 @@
     <div class="alert" hidden="" id="alert" role="alert">
     </div>
     <section class="page" id="page-overview">
+     <div class="panel selection-bar needs-data">
+      <label>
+       Tập hồ sơ đang phân tích
+       <select class="dataset-select" id="overview-dataset">
+       </select>
+      </label>
+      <div class="selection-info" id="overview-context">
+       Chưa có dữ liệu
+      </div>
+      <button class="button secondary" id="analyze-selected">
+       Phân tích tệp đã chọn
+      </button>
+     </div>
      <div class="page-heading">
       <div>
        <h1>
@@ -175,7 +188,7 @@
        <button class="button" data-action="upload">
         <span data-icon="plus">
         </span>
-        Tải tệp &amp; dự báo
+        Tải tệp dữ liệu
        </button>
       </div>
      </div>
@@ -184,7 +197,7 @@
        Bắt đầu trong 3 bước
       </h2>
       <p>
-       Chưa có dữ liệu để hiển thị. Làm theo các bước dưới đây, mất chưa tới một phút.
+       Chọn một tập hồ sơ và bấm Phân tích tập đã chọn để xem chỉ số dự báo.
       </p>
       <ol class="steps">
        <li>
@@ -223,19 +236,7 @@
      </div>
      <div class="metrics needs-data" id="portfolio-metrics">
      </div>
-     <div class="panel selection-bar needs-data">
-      <label>
-       Tập hồ sơ đang phân tích
-       <select class="dataset-select" id="overview-dataset">
-       </select>
-      </label>
-      <div class="selection-info" id="overview-context">
-       Chưa có dữ liệu
-      </div>
-      <button class="button secondary" id="analyze-selected">
-       Phân tích tệp đã chọn
-      </button>
-     </div>
+     <p class="notice" id="dashboard-awaiting" hidden>Chưa có kết quả cho tập hồ sơ và cấu hình đang chọn. Bấm “Phân tích tập đã chọn” để chạy dự báo.</p>
      <div hidden="" id="dashboard-content">
       <div class="section-heading">
        <div>
@@ -289,7 +290,7 @@
         Quản lý dữ liệu
        </h1>
        <p>
-        Tập hồ sơ, phiên bản dữ liệu và lịch sử cập nhật.
+        CSV, XLSX hoặc JSON · tối đa 4 MiB và 30.000 hồ sơ. Hoàn tất đủ 23 trường trước khi tải tệp.
        </p>
       </div>
       <button class="button" data-action="upload">
@@ -332,26 +333,23 @@
         <button class="button secondary" id="edit-customer">
          Sửa hồ sơ đã chọn
         </button>
+         <button class="button secondary danger" id="delete-customer">
+          Xóa dòng đã chọn
+         </button>
+         <button class="button secondary danger" id="delete-dataset">
+          Xóa tập dữ liệu
+         </button>
        </div>
        <details class="more-menu">
         <summary class="button secondary">
          Thao tác khác ▾
         </summary>
         <div class="menu-list">
-         <button class="menu-item" id="clone-dataset">
-          Lưu thành bản mới
-         </button>
          <button class="menu-item" id="rename-dataset">
           Đổi tên tập dữ liệu
          </button>
          <div class="menu-sep" role="separator">
          </div>
-         <button class="menu-item danger" id="delete-customer">
-          Xóa dòng đã chọn
-         </button>
-         <button class="menu-item danger" id="delete-dataset">
-          Xóa tập dữ liệu
-         </button>
         </div>
        </details>
       </div>
@@ -429,20 +427,22 @@
        </label>
        <label>
         PD thấp (%)
-        <input id="low" max="100" min="0" step="0.01" type="number" value="20"/>
+        <input id="low" max="100" min="0" step="0.01" type="number" value="20" readonly/>
        </label>
        <label>
         PD cao (%)
-        <input id="high" max="100" min="0" step="0.01" type="number" value="50"/>
+        <input id="high" max="100" min="0" step="0.01" type="number" value="50" readonly/>
        </label>
       </div>
+      <p class="fine-print">Dùng ngưỡng mặc định của mô hình cho quy trình thông thường. Thay ngưỡng cảnh báo sẽ thay đổi số hồ sơ bị cảnh báo. Chỉ số Precision và Recall đã công bố theo ngưỡng mặc định không áp dụng cho ngưỡng mới.</p>
+      <button class="button secondary compact" id="reset-thresholds" type="button">Về ngưỡng mặc định</button>
      </details>
      <div aria-label="Loại dự báo" class="tabs" role="tablist">
       <button aria-controls="single-panel" aria-selected="true" class="tab active" id="tab-single" role="tab">
        Một hồ sơ đơn lẻ
       </button>
-      <button aria-controls="batch-panel" aria-selected="false" class="tab" id="tab-batch" role="tab">
-       Hàng loạt CSV / Excel
+      <button aria-controls="batch-panel" aria-selected="false" class="tab" id="tab-batch" role="tab" hidden>
+       Kết quả của tập hồ sơ
       </button>
      </div>
      <div class="notice" hidden="" id="profile-context">
@@ -501,21 +501,22 @@
          Kết quả sẽ hiển thị sau khi chạy model.
         </p>
        </div>
+       <p class="fine-print" id="draft-status" role="status"></p>
        <div class="result-actions">
-        <button class="button" disabled="" id="save-single">
+        <button class="button" disabled="" id="save-single" title="Đưa hồ sơ vào tập chính thức và ghi lượt dự báo vào lịch sử">
          Lưu hồ sơ &amp; kết quả
         </button>
         <button class="button secondary" disabled="" id="export-single">
          Xuất Excel
         </button>
-        <button class="button secondary" disabled="" id="explain-single">
-         Giải thích kết quả
+        <button class="button secondary" disabled="" id="explain-single" hidden>
+         Thử tải lại SHAP
         </button>
         <button class="button secondary" disabled="" id="transfer-single">
-         Thêm vào dự báo hàng loạt
+         Thêm đầu vào vào tập hồ sơ
         </button>
        </div>
-       <div hidden="" id="explanation">
+       <div hidden="" id="explanation" aria-live="polite">
        </div>
        <p class="fine-print">
         Nhãn 1 là cảnh báo rủi ro. Hệ thống không tự phê duyệt hoặc từ chối tín dụng.
@@ -534,7 +535,7 @@
          </p>
         </div>
         <button class="button secondary" data-action="upload">
-         Tải tệp mới
+         Tải tệp dữ liệu
         </button>
        </div>
        <div class="action-toolbar">
@@ -549,8 +550,10 @@
          Xuất kết quả đã lọc
         </button>
        </div>
+       <details class="advanced-filters">
+        <summary class="button">Bộ lọc kết quả</summary>
        <div class="filters">
-        <input aria-label="Tìm ID khách hàng" id="result-search" placeholder="Tìm ID khách hàng…" type="search"/>
+        <select id="result-search" aria-label="Mã khách hàng"><option value="">Tất cả mã hồ sơ</option></select>
         <select aria-label="Mức rủi ro" id="risk-filter">
          <option value="">
           Tất cả mức rủi ro
@@ -567,37 +570,33 @@
         </select>
         <label>
          PD từ (%)
-         <input id="min-pd" max="100" min="0" type="number" value="0"/>
+         <input id="min-pd" max="100" min="0" type="range" value="0"/><output id="min-pd-value" for="min-pd"></output>
         </label>
         <label>
          PD đến (%)
-         <input id="max-pd" max="100" min="0" type="number" value="100"/>
+         <input id="max-pd" max="100" min="0" type="range" value="100"/><output id="max-pd-value" for="max-pd"></output>
         </label>
        </div>
-       <details class="advanced-filters">
-        <summary>
-         Bộ lọc nâng cao
-        </summary>
         <div class="filters">
          <label>
           Tuổi từ
-          <input id="min-age" max="100" min="18" type="number" value="18"/>
+          <input id="min-age" max="100" min="18" type="range" value="18"/><output id="min-age-value" for="min-age"></output>
          </label>
          <label>
           Tuổi đến
-          <input id="max-age" max="100" min="18" type="number" value="100"/>
+          <input id="max-age" max="100" min="18" type="range" value="100"/><output id="max-age-value" for="max-age"></output>
          </label>
          <label>
           Hạn mức từ (TWD)
-          <input id="min-limit" min="0" type="number" value="0"/>
+          <input id="min-limit" max="10000000" step="1" min="0" type="range" value="0"/><output id="min-limit-value" for="min-limit"></output>
          </label>
          <label>
           Hạn mức đến
-          <input id="max-limit" min="0" type="number" value="10000000"/>
+          <input id="max-limit" max="10000000" step="1" min="0" type="range" value="10000000"/><output id="max-limit-value" for="max-limit"></output>
          </label>
          <label>
-          Trễ hạn tháng gần nhất (PAY_0) tối thiểu
-          <input id="min-delay" max="8" min="-2" type="number" value="-2"/>
+          Trạng thái trả nợ gần nhất (PAY_0)
+          <select id="min-delay"><option value="">Tất cả trạng thái</option><option value="-2">Không phát sinh</option><option value="-1">Trả đúng hạn</option><option value="0">Tín dụng quay vòng</option><option value="1">Trễ 1 tháng</option><option value="2">Trễ 2 tháng</option><option value="3">Trễ 3 tháng</option><option value="4">Trễ 4 tháng</option><option value="5">Trễ 5 tháng</option><option value="6">Trễ 6 tháng</option><option value="7">Trễ 7 tháng</option><option value="8">Trễ 8 tháng</option></select>
          </label>
          <label>
           Nhãn cảnh báo
@@ -738,6 +737,10 @@
   </div>
   <input accept=".csv,.xlsx,.json" hidden="" id="upload" type="file"/>
   <input accept=".json" hidden="" id="restore-file" type="file"/>
+  <dialog aria-labelledby="profile-detail-title" id="profile-detail-dialog">
+   <div class="panel-heading"><h2 id="profile-detail-title"></h2><button class="button secondary" id="close-profile-detail" type="button">Đóng</button></div>
+   <dl class="field-grid profile-detail-grid" id="profile-detail-content"></dl>
+  </dialog>
   <dialog id="edit-dialog">
    <form id="edit-form">
     <div class="panel-heading">
@@ -772,7 +775,7 @@
    <form id="transfer-form">
     <div class="panel-heading">
      <h2 id="transfer-title">
-      Thêm vào dự báo hàng loạt
+      Thêm đầu vào vào tập hồ sơ
      </h2>
      <button aria-label="Đóng" class="icon-button" id="close-transfer" type="button">
       ×
@@ -780,7 +783,7 @@
     </div>
     <div class="storage-body">
      <p>
-      Chọn tập dữ liệu có sẵn để thêm đầu vào. Kết quả đơn lẻ không được chuyển; lịch sử được giữ nguyên.
+      Chỉ chuyển dữ liệu đầu vào. Hồ sơ chưa có điểm số trong tập nhận và cần chạy dự báo riêng cho tập này.
      </p>
      <label>
       Tập dữ liệu nhận

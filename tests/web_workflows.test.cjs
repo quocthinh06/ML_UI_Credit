@@ -14,7 +14,7 @@ function app() {
     }, querySelectorAll(){return [];}, addEventListener(){}
   };
   const context = vm.createContext({document, window:{addEventListener(){}}, location:{hash:''},
-    crypto:webcrypto, structuredClone, performance, FormData, File, Blob, Response, AbortController, setTimeout, clearTimeout, console,
+    crypto:webcrypto, TextEncoder, structuredClone, performance, FormData, File, Blob, Response, AbortController, setTimeout, clearTimeout, console,
     localStorage:{values:new Map(),getItem(k){return this.values.get(k)||null;},setItem(k,v){this.values.set(k,String(v));},removeItem(k){this.values.delete(k);}},
     Option:function(text,value){this.text=text;this.value=value;}});
   const source = fs.readFileSync('frontend/static/app.js','utf8');
@@ -202,23 +202,19 @@ test('stable batches preserve output order and allow only one request at a time'
   assert.deepEqual(Array.from(output,r=>r.ID),Array.from({length:1200},(_,i)=>String(i)));
 });
 
-test('upload synchronizes the dataset and prediction together once',async()=>{
+test('upload registers normalized content once and does not start prediction',async()=>{
   const {run}=app();
   run(`globalThis.saves=0;persist=async()=>{saves++;};busy=async(_,fn)=>fn();
-    api=async()=>({rows:[{ID:'new',AGE:40}]});runBatch=async()=>{await persist();};`);
+    api=async()=>({rows:[{ID:'new',AGE:40},{ID:'second',AGE:31}]});
+    runBatch=async()=>{throw new Error('Unexpected automatic prediction');};`);
   await run("upload({target:{files:[new File(['data'],'sample.csv')],value:'sample.csv'}})");
+  run("api=async()=>({rows:[{AGE:31,ID:'second'},{AGE:40,ID:'new'}]})");
+  await run("upload({target:{files:[new File(['other'],'same.json')],value:'same.json'}})");
   assert.equal(run('saves'),1);
+  assert.equal(run('state.datasets.length'),3);
+  assert.equal(run('dataset().name'),'sample.csv');
+  assert.equal(run('state.runs.length'),0);
 });
-
-test('upload keeps imported inputs if prediction fails',async()=>{
-  const {run}=app();
-  run(`globalThis.saves=0;persist=async()=>{saves++;};busy=async(_,fn)=>fn();
-    api=async()=>({rows:[{ID:'new',AGE:40}]});runBatch=async()=>{throw new Error('Prediction failed');};`);
-  await assert.rejects(run("upload({target:{files:[new File(['data'],'sample.csv')],value:'sample.csv'}})"),/Prediction failed/);
-  assert.equal(run('saves'),1);
-  assert.equal(run('state.datasets[0].versions[0].rows[0].ID'),'new');
-});
-
 
 test('slow successful requests are not aborted by a short client deadline',async()=>{
   const {run}=app();
@@ -296,4 +292,48 @@ test('histogram threshold follows its domain and stays in bounds at either edge'
   assert.match(run("barChart('PD','', ['all'],[1],{threshold:0})"),/x1="42"/);
   assert.match(run("barChart('PD','', ['all'],[1],{threshold:1})"),/x1="508"/);
   assert.doesNotMatch(run("barChart('PD','', ['all'],[1])"),/threshold-marker/);
+});
+
+
+test('single prediction stores a local draft and renders SHAP without creating history',async()=>{
+  const {run}=app();
+  run(`models=[{name:'RF',digest:'rf',threshold:.39}];$('model-choice').value='RF';
+    $('decision').value=39;$('low').value=20;$('high').value=50;$('decision-basis').value='raw';
+    formRow=()=>({ID:'one',AGE:30});busy=async(_,fn)=>fn();
+    globalThis.calls=[];
+    api=async path=>{calls.push(path);return path==='predict'
+      ?{rows:[{probability:.25,raw_score:.4,risk_level:'Medium',default_label:1}]}
+      :{rows:[{feature:'AGE',contribution:.1}],scale:'Tree SHAP'};};`);
+  await run('predictSingle({preventDefault(){}})');
+  assert.deepEqual(Array.from(run('calls')),['predict','explain']);
+  assert.equal(run('JSON.parse(localStorage.getItem(draftKey())).row.ID'),'one');
+  assert.equal(run('state.runs.length'),0);
+  assert.match(run("$('explanation').innerHTML"),/SHAP.*AGE/s);
+});
+
+test('existing copies with the same normalized content appear once in working datasets',async()=>{
+  const {run}=app();
+  await run(`state.datasets.push({id:'duplicate',name:'Old copy',versions:[{id:'duplicate-v1',rows:[{AGE:30,ID:'old'}]}]});
+    indexDatasets(state);`);
+  assert.deepEqual(Array.from(run('workingDatasets().map(d=>d.id)')),['a','b']);
+});
+
+
+test('overview only shows results for the selected dataset and version',()=>{
+  const {run}=app();
+  run(`models=[{name:'RF',digest:'hash'}];$('model-choice').value='RF';
+    $('decision').value=39;$('low').value=20;$('high').value=50;$('decision-basis').value='raw';
+    $('chart-mode').value='data';histogram=()=>[[],[]];barChart=()=> '';
+    state.runs=[{id:'run-a',datasetId:'a',versionId:'v1',modelName:'RF',modelHash:'hash',
+      thresholds:configuration(),rows:[{probability:.75,risk_level:'High',default_label:1}]}];
+    state.datasets[1].versions[0].id='v1';
+    state.datasets[1].versions[0].rows=[{ID:'1'},{ID:'2'}];
+    renderOverview();`);
+  assert.match(run("$('portfolio-metrics').innerHTML"),/75\.00%/);
+  run("selectDataset('b');renderOverview()");
+  const metrics=run("$('portfolio-metrics').innerHTML");
+  assert.match(metrics,/B \(2\)/);
+  assert.doesNotMatch(metrics,/75\.00%|A \(1\)/);
+  assert.equal(run("$('dashboard-content').hidden"),true);
+  assert.equal(run("$('dashboard-awaiting').hidden"),false);
 });

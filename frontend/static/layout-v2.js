@@ -29,7 +29,7 @@
 
   document.querySelectorAll('[role="tablist"]').forEach(list => {
     list.addEventListener('keydown', event => {
-      const tabs = Array.from(list.querySelectorAll('[role="tab"]'));
+      const tabs = Array.from(list.querySelectorAll('[role="tab"]:not([hidden])'));
       const i = tabs.indexOf(document.activeElement);
       if (i < 0) return;
       let next = null;

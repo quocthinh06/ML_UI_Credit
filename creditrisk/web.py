@@ -11,7 +11,6 @@ import tempfile
 from threading import Lock
 from zipfile import BadZipFile, ZipFile
 
-import numpy as np
 import pandas as pd
 from flask import Flask, g, jsonify, request, send_file, send_from_directory
 from werkzeug.exceptions import HTTPException
@@ -328,8 +327,19 @@ def create_app(test_config=None):
         result, model, config = predict(payload())
         if getattr(g, "user", None):
             auth.audit("prediction", model.name, detail=f"rows={len(result)}")
+        output = {}
+        if len(result) == 1:
+            row = result.iloc[0]
+            output["ket_qua"] = {
+                "diem_rui_ro": float(row["raw_score"]),
+                "xac_suat_vo_no": float(row["probability"]),
+                "nhan_default": int(row["default_label"]),
+                "muc_rui_ro": row["risk_level"],
+                "nhan_xet": "Cần chuyên viên xem xét" if row["default_label"] else "Dưới ngưỡng cảnh báo",
+                "truong_da_dien": [],
+            }
         return jsonify(rows=records_json(result), summary=summary(result),
-                       evaluation=evaluation(result), model=model.name, thresholds=asdict(config))
+                       evaluation=evaluation(result), model=model.name, thresholds=asdict(config), **output)
 
     @app.post("/api/export")
     def export():
@@ -358,40 +368,9 @@ def create_app(test_config=None):
         data = payload()
         frame = input_frame(data, 1)
         model = selected_model(data)
-        from .features import add_features
-        values = add_features(frame[FEATURES].rename(columns={"PAY_0": "PAY_1"}))[model.features]
-        preprocessing = model.pipeline[:-1]
-        transformed = preprocessing.transform(values) if len(preprocessing.steps) else values.to_numpy()
-        if hasattr(transformed, "toarray"):
-            transformed = transformed.toarray()
-        estimator = model.pipeline.steps[-1][1]
-        names = list(preprocessing.get_feature_names_out()) if len(preprocessing.steps) else model.features
-        if hasattr(estimator, "coef_"):
-            contributions = np.asarray(transformed)[0] * estimator.coef_[0]
-            scale = "Log-odds: hệ số × giá trị chuẩn hóa"
-        elif hasattr(estimator, "get_booster"):
-            import xgboost
-            contributions = estimator.get_booster().predict(
-                xgboost.DMatrix(np.asarray(transformed)), pred_contribs=True, validate_features=False
-            )[0][:-1]
-            scale = "Tree SHAP · log-odds thô"
-        else:
-            contributions = np.zeros(len(names))
-            for tree in estimator.estimators_:
-                node = 0
-                while tree.tree_.feature[node] >= 0:
-                    feature = tree.tree_.feature[node]
-                    child = (tree.tree_.children_left[node] if transformed[0, feature] <= tree.tree_.threshold[node]
-                             else tree.tree_.children_right[node])
-                    parent_values = tree.tree_.value[node][0]
-                    child_values = tree.tree_.value[child][0]
-                    contributions[feature] += (child_values[1] / child_values.sum()
-                                               - parent_values[1] / parent_values.sum())
-                    node = child
-            contributions /= len(estimator.estimators_)
-            scale = "Đóng góp theo đường đi cây · điểm thô (không phải SHAP)"
-        result = pd.DataFrame({"feature": names, "contribution": contributions})
-        result = result.iloc[np.argsort(-np.abs(contributions))].head(12)
-        return jsonify(rows=records_json(result), scale=scale)
+        explanation = model.explain(frame)
+        scale = explanation["scale"].iloc[0]
+        top = explanation.sort_values("contribution", key=lambda values: values.abs(), ascending=False).head(12)
+        return jsonify(rows=records_json(top.drop(columns="scale")), scale=scale)
 
     return app

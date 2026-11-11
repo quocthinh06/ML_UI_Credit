@@ -346,3 +346,12 @@ h1{font-size:24px}
 .sidebar-logout:hover{background:#1a2b43;color:#fff}
 .sidebar-logout:active{background:#24354d}
 .sidebar-logout svg{width:18px;height:18px}
+
+#page-overview .selection-bar { margin-bottom: 1rem; }
+#batch-panel .advanced-filters > summary.button { color: #fff; width: fit-content; }
+#batch-panel input[type="range"] { padding: 0; width: 100%; accent-color: var(--brand, #1d4ed8); }
+#batch-panel output { font-variant-numeric: tabular-nums; }
+#profile-detail-dialog { width: min(42rem, calc(100vw - 2rem)); }
+.profile-detail-grid { padding: 0 1rem 1rem; }
+.profile-detail-grid dt { font-weight: 600; }
+.profile-detail-grid dd { margin: .25rem 0 0; overflow-wrap: anywhere; }

@@ -92,9 +92,8 @@ class ModelRunner:
         )
 
     def explain(self, frame):
-        """Tree SHAP on the estimator's actual transformed inputs, not on calibrated PD."""
+        """SHAP contributions on the estimator output before calibration."""
         import pandas as pd
-        import shap
         from .features import add_features
 
         if len(frame) != 1:
@@ -109,8 +108,19 @@ class ModelRunner:
         if hasattr(estimator, "coef_"):
             contributions = np.asarray(transformed)[0] * estimator.coef_[0]
             return pd.DataFrame({"feature": names, "contribution": contributions}).assign(
-                scale="log-odds (hệ số × giá trị chuẩn hóa)"
+                scale="Linear SHAP · log-odds so với mốc 0 của các đặc trưng sau biến đổi"
             )
+        if hasattr(estimator, "get_booster"):
+            import xgboost
+
+            contributions = estimator.get_booster().predict(
+                xgboost.DMatrix(np.asarray(transformed)), pred_contribs=True, validate_features=False
+            )[0][:-1]
+            return pd.DataFrame({"feature": names, "contribution": contributions}).assign(
+                scale="Tree SHAP · log-odds thô"
+            )
+        import shap
+
         explainer = shap.TreeExplainer(estimator)
         explanation = explainer(np.asarray(transformed), check_additivity=False)
         contributions = explanation.values

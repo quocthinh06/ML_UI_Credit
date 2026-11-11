@@ -98,7 +98,7 @@ async function openStorage() {
     const req = database.transaction('app').objectStore('app').get('state');
     req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
   });
-  if (saved) state = saved;
+  if(saved){await indexDatasets(saved);state=saved;}
   const revision=await new Promise((resolve,reject)=>{const req=database.transaction('app').objectStore('app').get('cloudRevision');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
   if(Number.isInteger(revision)){cloudRevision=revision;revisionKnown=true;}
 }
@@ -187,6 +187,7 @@ async function readCloud(){
   syncReady=false;syncMessage('Đang đọc kho dữ liệu · có thể tiếp tục làm việc');
   try{
     const result=await api(cloudPath(),undefined,{headers:workspaceHeaders()});
+    if(result.state)await indexDatasets(result.state);
     let pending=!!localStorage.getItem(pendingKey());
     if(pending&&sameValue(state,result.state)){localStorage.removeItem(pendingKey());pending=false;}
     if(pending&&result.state){
@@ -211,6 +212,7 @@ async function openCloudVersion(){
   await busy('Đang mở bản trên kho',async()=>{
     const result=await api(cloudPath(),undefined,{headers:workspaceHeaders()});
     await new Promise((resolve,reject)=>{const tx=database.transaction('app','readwrite');tx.objectStore('app').put(state,'recovery-before-cloud');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    if(result.state)await indexDatasets(result.state);
     backup();state=result.state||{datasets:[],runs:[]};cloudRevision=result.revision;revisionKnown=syncReady=true;
     await saveLocalState();localStorage.removeItem(pendingKey());
     selectDataset(state.datasets.find(d=>!d.deleted)?.id);$('sync-status').hidden=true;
@@ -227,7 +229,9 @@ function configuration() {
 function configMatches(a, b) { return ['decision','low','high','basis'].every(k => a[k] === b[k]); }
 function activeRun() {
   let config; try { config = configuration(); } catch { return null; }
-  const matches=r=>r.versionId===version()?.id&&r.modelHash===model()?.digest&&configMatches(r.thresholds,config);
+  const v=version(),m=model();
+  if(!v||!m)return null;
+  const matches=r=>r.datasetId===selectedDataset&&r.versionId===v.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config);
   return state.runs.find(r=>r.id===selectedRunId&&matches(r))||state.runs.find(matches);
 }
 function selectDataset(id, vid) { selectedRunId=null; selectedDataset = id; selectedVersion = vid || dataset()?.versions.at(-1)?.id; selectedCustomer = null; resultsPage = dataPage = 0; renderAll(); }
@@ -238,9 +242,10 @@ function navigate() {
   document.querySelectorAll('[data-page]').forEach(el => { el.classList.toggle('active', el.dataset.page === current); if (el.dataset.page === current) el.setAttribute('aria-current','page'); else el.removeAttribute('aria-current'); });
   $('sidebar').classList.remove('open'); $('menu-toggle').setAttribute('aria-expanded','false');
   if(current==='models'&&models.length)renderModels();
+  if(current==='predict'&&!$('single-panel').hidden&&singleResult&&$('explanation').hidden)void explainSingle();
   document.title = `${({overview:'Tổng quan',datasets:'Quản lý dữ liệu',predict:'Dự báo rủi ro',history:'Kết quả & Lịch sử',models:'Hiệu năng mô hình'})[current]} · CreditRisk AI`;
 }
-function batchTab(show) { if(show)clearProfileContext(); $('single-panel').hidden = show; $('batch-panel').hidden = !show; $('tab-single').classList.toggle('active', !show); $('tab-batch').classList.toggle('active', show); $('tab-single').setAttribute('aria-selected', String(!show)); $('tab-batch').setAttribute('aria-selected', String(show)); $('tab-single').tabIndex=show?-1:0; $('tab-batch').tabIndex=show?0:-1; }
+function batchTab(show) { if(show)clearProfileContext(); $('tab-batch').hidden=!show; $('single-panel').hidden = show; $('batch-panel').hidden = !show; $('tab-single').classList.toggle('active', !show); $('tab-batch').classList.toggle('active', show); $('tab-single').setAttribute('aria-selected', String(!show)); $('tab-batch').setAttribute('aria-selected', String(show)); $('tab-single').tabIndex=show?-1:0; $('tab-batch').tabIndex=show?0:-1; }
 function setModelInfo() {
   if (!model()) return;
   $('model-meta').textContent = `${model().version} · τ = ${model().threshold.toFixed(4)}`;
@@ -248,8 +253,9 @@ function setModelInfo() {
   $('predict-model-detail').textContent = `${model().version} · CV AUC: ${model().cv_auc?.toFixed(4) ?? '—'} · Test AUC: ${model().test_auc?.toFixed(4) ?? '—'}`;
 }
 function invalidateSingle() {
+  $('explain-single').hidden=true;
   singleGeneration++;
-  $('explanation').replaceChildren();
+  $('explanation').replaceChildren();$('draft-status').textContent='';
   singleResult = singleInputs = singleConfig = null;
   ['save-single','export-single','explain-single','transfer-single'].forEach(id => $(id).disabled = true);
   $('result-status').textContent = 'Cần dự báo'; $('result-status').className = 'tag';
@@ -283,10 +289,16 @@ function pagination(id, count, page, change) {
   [['Trước',-1],['Sau',1]].forEach(([label, step]) => { const button = document.createElement('button'); button.textContent = label; button.className = 'button secondary compact'; button.disabled = page + step < 0 || page + step >= total; button.addEventListener('click', () => change(page + step)); actions.append(button); }); foot.append(actions);
 }
 function selectors() {
-  const available=state.datasets.filter(d=>!d.deleted);
+  const available=workingDatasets();
   document.querySelectorAll('.dataset-select').forEach(select => {
     select.replaceChildren(); if (!available.length) select.add(new Option('Chưa có tập hồ sơ', ''));
-    available.forEach(d => select.add(new Option(`${d.name} · v${d.versions.at(-1).revision}`, d.id)));
+    available.forEach(d => {
+      const v=d.id===selectedDataset?version():d.versions.at(-1);
+      select.add(new Option(`${d.name} · ${fmt(v.rows.length)} hồ sơ · v${v.revision}`, d.id));
+    });
+    if(selectedDataset&&!available.some(d=>d.id===selectedDataset)&&dataset()){
+      select.add(new Option(`${dataset().name} · phiên bản lịch sử`,selectedDataset));
+    }
     select.value = selectedDataset || ''; select.disabled = !available.length;
   });
   $('version-choice').replaceChildren(); dataset()?.versions.slice().reverse().forEach(v => $('version-choice').add(new Option(`Phiên bản ${v.revision} · ${date(v.created)}`, v.id)));
@@ -297,35 +309,47 @@ function renderHistory() {
   const columns = [['name','Tập hồ sơ'],['created','Thời điểm chạy'],['model','Model / phiên bản'],['count','Số hồ sơ'],['warnings','Cảnh báo'],['config','Ngưỡng nhãn']];
   const query = $('history-search').value.toLowerCase();
   table('history-table', columns, historyRows(state.runs.filter(r => `${r.name} ${r.modelName}`.toLowerCase().includes(query))), {action:{label:'Xem kết quả',run:openRun}});
-  table('recent-runs', columns.slice(0,5), historyRows(state.runs.slice(0,5)), {action:{label:'Xem chi tiết',run:openRun}});
+  table('recent-runs', columns.slice(0,5), historyRows(state.runs.filter(r=>r.datasetId===selectedDataset&&r.versionId===version()?.id).slice(0,5)), {action:{label:'Xem chi tiết',run:openRun}});
 }
 function renderDatasets() {
   const query = $('dataset-search').value.toLowerCase();
-  const rows = state.datasets.filter(d => !d.deleted && d.name.toLowerCase().includes(query)).map(d => { const v = d.versions.at(-1), run = state.runs.find(r => r.datasetId === d.id && r.modelHash === model()?.digest); return {...d, count:v.rows.length, revision:v.revision, created:v.created, status: !run ? 'Chưa dự báo' : run.versionId === v.id ? 'Đã dự báo' : 'Cần dự báo lại'}; });
+  const rows = workingDatasets().filter(d => d.name.toLowerCase().includes(query)).map(d => { const v = d.versions.at(-1), run = state.runs.find(r => r.datasetId === d.id && r.modelHash === model()?.digest); return {...d, count:v.rows.length, revision:v.revision, created:v.created, status: !run ? 'Chưa dự báo' : run.versionId === v.id ? 'Đã dự báo' : 'Cần dự báo lại'}; });
   table('datasets-table', [['name','Tên tập hồ sơ'],['count','Số hồ sơ'],['revision','Phiên bản'],['created','Cập nhật'],['status','Trạng thái model đang chọn']], rows, {action:{label:'Xem hồ sơ',run:r=>selectDataset(r.id)},selected:r=>r.id===selectedDataset});
   const v = version(); $('data-title').textContent = dataset()?.name || 'Nội dung tập hồ sơ';
-  $('data-caption').textContent = v ? `Phiên bản ${v.revision} · ${fmt(v.rows.length)} dòng · ${Object.keys(v.rows[0] || {}).length} cột · Chọn dòng để chỉnh sửa` : 'Chọn một tập hồ sơ để xem.';
-  const data = v?.rows || [], columns = data.length ? Object.keys(data[0]).map(c=>[c,c]) : [];
+  $('data-caption').textContent = v ? `Phiên bản ${v.revision} · ${fmt(v.rows.length)} dòng · ${Object.keys(v.rows[0] || {}).length} cột · Chọn dòng để sửa hoặc xóa` : 'Chọn một tập hồ sơ để xem.';
+  const data=v?.rows||[],columns=[['ID','Mã hồ sơ'],['AGE','Tuổi'],['LIMIT_BAL','Hạn mức (TWD)'],['PAY_0','Trả nợ gần nhất']];
   if (dataPage >= Math.ceil(data.length / PAGE_SIZE)) dataPage = 0;
-  table('data-table', columns, data.slice(dataPage * PAGE_SIZE, (dataPage + 1) * PAGE_SIZE), {select:r=>{selectedCustomer=r.ID;renderDatasets();}, selected:r=>r.ID===selectedCustomer,action:{label:'Xem chi tiết',run:openProfileDetails}});
+  table('data-table', columns, data.slice(dataPage * PAGE_SIZE, (dataPage + 1) * PAGE_SIZE), {select:r=>{selectedCustomer=r.ID;renderDatasets();}, selected:r=>r.ID===selectedCustomer,action:{label:'Xem chi tiết',run:showDatasetProfile}});
   pagination('data-footer', data.length, dataPage, page=>{dataPage=page;renderDatasets();});
-  ['predict-dataset','add-customer','clone-dataset','rename-dataset','delete-dataset'].forEach(id=>$(id).disabled=!v);
+  ['predict-dataset','add-customer','rename-dataset','delete-dataset'].forEach(id=>$(id).disabled=!v);
   ['edit-customer','delete-customer'].forEach(id=>$(id).disabled=!v || selectedCustomer==null);
 }
 function filteredRows() {
   const run = activeRun(); if (!run) return [];
-  const q=$('result-search').value.toLowerCase(), risk=$('risk-filter').value, warning=$('warning-filter').value;
-  return run.rows.filter(r => String(r.ID).toLowerCase().includes(q) && (!risk || r.risk_level===risk) &&
+  const q=$('result-search').value, risk=$('risk-filter').value, warning=$('warning-filter').value;
+  return run.rows.filter(r => (!q || String(r.ID)===q) && (!risk || r.risk_level===risk) &&
     r.probability>=Number($('min-pd').value)/100 && r.probability<=Number($('max-pd').value)/100 &&
     r.AGE>=Number($('min-age').value) && r.AGE<=Number($('max-age').value) &&
     r.LIMIT_BAL>=Number($('min-limit').value) && r.LIMIT_BAL<=Number($('max-limit').value) &&
-    r.PAY_0>=Number($('min-delay').value) && (warning==='' || r.default_label===Number(warning)));
+    ($('min-delay').value==='' || r.PAY_0===Number($('min-delay').value)) && (warning==='' || r.default_label===Number(warning)));
 }
+let filterRun;
 function renderResults() {
-  const run=activeRun(), rows=filteredRows();
+  const run=activeRun();
+  if(filterRun!==run){
+    filterRun=run;
+    $('result-search').replaceChildren(new Option('Tất cả mã hồ sơ',''));
+    const options=(run?.rows||[]).map(row=>new Option(String(row.ID),String(row.ID)));
+    $('result-search').append(...options);
+  }
+  for(const id of ['min-pd','max-pd','min-age','max-age','min-limit','max-limit']){
+    const output=$(`${id}-value`);
+    if(output)output.textContent=fmt($(id).value);
+  }
+  const rows=filteredRows();
   $('results-caption').textContent=run ? `${run.modelName} · ${run.modelVersion} · ${date(run.created)} · ${fmt(rows.length)}/${fmt(run.rows.length)} hồ sơ sau lọc` : 'Chưa có kết quả phù hợp với dữ liệu, model và ngưỡng hiện tại. Hãy chạy dự báo.';
-  const order=['ID','raw_score','probability','default_label','risk_level','AGE','LIMIT_BAL',...features.filter(f=>!['AGE','LIMIT_BAL'].includes(f))];
-  const titles={ID:'Mã hồ sơ',raw_score:'Điểm thô',probability:'PD hiệu chỉnh',default_label:'Cảnh báo (0/1)',risk_level:'Mức rủi ro',AGE:'Tuổi',LIMIT_BAL:'Hạn mức (TWD)'};
+  const order=['ID','probability','risk_level','default_label','raw_score','AGE','LIMIT_BAL','PAY_0'];
+  const titles={ID:'Mã hồ sơ',raw_score:'Điểm thô',probability:'PD hiệu chỉnh',default_label:'Cảnh báo (0/1)',risk_level:'Mức rủi ro',AGE:'Tuổi',LIMIT_BAL:'Hạn mức (TWD)',PAY_0:'Trả nợ gần nhất'};
   if (resultsPage>=Math.ceil(rows.length/PAGE_SIZE)) resultsPage=0;
   table('results-table',order.map(c=>[c,titles[c]||c]),rows.slice(resultsPage*PAGE_SIZE,(resultsPage+1)*PAGE_SIZE),{action:{label:'Xem chi tiết',run:openProfileDetails}});
   pagination('results-footer',rows.length,resultsPage,page=>{resultsPage=page;renderResults();});
@@ -373,11 +397,20 @@ function statusChart(items){
   return `<article class="panel chart-card status-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><svg class="status-chart" viewBox="0 0 200 200" role="img" aria-label="${escapeHTML(groups.map(g=>g[0]+': '+fmt(g[1])).join('; '))}">${circles}<text x="100" y="98" text-anchor="middle" class="status-total">${fmt(total)}</text><text x="100" y="120" text-anchor="middle">hồ sơ</text></svg><ul class="chart-legend">${groups.map(([label,count])=>`<li><span>${label}</span><strong>${fmt(count)}</strong></li>`).join('')}</ul></article>`;
 }
 function renderOverview() {
-  const latest=state.datasets.filter(d=>!d.deleted).map(d=>{const v=d.versions.at(-1);return {d,v,run:state.runs.find(r=>r.datasetId===d.id&&r.modelHash===model()?.digest&&r.versionId===v.id&&configMatches(r.thresholds,configuration()))};});
-  const total=latest.reduce((s,x)=>s+x.v.rows.length,0),high=latest.reduce((s,x)=>s+(x.run?.rows.filter(r=>r.risk_level==='High').length||0),0),stale=latest.filter(x=>!x.run).reduce((s,x)=>s+x.v.rows.length,0);
-  $('portfolio-metrics').innerHTML=[['Hồ sơ danh mục',total,'Theo phiên bản mới nhất','overview',''],['Hồ sơ rủi ro cao',high,'Theo model đang chọn','shield','danger'],['Hồ sơ cần dự báo',stale,'Chưa có kết quả trên bản mới','predict','warning'],['Tập dữ liệu đã lưu',latest.length,'Lưu riêng trên thiết bị này','database','teal']].map(([title,value,note,ico,tone])=>`<article class="metric ${tone}"><div class="metric-label">${title}</div><div class="metric-icon">${icon(ico)}</div><div class="metric-value">${fmt(value)}</div><p class="metric-note">${note}</p></article>`).join('');
-  const run=activeRun();$('dashboard-empty').hidden=!!run;$('dashboard-content').hidden=!run;
-  $('overview-context').textContent=version()?`${fmt(version().rows.length)} hồ sơ · ${model()?.name||'Chưa có model'} · Phiên bản ${version().revision}`:'Chưa có dữ liệu';
+  const v=version(),run=activeRun(),latest=v?[{d:dataset(),v,run}]:[];
+  const scope=v?`Đang phân tích: ${dataset().name} (${fmt(v.rows.length)})`:'Chưa chọn tập hồ sơ';
+  const summary=run?stats(run.rows):null;
+  $('portfolio-metrics').hidden=!v;
+  $('portfolio-metrics').innerHTML=[
+    ['Hồ sơ trong tập',v?.rows.length,'overview',''],
+    ['PD trung bình',summary?.mean,'performance','teal'],
+    ['Hồ sơ rủi ro cao',summary?.high,'shield','danger'],
+    ['Hồ sơ cảnh báo',summary?.warnings,'predict','warning']
+  ].map(([title,value,ico,tone])=>`<article class="metric ${tone}"><div class="metric-label">${title}</div><div class="metric-icon">${icon(ico)}</div><div class="metric-value">${value==null?'—':ico==='performance'?pct(value):fmt(value)}</div><p class="metric-note">${escapeHTML(scope)}</p></article>`).join('');
+  $('dashboard-empty').hidden=!!v;$('dashboard-content').hidden=!run;
+  $('dashboard-awaiting').hidden=!v||!!run;
+  $('analyze-selected').disabled=!v?.rows.length;
+  $('overview-context').textContent=v?`${scope} · Phiên bản ${v.revision}`:'Chưa có dữ liệu';
   if(!run)return;
   const rows=run.rows,s=stats(rows),mode=$('chart-mode').value;
   $('dashboard-caption').textContent=`${dataset()?.name} · ${run.modelName} · ${fmt(rows.length)} dòng · ${Object.keys(rows[0]||{}).length} cột`;
@@ -448,7 +481,58 @@ function renderModels() {
 }
 function renderAll() { selectors();setModelInfo();renderDatasets();renderResults();renderOverview();renderHistory();if(location.hash==='#models')renderModels(); }
 
-async function addDataset(name,rows,{save=true}={}){const id=crypto.randomUUID(),vid=crypto.randomUUID();state.datasets.unshift({id,name,versions:[{id:vid,revision:1,created:new Date().toISOString(),rows}]});if(save)await persist();else{localGeneration++;if(remoteEnabled)localStorage.setItem(pendingKey(),'1');await saveLocalState();}selectDataset(id,vid);return id;}
+const versionHashes = new WeakMap();
+const resolvedHashes = new WeakMap();
+function workingDatasets(){
+  const seen=new Set();
+  return state.datasets.filter(d=>{
+    if(d.deleted)return false;
+    const hash=resolvedHashes.get(d.versions.at(-1));
+    if(!hash)return true;
+    if(seen.has(hash))return false;
+    seen.add(hash);
+    return true;
+  });
+}
+async function indexDatasets(snapshot){
+  for(const d of snapshot.datasets){
+    if(!d.deleted)await versionHash(d.versions.at(-1));
+  }
+}
+async function datasetHash(rows) {
+  const canonical = rows.map(row => JSON.stringify(Object.entries(row)
+    .filter(([key, value]) => !key.startsWith('source_') && value != null)
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))).sort();
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(canonical)));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2,'0')).join('');
+}
+function versionHash(v) {
+  if(!versionHashes.has(v))versionHashes.set(v,datasetHash(v.rows).then(hash=>{resolvedHashes.set(v,hash);return hash;}));
+  return versionHashes.get(v);
+}
+async function addDataset(name, rows, {save=true}={}) {
+  const v={id:crypto.randomUUID(),revision:1,created:new Date().toISOString(),rows};
+  const hash=await versionHash(v);
+  for(const existing of workingDatasets()){
+    const latest=existing.versions.at(-1);
+    if(await versionHash(latest)===hash){
+      selectDataset(existing.id,latest.id);
+      notify('Nội dung này đã có trong tập ' + existing.name + '.');
+      return existing.id;
+    }
+  }
+  const id=crypto.randomUUID();
+  state.datasets.unshift({id,name,versions:[v]});
+  try{
+    if(save)await persist();
+    else if(save===false){localGeneration++;if(remoteEnabled)localStorage.setItem(pendingKey(),'1');await saveLocalState();}
+  }catch(error){
+    state.datasets=state.datasets.filter(d=>d.id!==id);
+    throw error;
+  }
+  selectDataset(id,v.id);
+  return id;
+}
 async function inferRows(rows,selected=model(),config=configuration()) {
   const output=[];
   $('busy-progress').value=0;
@@ -462,7 +546,7 @@ async function inferRows(rows,selected=model(),config=configuration()) {
   return output;
 }
 async function ensureRun(d,v,m,config){
-  const cached=state.runs.find(r=>r.versionId===v.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config));
+  const cached=state.runs.find(r=>r.datasetId===d.id&&r.versionId===v.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config));
   if(cached)return {run:cached,cached:true};
   localGeneration++;if(remoteEnabled)localStorage.setItem(pendingKey(),'1');
   const started=performance.now(),rows=await inferRows(v.rows,m,config),id=crypto.randomUUID(),created=new Date().toISOString();
@@ -478,8 +562,26 @@ async function runBatch({go=true}={}){
   if(!run){run=await busy('Đang dự báo tập hồ sơ',async()=>{const result=await ensureRun(d,v,m,config);if(!result.cached)await persist();return result.run;});}
   renderAll();if(go){location.hash='predict';batchTab(true);}notify(`Đã có kết quả ${fmt(run.rows.length)} hồ sơ · ${run.modelName}`);
 }
-async function upload(event){const file=event.target.files?.[0];if(!file)return;event.target.value='';if(file.size>4*1024*1024)throw new Error('Tệp tối đa 4 MB khi tải lên Vercel.');const data=new FormData();data.append('file',file);const result=await busy('Đang kiểm tra tệp',()=>api('import',data));await addDataset(file.name,result.rows,{save:false});try{await runBatch();}catch(error){await persist();throw error;}const changes=Object.entries(result.normalization||{}).filter(([,v])=>v);if(changes.length)notify(`Đã chuẩn hóa theo notebook: ${changes.map(([k,v])=>`${k}: ${v}`).join(', ')}`);}
-async function loadSample(){const result=await busy('Đang tải dữ liệu mẫu UCI',()=>api('sample'));await addDataset('Hồ sơ mẫu UCI',result.rows);await runBatch({go:false});location.hash='overview';}
+async function upload(event){
+  const file=event.target.files?.[0];if(!file)return;event.target.value='';
+  if(file.size>4*1024*1024)throw new Error('Tệp tối đa 4 MiB.');
+  const data=new FormData();data.append('file',file);
+  const result=await busy('Đang kiểm tra và lưu tệp',async()=>{
+    const result=await api('import',data);
+    await addDataset(file.name,result.rows);
+    return result;
+  });
+  location.hash='datasets';
+  const changes=Object.entries(result.normalization||{}).filter(([,count])=>count);
+  if(changes.length)notify(`Đã chuẩn hóa mã UCI: ${changes.map(([key,count])=>`${key}: ${count}`).join(', ')}.`);
+}
+async function loadSample(){
+  await busy('Đang tải dữ liệu mẫu UCI',async()=>{
+    const result=await api('sample');
+    await addDataset('Hồ sơ mẫu UCI',result.rows);
+  });
+  location.hash='overview';
+}
 function inputFields(container,prefix,row={}){
   const names={PAY_0:'Trễ hạn tháng gần nhất',LIMIT_BAL:'Hạn mức tín dụng (TWD)',SEX:'Giới tính',EDUCATION:'Trình độ học vấn',MARRIAGE:'Tình trạng hôn nhân',AGE:'Tuổi'};
   const hints={SEX:'1: Nam · 2: Nữ',EDUCATION:'1: Sau ĐH · 2: ĐH · 3: THPT · 4: Khác',MARRIAGE:'1: Đã kết hôn · 2: Độc thân · 3: Khác'};
@@ -495,11 +597,19 @@ function clearSingle(event) {
     else field.value='';
     field.setCustomValidity('');field.removeAttribute('aria-invalid');
   });
-  invalidateSingle();$('alert').hidden=true;$('alert').textContent='';
+  invalidateSingle();clearDraft();$('alert').hidden=true;$('alert').textContent='';
   $('result-status').textContent='Chưa dự báo';$('single-ID')?.focus();
   notify('Đã xóa toàn bộ thông tin nhập và kết quả dự báo.');
 }
-function formRow(prefix){const row={ID:$(`${prefix}-ID`).value.trim()};features.forEach(f=>row[f]=Number($(`${prefix}-${f}`).value));return row;}
+function formRow(prefix){const row={ID:$(`${prefix}-ID`).value.trim()};features.forEach(f=>{const value=$(`${prefix}-${f}`).value;row[f]=value.trim()===''?null:Number(value);});return row;}
+function showDatasetProfile(row){
+  $('profile-detail-title').textContent=`Hồ sơ ${row.ID}`;
+  const keys=['ID',...features];
+  if([0,1].includes(row['default.payment.next.month']))keys.push('default.payment.next.month');
+  $('profile-detail-content').innerHTML=keys.map(key=>
+    `<div><dt>${escapeHTML(key)}</dt><dd>${escapeHTML(row[key]??'—')}</dd></div>`).join('');
+  $('profile-detail-dialog').showModal();
+}
 function clearProfileContext(){profileOrigin=null;$('profile-context').hidden=true;}
 async function openProfileDetails(row){
   const inputs=Object.fromEntries(['ID',...features].map(key=>[key,row[key]]));
@@ -519,25 +629,74 @@ function returnToProfiles(){
   if(origin.thresholds){$('decision-basis').value=origin.thresholds.basis;['decision','low','high'].forEach(k=>$(k).value=origin.thresholds[k]*100);}
   location.hash=origin.hash;navigate();batchTab(origin.batch);renderAll();
 }
-async function predictSingle(event){event.preventDefault();const generation=singleGeneration,row=formRow('single'),config=configuration(),m=model();const result=await busy('Đang chấm điểm hồ sơ',()=>api('predict',{rows:[row],model:m.name,thresholds:config}));if(generation!==singleGeneration)return;singleResult=result.rows[0];singleInputs=row;singleConfig=config;
-  const r=singleResult,tone=r.risk_level.toLowerCase();$('single-result').className='';$('single-result').innerHTML=`<div class="risk-result ${tone}"><div class="result-label">XÁC SUẤT VỠ NỢ · PD ĐÃ HIỆU CHỈNH</div><div class="pd-number">${pct(r.probability)}</div><span class="tag ${tone}">Rủi ro ${riskNames[r.risk_level].toLowerCase()}</span></div><div class="result-meta"><div><span>Điểm thô</span><strong>${r.raw_score.toFixed(4)}</strong></div><div><span>Ngưỡng nhãn · ${escapeHTML(config.basis)}</span><strong>${config.decision.toFixed(4)}</strong></div><div><span>Nhãn cảnh báo</span><strong>${r.default_label} · ${r.default_label?'Cảnh báo':'Không cảnh báo'}</strong></div><div><span>Mô hình</span><strong>${escapeHTML(m.name)}</strong></div></div>`;
+function draftKey(){
+  return `creditrisk-single-draft:${currentAccount?.id||'demo'}:${workspaceAccount||currentAccount?.id||localStorage.getItem('creditrisk-workspace-key')||'local'}`;
+}
+function clearDraft(){try{localStorage.removeItem(draftKey());}catch{}$('draft-status').textContent='';}
+function saveDraft(m){
+  try{
+    localStorage.setItem(draftKey(),JSON.stringify({row:singleInputs,result:singleResult,config:singleConfig,model:m.name,digest:m.digest}));
+    $('draft-status').textContent='Đã lưu nháp trên thiết bị này.';
+  }catch{$('draft-status').textContent='Trình duyệt không lưu được bản nháp.';}
+}
+function restoreDraft(){
+  try{
+    const draft=JSON.parse(localStorage.getItem(draftKey()));
+    if(!draft?.row)return;
+    inputFields('single-fields','single',draft.row);
+    const savedModel=models.find(m=>m.name===draft.model&&m.digest===draft.digest);
+    if(!savedModel){$('draft-status').textContent='Đã khôi phục dữ liệu nhập. Hãy dự báo lại với mô hình hiện tại.';return;}
+    $('model-choice').value=savedModel.name;
+    $('decision-basis').value=draft.config.basis;
+    ['decision','low','high'].forEach(k=>$(k).value=draft.config[k]*100);
+    ({row:singleInputs,result:singleResult,config:singleConfig}=draft);
+    renderSingle(savedModel,singleConfig);
+    $('draft-status').textContent='Đã khôi phục bản nháp trên thiết bị này.';
+  }catch{clearDraft();}
+}
+async function predictSingle(event){
+  event.preventDefault();
+  const generation=singleGeneration,row=formRow('single'),config=configuration(),m=model();
+  const result=await busy('Đang chấm điểm hồ sơ',()=>api('predict',{rows:[row],model:m.name,thresholds:config}));
+  if(generation!==singleGeneration)return;
+  singleResult=result.rows[0];singleInputs=row;singleConfig=config;
+  renderSingle(m,config);
+  if(!profileOrigin)saveDraft(m);
+  await explainSingle();
+}
+function renderSingle(m,config){
+  const r=singleResult,tone=r.risk_level.toLowerCase();$('single-result').className='';$('single-result').innerHTML=`<div class="risk-result ${tone}"><div class="result-label">XÁC SUẤT VỠ NỢ · PD ĐÃ HIỆU CHỈNH</div><div class="pd-number">${pct(r.probability)}</div><span class="tag ${tone}">Rủi ro ${riskNames[r.risk_level].toLowerCase()}</span></div><div class="result-meta"><div><span>Điểm thô</span><strong>${r.raw_score.toFixed(4)}</strong></div><div><span>Ngưỡng nhãn · ${escapeHTML(config.basis)}</span><strong>${config.decision.toFixed(4)}</strong></div><div><span>Nhãn cảnh báo</span><strong>${r.default_label} · ${r.default_label?'Cảnh báo':'Không cảnh báo'}</strong></div><div><span>Mô hình</span><strong>${escapeHTML(m.name)}</strong></div></div><p class="fine-print">Nhóm rủi ro dựa trên PD (Thấp dưới ${pct(config.low)}, Trung bình từ ${pct(config.low)} đến dưới ${pct(config.high)}, Cao từ ${pct(config.high)}). Nhãn cảnh báo dùng ngưỡng riêng, nên hồ sơ nhóm Trung bình vẫn có thể được cảnh báo.</p>`;
   $('result-status').textContent=r.default_label?'Nhãn 1 · Cảnh báo':'Nhãn 0';$('result-status').className=`tag ${tone}`;['save-single','export-single','explain-single','transfer-single'].forEach(id=>$(id).disabled=false);$('explanation').hidden=true;
 }
-async function saveSingle(){if(!singleResult)throw new Error('Chạy dự báo trước khi lưu.');const id=await addDataset(`Hồ sơ ${singleInputs.ID}`,[{...singleInputs}]);const created=new Date().toISOString(),runId=crypto.randomUUID();state.runs.unshift({id:runId,datasetId:id,versionId:version().id,name:dataset().name,created,modelName:model().name,modelVersion:model().version,modelHash:model().digest,thresholds:{...singleConfig},rows:[{...singleResult,run_id:runId,prediction_time_utc:created,dataset_version_id:version().id}]});await persist();renderAll();$('save-single').disabled=true;notify('Đã lưu hồ sơ và kết quả vào trình duyệt.');}
+async function saveSingle(){
+  if(!singleResult)throw new Error('Chạy dự báo trước khi lưu.');
+  const row={...singleInputs},result=singleResult,config={...singleConfig},m=model();
+  await busy('Đang lưu hồ sơ chính thức',async()=>{
+    const previousDatasets=state.datasets.slice();
+    const id=await addDataset(`Hồ sơ ${row.ID}`,[row],{save:null});
+    const v=version(),d=dataset();
+    if(state.runs.some(r=>r.datasetId===id&&r.versionId===v.id&&r.modelHash===m.digest&&configMatches(r.thresholds,config)))return;
+    const created=new Date().toISOString(),runId=crypto.randomUUID();
+    const run={id:runId,datasetId:id,versionId:v.id,name:d.name,created,modelName:m.name,modelVersion:m.version,modelHash:m.digest,thresholds:config,rows:[{...result,run_id:runId,prediction_time_utc:created,dataset_version_id:v.id}]};
+    state.runs.unshift(run);
+    try{await persist();}catch(error){state.runs=state.runs.filter(r=>r!==run);state.datasets=previousDatasets;selectDataset(previousDatasets.find(d=>!d.deleted)?.id);throw error;}
+  });
+  renderAll();$('save-single').disabled=true;notify('Đã lưu hồ sơ và kết quả vào tập chính thức.');
+}
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);}
 async function exportRows(rows,config){if(!rows.length)throw new Error('Chưa có kết quả để xuất. Hãy chạy dự báo hoặc kiểm tra bộ lọc.');const m=model();if(rows.some(r=>r.model_sha256!==m.digest))throw new Error('Kết quả thuộc model khác. Hãy chọn lại model hoặc chạy dự báo.');const blob=await busy('Đang tạo báo cáo Excel',()=>api('export',{rows,model:m.name,thresholds:config}));download(blob,`ket_qua_${({'Random Forest':'RF','Logistic Regression':'LR','XGBoost':'XGb'})[m.name]||'model'}.xlsx`);notify('Đã xuất dữ liệu, insight và dashboard vào Excel.');}
 async function exportCurrent(){const onBatch=location.hash==='#predict'&&!$('batch-panel').hidden,run=activeRun();await exportRows(onBatch?filteredRows():run?.rows||[],run?.thresholds||configuration());}
 function openRun(run){selectedRunId=run.id;selectedDataset=run.datasetId;selectedVersion=run.versionId;selectedCustomer=null;$('model-choice').value=run.modelName;setModelInfo();$('decision-basis').value=run.thresholds.basis;['decision','low','high'].forEach(k=>$(k).value=run.thresholds[k]*100);resetFilters();invalidateSingle();renderAll();batchTab(true);location.hash='predict';}
-function resetFilters(){['result-search','risk-filter','warning-filter'].forEach(id=>$(id).value='');const values={'min-pd':0,'max-pd':100,'min-age':18,'max-age':100,'min-limit':0,'max-limit':10000000,'min-delay':-2};Object.entries(values).forEach(([k,v])=>$(k).value=v);resultsPage=0;renderResults();}
+function resetFilters(){['result-search','risk-filter','warning-filter'].forEach(id=>$(id).value='');const values={'min-pd':0,'max-pd':100,'min-age':18,'max-age':100,'min-limit':0,'max-limit':10000000,'min-delay':''};Object.entries(values).forEach(([k,v])=>$(k).value=v);resultsPage=0;renderResults();}
 function openEditor(edit){if(!version())throw new Error('Chọn tập hồ sơ trước.');const row=edit?version().rows.find(r=>r.ID===selectedCustomer):{};if(edit&&!row)throw new Error('Chọn một dòng để chỉnh sửa.');editId=edit?row.ID:null;inputFields('edit-fields','edit',row);$('edit-title').textContent=edit?'Cập nhật hồ sơ':'Bổ sung hồ sơ';$('edit-copy').checked=false;$('edit-copy-name').value='';$('edit-dialog').showModal();}
-async function revise(rows,copyName){if(!dataset())throw new Error('Chưa chọn tập hồ sơ.');if(copyName){await addDataset(copyName,rows);return;}const d=dataset(),v={id:crypto.randomUUID(),revision:d.versions.at(-1).revision+1,created:new Date().toISOString(),rows};d.versions.push(v);await persist();selectDataset(d.id,v.id);}
+async function revise(rows,copyName){if(!dataset())throw new Error('Chưa chọn tập hồ sơ.');if(copyName){await addDataset(copyName,rows);return;}const d=dataset(),v={id:crypto.randomUUID(),revision:d.versions.at(-1).revision+1,created:new Date().toISOString(),rows};await versionHash(v);d.versions.push(v);await persist();selectDataset(d.id,v.id);}
 async function saveEdit(event){event.preventDefault();const row=formRow('edit'),existing=version().rows.find(r=>r.ID===row.ID);if(existing&&row.ID!==editId&&!confirm(`ID ${row.ID} đã tồn tại. Cập nhật hồ sơ này?`))return;const copy=$('edit-copy').checked,copyName=$('edit-copy-name').value.trim();if(copy&&!copyName)throw new Error('Nhập tên bản sao.');const valid=await busy('Đang kiểm tra hồ sơ',()=>api('predict',{rows:[row],model:model().name,thresholds:configuration()}));const canonical=Object.fromEntries(Object.entries(valid.rows[0]).filter(([k])=>k==='ID'||features.includes(k)));const rows=version().rows.filter(r=>r.ID!==editId&&r.ID!==row.ID).map(r=>({...r}));rows.push({...existing,...canonical});await revise(rows,copy?copyName:null);$('edit-dialog').close();notify('Đã lưu phiên bản mới; cần chạy dự báo lại.');}
 async function deleteCustomer(){if(selectedCustomer==null)throw new Error('Chọn dòng cần xóa.');if(!confirm(`Xóa hồ sơ ${selectedCustomer} khỏi phiên bản mới? Lịch sử và phiên bản cũ vẫn được giữ.`))return;await revise(version().rows.filter(r=>r.ID!==selectedCustomer));notify('Đã tạo phiên bản mới; kết quả cũ vẫn được giữ.');}
-async function cloneDataset(){if(!version())throw new Error('Chọn tập hồ sơ trước.');const name=prompt('Tên tập hồ sơ mới:',`${dataset().name} · bản sao`);if(!name?.trim())return;await addDataset(name.trim(),structuredClone(version().rows));notify('Đã lưu thành tập hồ sơ mới.');}
+
 function transferSingle(){
   if(!singleInputs)throw new Error('Chạy dự báo đơn lẻ trước.');
-  if(!state.datasets.some(d=>!d.deleted))throw new Error('Tạo hoặc tải lên tập dữ liệu hàng loạt trước.');
-  $('transfer-target').replaceChildren(...state.datasets.filter(d=>!d.deleted).map(d=>new Option(`${d.name} · ${d.versions.at(-1).rows.length} hồ sơ`,d.id)));
+  if(!workingDatasets().length)throw new Error('Tạo hoặc tải lên tập dữ liệu hàng loạt trước.');
+  $('transfer-target').replaceChildren(...workingDatasets().map(d=>new Option(`${d.name} · ${d.versions.at(-1).rows.length} hồ sơ`,d.id)));
   $('transfer-target').value=state.datasets.find(d=>d.id===selectedDataset&&!d.deleted)?.id||state.datasets.find(d=>!d.deleted).id;
   $('transfer-copy').checked=false;$('transfer-copy-name').value='';
   $('transfer-dialog').showModal();
@@ -554,7 +713,7 @@ async function confirmTransfer(event){
   const rows=[...structuredClone(latest.rows),structuredClone(singleInputs)];
   if(copy)await addDataset(name,rows);
   else{selectedDataset=target.id;selectedVersion=latest.id;await revise(rows);}
-  $('transfer-dialog').close();notify('Đã thêm đầu vào vào tập dữ liệu. Chạy dự báo hàng loạt để tạo kết quả mới.');
+  $('transfer-dialog').close();notify('Đã chuyển đầu vào. Hồ sơ chưa có điểm số trong tập nhận. Hãy chạy dự báo riêng cho tập này.');
 }
 async function renameDataset(){
   const d=dataset();if(!d)throw new Error('Chọn tập dữ liệu trước.');
@@ -567,7 +726,25 @@ async function deleteDataset(){
   if(!confirm(`Xóa tập dữ liệu ${d.name}? Kết quả lịch sử vẫn được giữ và có thể mở lại.`))return;
   d.deleted=true;await persist();selectDataset(state.datasets.find(item=>!item.deleted)?.id);notify('Đã xóa tập dữ liệu khỏi danh sách làm việc.');
 }
-async function explainSingle(){if(!singleInputs)throw new Error('Chạy dự báo trước khi giải thích.');const result=await busy('Đang phân tích đóng góp đặc trưng',()=>api('explain',{rows:[singleInputs],model:model().name}));const max=Math.max(...result.rows.map(r=>Math.abs(r.contribution)),.00001);$('explanation').innerHTML=`<h3>Đóng góp đặc trưng</h3><p>${escapeHTML(result.scale)}</p>${result.rows.map(r=>`<div class="contribution ${r.contribution<0?'negative':''}"><div><span>${escapeHTML(r.feature)}</span><strong>${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}</strong></div><meter min="0" max="${max}" value="${Math.abs(r.contribution)}">${r.contribution}</meter></div>`).join('')}`;$('explanation').hidden=false;}
+async function explainSingle(){
+  if(!singleInputs)return;
+  const generation=singleGeneration,inputs=singleInputs,m=model(),box=$('explanation');
+  box.hidden=false;
+  box.textContent='Đang tải giải thích SHAP…';
+  $('explain-single').disabled=true;
+  $('explain-single').hidden=true;
+  try{
+    const result=await api('explain',{rows:[inputs],model:m.name});
+    if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
+    const max=Math.max(...result.rows.map(r=>Math.abs(r.contribution)),.00001);
+    box.innerHTML=`<h3>Giải thích dự báo (SHAP)</h3><p>${escapeHTML(result.scale)}. Dấu + làm tăng điểm mô hình, dấu − làm giảm điểm. Đây là đóng góp vào điểm mô hình trước hiệu chỉnh xác suất.</p>${result.rows.map(r=>`<div class="contribution ${r.contribution<0?'negative':''}"><div><span>${escapeHTML(r.feature)}</span><strong>${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}</strong></div><meter min="0" max="${max}" value="${Math.abs(r.contribution)}">${r.contribution}</meter></div>`).join('')}`;
+  }catch{
+    if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
+    box.textContent='Chưa tải được giải thích SHAP. Kết quả dự báo đã có.';
+    $('explain-single').disabled=false;
+    $('explain-single').hidden=false;
+  }
+}
 async function compareModels(){
   if(!version()?.rows.length)throw new Error('Chọn tập hồ sơ trước.');
   const d=dataset(),v=version();
@@ -586,16 +763,18 @@ async function compareModels(){
   renderModels();notify('Đã có đầu ra của các mô hình; kết quả và lịch sử được giữ riêng.');
 }
 function backup(){download(new Blob([JSON.stringify({format:'creditrisk-ai-backup-v1',...state})],{type:'application/json'}),`creditrisk_sao_luu_${new Date().toISOString().slice(0,10)}.json`);}
-async function restore(event){const file=event.target.files?.[0];if(!file)return;event.target.value='';if(file.size>100*1024*1024)throw new Error('Bản sao lưu tối đa 100 MB.');const data=JSON.parse(await file.text());if(data.format!=='creditrisk-ai-backup-v1'||!Array.isArray(data.datasets)||!Array.isArray(data.runs)||data.datasets.some(d=>!d.id||typeof d.name!=='string'||!Array.isArray(d.versions)||!d.versions.length||d.versions.some(v=>!v.id||!Array.isArray(v.rows)||v.rows.length>30000))||data.runs.some(r=>!r.id||!Array.isArray(r.rows)||!r.thresholds))throw new Error('Tệp không đúng định dạng sao lưu CreditRisk AI.');if(!confirm('Khôi phục sẽ thay thế dữ liệu đang lưu trên trình duyệt này. Tiếp tục?'))return;state={datasets:data.datasets,runs:data.runs};await persist();selectDataset(state.datasets[0]?.id);notify('Đã khôi phục dữ liệu và lịch sử.');}
+async function restore(event){const file=event.target.files?.[0];if(!file)return;event.target.value='';if(file.size>100*1024*1024)throw new Error('Bản sao lưu tối đa 100 MB.');const data=JSON.parse(await file.text());if(data.format!=='creditrisk-ai-backup-v1'||!Array.isArray(data.datasets)||!Array.isArray(data.runs)||data.datasets.some(d=>!d.id||typeof d.name!=='string'||!Array.isArray(d.versions)||!d.versions.length||d.versions.some(v=>!v.id||!Array.isArray(v.rows)||v.rows.length>30000))||data.runs.some(r=>!r.id||!Array.isArray(r.rows)||!r.thresholds))throw new Error('Tệp không đúng định dạng sao lưu CreditRisk AI.');if(!confirm('Khôi phục sẽ thay thế dữ liệu đang lưu trên trình duyệt này. Tiếp tục?'))return;const snapshot={datasets:data.datasets,runs:data.runs};await indexDatasets(snapshot);state=snapshot;await persist();selectDataset(workingDatasets()[0]?.id);notify('Đã khôi phục dữ liệu và lịch sử.');}
 
+$('close-profile-detail').addEventListener('click',()=>$('profile-detail-dialog').close());
 document.querySelectorAll('[data-action="upload"]').forEach(el=>el.addEventListener('click',()=>$('upload').click()));
 document.querySelectorAll('[data-action="export"]').forEach(el=>el.addEventListener('click',guarded(exportCurrent)));
 document.querySelectorAll('[data-action="sample"]').forEach(el=>el.addEventListener('click',guarded(loadSample)));
 $('sample-top').addEventListener('click',guarded(loadSample));$('upload').addEventListener('change',guarded(upload));
 $('back-to-profiles').addEventListener('click',guarded(returnToProfiles));
-$('single-form').addEventListener('submit',guarded(predictSingle));$('single-form').addEventListener('input',invalidateSingle);$('single-form').addEventListener('reset',clearSingle);
-$('fill-sample').addEventListener('click',guarded(async()=>{const sample=await api('sample');clearProfileContext();inputFields('single-fields','single',sample.rows[0]);invalidateSingle();}));
+$('single-form').addEventListener('submit',guarded(predictSingle));$('single-form').addEventListener('input',()=>{invalidateSingle();if(!profileOrigin)clearDraft();});$('single-form').addEventListener('reset',clearSingle);
+$('fill-sample').addEventListener('click',guarded(async()=>{const sample=await api('sample');clearProfileContext();inputFields('single-fields','single',sample.rows[0]);invalidateSingle();clearDraft();}));
 $('save-single').addEventListener('click',guarded(saveSingle));$('export-single').addEventListener('click',guarded(()=>exportRows([singleResult],singleConfig)));$('explain-single').addEventListener('click',guarded(explainSingle));$('transfer-single').addEventListener('click',guarded(transferSingle));
+document.querySelectorAll('[data-page="predict"]').forEach(link=>link.addEventListener('click',()=>{batchTab(false);if(location.hash==='#predict')navigate();}));
 document.querySelectorAll('[data-predict-mode]').forEach(link=>link.addEventListener('click',()=>{batchTab(link.dataset.predictMode==='batch');}));
 $('tab-single').addEventListener('click',()=>batchTab(false));$('tab-batch').addEventListener('click',()=>batchTab(true));
 document.querySelectorAll('.dataset-select').forEach(el=>el.addEventListener('change',()=>selectDataset(el.value)));
@@ -605,17 +784,22 @@ $('model-choice').addEventListener('change',guarded(async()=>{
   selectedRunId=null;$('decision').value=$('decision-basis').value==='raw'?model().threshold*100:50;
   invalidateSingle();renderAll();
   if(hadSingle)await predictSingle({preventDefault(){}});
-  if(version()?.rows.length&&!(profileOrigin&&!$('single-panel').hidden&&location.hash.replace(/^#/,'')==='predict'))await runBatch({go:false});
+
 }));
-['decision','low','high','decision-basis'].forEach(id=>$(id).addEventListener('change',guarded(()=>{selectedRunId=null;if(id==='decision-basis')$('decision').value=$('decision-basis').value==='raw'?model().threshold*100:50;configuration();invalidateSingle();renderAll();})));
+['decision','low','high','decision-basis'].forEach(id=>$(id).addEventListener('change',guarded(()=>{selectedRunId=null;if(id==='decision-basis')$('decision').value=$('decision-basis').value==='raw'?model().threshold*100:50;configuration();invalidateSingle();if(!profileOrigin)clearDraft();renderAll();})));
 ['run-batch','predict-dataset'].forEach(id=>$(id).addEventListener('click',guarded(()=>runBatch())));$('analyze-selected').addEventListener('click',guarded(()=>runBatch({go:false})));
-['result-search','risk-filter','warning-filter','min-pd','max-pd','min-age','max-age','min-limit','max-limit','min-delay'].forEach(id=>$(id).addEventListener('input',()=>{resultsPage=0;renderResults();}));
+['result-search','risk-filter','warning-filter','min-pd','max-pd','min-age','max-age','min-limit','max-limit','min-delay'].forEach(id=>$(id).addEventListener('input',()=>{if(/^(min|max)-(pd|age|limit)$/.test(id)){const peer=id.startsWith('min-')?id.replace('min-','max-'):id.replace('max-','min-');if(id.startsWith('min-')?Number($(id).value)>Number($(peer).value):Number($(id).value)<Number($(peer).value))$(peer).value=$(id).value;}resultsPage=0;renderResults();}));
+$('reset-thresholds').addEventListener('click',()=>{
+  selectedRunId=null;$('decision-basis').value='raw';$('decision').value=model().threshold*100;
+  $('low').value=20;$('high').value=50;
+  invalidateSingle();if(!profileOrigin)clearDraft();renderAll();
+});
 $('reset-filters').addEventListener('click',resetFilters);$('chart-mode').addEventListener('change',renderOverview);$('dataset-search').addEventListener('input',renderDatasets);$('history-search').addEventListener('input',renderHistory);
 $('add-customer').addEventListener('click',guarded(()=>openEditor(false)));$('edit-customer').addEventListener('click',guarded(()=>openEditor(true)));$('edit-form').addEventListener('submit',guarded(saveEdit));['close-edit','cancel-edit'].forEach(id=>$(id).addEventListener('click',()=>$('edit-dialog').close()));
 $('transfer-form').addEventListener('submit',guarded(confirmTransfer));
 ['close-transfer','cancel-transfer'].forEach(id=>$(id).addEventListener('click',()=>$('transfer-dialog').close()));
 $('rename-dataset').addEventListener('click',guarded(renameDataset));$('delete-dataset').addEventListener('click',guarded(deleteDataset));
-$('clone-dataset').addEventListener('click',guarded(cloneDataset));$('delete-customer').addEventListener('click',guarded(deleteCustomer));$('goto-models').addEventListener('click',()=>location.hash='models');$('compare-models').addEventListener('click',guarded(compareModels));
+$('delete-customer').addEventListener('click',guarded(deleteCustomer));$('goto-models').addEventListener('click',()=>location.hash='models');$('compare-models').addEventListener('click',guarded(compareModels));
 ['backup','history-backup'].forEach(id=>$(id).addEventListener('click',backup));$('restore').addEventListener('click',()=>$('restore-file').click());$('restore-file').addEventListener('change',guarded(restore));
 $('menu-toggle').addEventListener('click',()=>{const open=$('sidebar').classList.toggle('open');$('menu-toggle').setAttribute('aria-expanded',String(open));});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'){$('sidebar').classList.remove('open');$('menu-toggle').setAttribute('aria-expanded','false');}});
@@ -638,7 +822,9 @@ $('storage-form').addEventListener('submit',guarded(async event=>{
   const result=await api('workspace',undefined,{headers:{Authorization:`Bearer ${key}`}});
   if(!confirm('Mở kho này sẽ thay dữ liệu cục bộ hiện tại. Bạn đã sao lưu JSON chưa?'))return;
   localStorage.setItem('creditrisk-workspace-key',key);localStorage.removeItem('creditrisk-cloud-pending');cloudRevision=result.revision;
-  state=result.state||{datasets:[],runs:[]};await persist();selectDataset(state.datasets[0]?.id);$('storage-dialog').close();notify('Đã mở kho dữ liệu riêng.');
+  if(result.state)await indexDatasets(result.state);
+  clearDraft();invalidateSingle();inputFields('single-fields','single');
+  state=result.state||{datasets:[],runs:[]};await persist();selectDataset(workingDatasets()[0]?.id);$('storage-dialog').close();notify('Đã mở kho dữ liệu riêng.');
 }));
 
 async function initialize(){
@@ -657,10 +843,11 @@ async function initialize(){
     const change=document.createElement('a');change.href='/change-password';change.className='button secondary';change.textContent='Đổi mật khẩu';banner.append(change);
     const logout=$('logout');logout.hidden=false;logout.addEventListener('click',guarded(async()=>{await api('auth/logout',{});location.assign('/login');}));
   }
-  await openStorage();const [meta,health]=await Promise.all([api('models'),api('health')]);models=meta.models;features=meta.features;if(!models.length)throw new Error('Chưa tải được model thật. Kiểm tra bước build trên Vercel.');$('model-choice').replaceChildren(...models.map(m=>new Option(m.name,m.name)));if(meta.default_model)$('model-choice').value=meta.default_model;$('model-choice').disabled=false;$('decision').value=model().threshold*100;$('connection').innerHTML='<span class="status-dot"></span> API dự báo đã kết nối';$('app-version').textContent=`v${health.version} · Dữ liệu riêng trên trình duyệt`;remoteEnabled=health.storage==='mongodb';inputFields('single-fields','single');selectedDataset=state.datasets.find(d=>!d.deleted)?.id;selectedVersion=dataset()?.versions.at(-1)?.id;renderAll();if(remoteEnabled)void connectCloud();
+  await openStorage();const [meta,health]=await Promise.all([api('models'),api('health')]);models=meta.models;features=meta.features;if(!models.length)throw new Error('Chưa tải được model thật. Kiểm tra bước build trên Vercel.');$('model-choice').replaceChildren(...models.map(m=>new Option(m.name,m.name)));if(meta.default_model)$('model-choice').value=meta.default_model;$('model-choice').disabled=false;$('decision').value=model().threshold*100;$('connection').innerHTML='<span class="status-dot"></span> API dự báo đã kết nối';$('app-version').textContent=`v${health.version} · Dữ liệu riêng trên trình duyệt`;remoteEnabled=health.storage==='mongodb';inputFields('single-fields','single');restoreDraft();selectedDataset=state.datasets.find(d=>!d.deleted)?.id;selectedVersion=dataset()?.versions.at(-1)?.id;renderAll();if(remoteEnabled)void connectCloud();
+  if(singleResult&&location.hash==='#predict')void explainSingle();
 }
 document.querySelectorAll('[role="tab"]').forEach(tab=>tab.addEventListener('keydown',event=>{
-  const tabs=[...tab.closest('[role="tablist"]').querySelectorAll('[role="tab"]')];let index=tabs.indexOf(tab);
+  const tabs=[...tab.closest('[role="tablist"]').querySelectorAll('[role="tab"]:not([hidden])')];let index=tabs.indexOf(tab);
   if(event.key==='ArrowRight')index=(index+1)%tabs.length;
   else if(event.key==='ArrowLeft')index=(index+tabs.length-1)%tabs.length;
   else if(event.key==='Home')index=0;

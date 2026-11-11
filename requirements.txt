@@ -14,3 +14,4 @@ imbalanced-learn==0.14.2
 xgboost-cpu==3.4.1; sys_platform == "linux"
 xgboost==3.4.1; sys_platform != "linux"
 py-ubjson==0.16.1
+shap>=0.46,<0.50

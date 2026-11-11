@@ -158,6 +158,7 @@ def test_web_real_models_predict_and_explain():
         explanation = client.post("/api/explain", json={"rows": rows[:1], "model": name})
         assert explanation.status_code == 200
         assert len(explanation.json["rows"]) == 12
+        assert "SHAP" in explanation.json["scale"]
     assert len(set(probabilities)) == 3
 
 
