@@ -1,5 +1,6 @@
-"""Download the group's exact trusted Random Forest handoff, verifying its digest."""
+"""Verify or download the group's trusted model handoffs."""
 
+import argparse
 import hashlib
 from pathlib import Path
 import urllib.request
@@ -22,26 +23,31 @@ MODELS = [
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--verify-only", action="store_true")
+    args = parser.parse_args()
     for filename, url, digest in MODELS:
-        download(filename, url, digest)
+        download(filename, url, digest, verify_only=args.verify_only)
 
 
-def download(filename, url, digest):
+def download(filename, url, digest, *, verify_only=False):
     target = Path(__file__).resolve().parents[1] / "models" / filename
     if target.is_file() and hashlib.sha256(target.read_bytes()).hexdigest() == digest:
-        print("Model already present; SHA256 verified.")
+        print(f"{filename}: SHA256 verified.")
         return
+    if verify_only:
+        raise ValueError(f"{filename}: missing file or SHA256 mismatch.")
     with urllib.request.urlopen(url, timeout=90) as response:
         content = response.read()
     if hashlib.sha256(content).hexdigest() != digest:
         raise ValueError(
-            "Model checksum mismatch. The download may be a Google Drive login page; no file saved."
+            f"{filename}: downloaded file failed SHA256 verification."
         )
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_suffix(".download")
     temporary.write_bytes(content)
     temporary.replace(target)
-    print("Trusted model downloaded; SHA256 verified.")
+    print(f"{filename}: downloaded and SHA256 verified.")
 
 
 if __name__ == "__main__":

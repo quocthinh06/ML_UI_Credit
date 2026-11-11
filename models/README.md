@@ -8,7 +8,7 @@ Chạy `python tools/download_model.py` để tải cả Random Forest mặc đ�
 19d97aeff847a990ea1a3f6c27f95975e41df9275d7e8913084c16c98c865f48
 ```
 
-File nhị phân được giữ cục bộ, không commit. Pipeline dùng imbalanced-learn 0.14.2, scikit-learn 1.6.1 và pandas 2.2.3 theo metadata bàn giao. XGBoost 3.4.1 được cài để chạy mô hình XGBoost của nhóm.
+The three verified deployment bundles are tracked so Vercel can check SHA256 without contacting Google Drive. Pipeline dùng imbalanced-learn 0.14.2, scikit-learn 1.6.1 và pandas 2.2.3 theo metadata bàn giao. XGBoost 3.4.1 được cài để chạy mô hình XGBoost của nhóm.
 
 Bundle phải có `pipeline`, `threshold`, `features`, `calibrator`, `model_name`, `versions`. Tên 38 đặc trưng phải khớp đầu ra `creditrisk/features.py`. Công thức đặc trưng và 3 hồ sơ kiểm thử lấy từ `notebooks/04_use_model .ipynb` trên Drive, không thực thi các cell notebook khi chạy ứng dụng.
 
