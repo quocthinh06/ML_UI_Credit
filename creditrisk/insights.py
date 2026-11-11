@@ -1,6 +1,7 @@
 """Optional Groq commentary; prediction and evidence are computed on the server."""
 
 import json
+import logging
 import os
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -29,7 +30,7 @@ def generate_insights(frame, explanation, prediction, model_name, has_imputed):
     key = os.environ.get("GROQ_API_KEY", "").strip()
     if not key:
         return {"status": "unavailable", "message": "Chưa cấu hình Groq. Quản trị viên cần thêm GROQ_API_KEY trên máy chủ."}
-    model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+    model = os.environ.get("GROQ_MODEL", "").strip() or "openai/gpt-oss-20b"
     values = add_features(frame.rename(columns={"PAY_0": "PAY_1"})).iloc[0]
     evidence = []
     for row in explanation.sort_values("contribution", key=lambda s: s.abs(), ascending=False).to_dict("records"):
@@ -70,7 +71,24 @@ def generate_insights(frame, explanation, prediction, model_name, has_imputed):
         return {"status": "ok", "provider": "Groq", "model": model, "insights": insights,
                 "checks": [{"code": code, "text": allowed[code]} for code in dict.fromkeys(checks)], "evidence": evidence}
     except HTTPError as error:
-        message = "Groq đã hết hạn mức tạm thời. Hãy thử lại sau." if error.code == 429 else "Groq chưa khả dụng; quản trị viên cần kiểm tra key và quyền truy cập mô hình."
+        provider_code = "unknown"
+        try:
+            candidate = json.loads(error.read(16384)).get("error", {}).get("code")
+            if candidate in {"invalid_api_key", "model_not_found", "model_decommissioned", "model_permission_blocked", "json_validate_failed", "rate_limit_exceeded"}:
+                provider_code = candidate
+        except (ValueError, TypeError, AttributeError, OSError):
+            pass
+        logging.warning("Groq request failed: http_status=%s provider_code=%s", error.code, provider_code)
+        reasons = {
+            400: "Groq từ chối định dạng hoặc tham số yêu cầu; cần kiểm tra cấu hình model.",
+            401: "Groq không xác thực được API key. Kiểm tra key trong môi trường Production và triển khai lại.",
+            403: "Groq từ chối quyền truy cập. Kiểm tra Model Permissions của tổ chức và project trên Groq.",
+            404: "Groq không tìm thấy model. Kiểm tra GROQ_MODEL trong Vercel.",
+            429: "Groq đã hết hạn mức tạm thời. Hãy thử lại sau.",
+        }
+        message = reasons.get(error.code, "Dịch vụ Groq đang lỗi. Hãy thử lại sau.")
+        return {"status": "unavailable", "code": f"groq_http_{error.code}",
+                "message": f"{message} (HTTP {error.code}; {provider_code})"}
     except (URLError, TimeoutError, OSError, ValueError, KeyError, IndexError, TypeError):
         message = "Chưa nhận được insight AI hợp lệ. Kết quả dự báo và SHAP vẫn sử dụng được."
     return {"status": "unavailable", "message": message}

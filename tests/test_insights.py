@@ -34,6 +34,20 @@ def test_missing_key_does_not_call_provider(monkeypatch, frame):
     assert generate_insights(frame, pd.DataFrame(), {}, "RF", False)["status"] == "unavailable"
 
 
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 429, 503])
+def test_http_diagnostics_distinguish_causes_without_leaking_body(monkeypatch, frame, status, caplog):
+    monkeypatch.setenv("GROQ_API_KEY", "test-secret")
+    def request(req, timeout):
+        raise HTTPError(req.full_url, status, "private detail", {}, BytesIO(b'{"error":{"code":"model_not_found","message":"test-secret"}}'))
+    monkeypatch.setattr("creditrisk.insights.urlopen", request)
+    explanation = pd.DataFrame([{"feature": "PAY_1", "contribution": .1}])
+    result = generate_insights(frame, explanation, {}, "RF", False)
+    assert result["code"] == f"groq_http_{status}"
+    assert str(status) in result["message"]
+    assert "test-secret" not in str(result) + caplog.text
+    assert "private detail" not in str(result) + caplog.text
+
+
 @pytest.mark.parametrize("failure", ["quota", "unknown_feature", "unknown_action"])
 def test_provider_failures_and_invalid_evidence_are_not_displayed(monkeypatch, frame, failure):
     monkeypatch.setenv("GROQ_API_KEY", "test-secret")
