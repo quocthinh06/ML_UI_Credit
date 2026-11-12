@@ -376,6 +376,14 @@ test('a pending single response cannot restore a cleared or edited prediction',a
   assert.equal(run("$('export-single').disabled"),true);
 });
 
+test('threshold label leaves room above the tallest bar value',()=>{
+  const {run}=app();
+  const html=run("barChart('Điểm gốc','', ['30–40%','40–50%'],[9536,3018],{threshold:.42})");
+  const valueY=Number(html.match(/class="number"[^>]* y="([^"]+)"[^>]*>9\.536</)[1]);
+  const marker=html.match(/<rect[^>]* y="([^"]+)"[^>]* height="([^"]+)"[^>]*\/>(?=<text[^>]*>Ngưỡng)/);
+  assert.ok(valueY-12>Number(marker[1])+Number(marker[2]),'bar value must sit below the threshold badge');
+});
+
 test('histogram threshold follows its domain and stays in bounds at either edge',()=>{
   const {run}=app();
   const html=run("barChart('PD','', ['0–50%','50–100%'],[1,2],{threshold:.39})");

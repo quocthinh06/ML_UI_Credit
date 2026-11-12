@@ -312,8 +312,12 @@
          Chọn một tập hồ sơ để xem.
         </p>
        </div>
-       <select aria-label="Phiên bản dữ liệu" id="version-choice">
-       </select>
+       <div class="actions">
+        <label for="management-dataset">Bộ hồ sơ</label>
+        <select class="dataset-select" id="management-dataset"></select>
+        <select aria-label="Phiên bản dữ liệu" id="version-choice">
+        </select>
+       </div>
       </div>
       <div class="imputation-report" hidden id="dataset-imputation" role="status"></div>
       <button class="button secondary compact" hidden id="download-imputation-report" type="button">Tải báo cáo điền thiếu (JSON)</button>

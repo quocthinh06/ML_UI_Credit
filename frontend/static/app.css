@@ -51,7 +51,9 @@ label input,label select{font-size:13px;font-weight:400;color:var(--ink)}
 .mobile-menu{display:none!important}
 main{padding:30px 30px 35px;max-width:1800px;width:100%;margin:auto;flex:1}
 .page{animation:appear .2s ease-out}
-.page-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:25px}
+.page-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:25px;padding:18px 20px;background:#eaf1ff;border:1px solid #cbdafa;border-left:5px solid var(--blue);border-radius:10px}
+.page-heading>div{min-width:0}
+.page-heading h1,.page-heading h2{color:#163d80;overflow-wrap:anywhere}
 .page-heading p{margin-top:7px;font-size:13px}
 .actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;background:var(--blue);color:white;border:1px solid transparent;border-radius:8px;padding:9px 15px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 4px #1d52c514;transition:background .15s,box-shadow .15s}
