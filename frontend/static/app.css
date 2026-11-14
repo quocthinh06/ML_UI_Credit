@@ -91,7 +91,24 @@ main{padding:30px 30px 35px;max-width:1800px;width:100%;margin:auto;flex:1}
 .chart-card .chart-subtitle{font-size:12px;margin-top:3px}
 .chart{margin-top:14px;width:100%;height:auto;min-height:180px;overflow:visible}
 .chart text{font-family:'Segoe UI',system-ui,sans-serif;font-size:12px;fill:#56657d}
-.chart .number{fill:#263e60;font-weight:600;font-size:12px}
+.chart-label,.chart .threshold-marker{pointer-events:none}
+.chart-hit,.status-segment,.roc-line,.shap-bar{cursor:help}
+.chart-legend li .legend-swatch{width:10px;height:10px;border-radius:50%;flex:none}
+.chart-legend li[title]{justify-content:flex-start;align-items:center;cursor:help}
+.chart-bar,.shap-value{transform-box:fill-box}
+.chart-bar{transform-origin:center bottom}
+.shap-value{transform-origin:left center}
+.negative .shap-value{transform-origin:right center}
+@media(prefers-reduced-motion:no-preference){
+  .chart-bar{animation:chart-bar-grow .45s ease-out both}
+  .roc-line{animation:chart-line-draw .65s ease-out both;stroke-dasharray:100}
+  .status-segment{animation:chart-segment-in .5s ease-out both}
+  .shap-value{animation:chart-shap-grow .4s ease-out both}
+}
+@keyframes chart-bar-grow{from{transform:scaleY(0)}}
+@keyframes chart-line-draw{from{stroke-dashoffset:100}}
+@keyframes chart-segment-in{from{opacity:0;stroke-width:10}}
+@keyframes chart-shap-grow{from{transform:scaleX(0)}}
 .chart .grid{stroke:#edf1f7;stroke-width:1}
 .chart .axis-title{font-size:12px;fill:#56657d}
 .insight-panel{display:flex;align-items:flex-start;gap:14px;padding:18px 20px;margin-top:18px;background:#f5fbfc;border-color:#dceef0}
@@ -323,7 +340,6 @@ h1{font-size:24px}
 .chart .threshold-marker text{fill:var(--red);font-size:12px;font-weight:600}
 .status-chart{display:block;width:min(100%,210px);height:auto;margin:12px auto}
 .status-chart text{fill:var(--muted);font-size:13px}
-.status-chart .status-total{fill:var(--ink);font-size:27px;font-weight:700}
 .chart-legend{list-style:none;padding:0;margin:0;display:grid;gap:8px;font-size:12px}
 .chart-legend li{display:flex;justify-content:space-between;gap:12px}
 .metric-label{padding-inline-end:35px}

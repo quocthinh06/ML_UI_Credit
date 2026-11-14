@@ -365,7 +365,14 @@ function barChart(title, subtitle, labels, values, {percent=false, colors, axis=
   let svg=`<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHTML(title)}">`;
   for(let i=0;i<=4;i++){const y=top+plotH-i*plotH/4;svg+=`<line class="grid" x1="${left}" x2="${width-12}" y1="${y}" y2="${y}"/><text x="${left-7}" y="${y+4}" text-anchor="end">${escapeHTML(percent?`${Math.round(max*i/4*100)}%`:fmt(max*i/4))}</text>`;}
   const band=plotW/Math.max(labels.length,1),barW=Math.min(64,band*.65);
-  labels.forEach((label,i)=>{const v=Number.isFinite(values[i])?values[i]:0,x=left+band*i+(band-barW)/2,h=v/max*plotH;svg+=`<rect x="${x}" y="${top+plotH-h}" width="${barW}" height="${h}" rx="3" fill="${colors?.[i]||'#2563eb'}"><title>${escapeHTML(label)}: ${escapeHTML(percent?pct(v):fmt(v))}</title></rect><text class="number" x="${x+barW/2}" y="${top+plotH-h-7}" text-anchor="middle">${escapeHTML(percent?pct(v):fmt(v))}</text><text x="${x+barW/2}" y="${top+plotH+18}" text-anchor="middle"${labels.length>9?' transform="rotate(-32 '+(x+barW/2)+' '+(top+plotH+18)+')"':''}>${escapeHTML(label)}</text>`;});
+  labels.forEach((label,i)=>{
+    const v=Number.isFinite(values[i])?values[i]:0;
+    const center=left+band*(i+.5), base=top+plotH, h=v/max*plotH;
+    const tooltip=`${escapeHTML(label)}: ${escapeHTML(percent?pct(v):fmt(v))}`;
+    svg+=`<rect class="chart-bar" x="${center-barW/2}" y="${base-h}" width="${barW}" height="${h}" rx="3" fill="${colors?.[i]||'#2563eb'}"/>`;
+    svg+=`<rect class="chart-hit" x="${left+band*i}" y="${top}" width="${band}" height="${plotH+22}" fill="transparent"><title>${tooltip}</title></rect>`;
+    svg+=`<text class="chart-label" x="${center}" y="${base+18}" text-anchor="middle"${labels.length>9?` transform="rotate(-32 ${center} ${base+18})"`:''}>${escapeHTML(label)}</text>`;
+  });
   if(Number.isFinite(threshold)){
     const x=left+Math.max(0,Math.min(1,threshold))*plotW,labelX=Math.max(left+72,Math.min(width-84,x));
     svg+=`<g class="threshold-marker"><line x1="${x}" x2="${x}" y1="${top}" y2="${top+plotH}"/><rect x="${labelX-70}" y="22" width="140" height="20" rx="5"/><text x="${labelX}" y="36" text-anchor="middle">Ngưỡng τ = ${pct(threshold)}</text></g>`;
@@ -391,22 +398,22 @@ function rocChart(rows) {
   if(!pos||!neg)return '<article class="panel empty"><h3>ROC cần nhãn cả hai lớp</h3><p>Tập hồ sơ cần có cả nhãn thực tế 0 và 1.</p></article>';
   let tp=0,fp=0,points=['45,195'];const sorted=known.slice().sort((a,b)=>b.raw_score-a.raw_score);
   for(let i=0;i<sorted.length;){let j=i;while(j<sorted.length&&sorted[j].raw_score===sorted[i].raw_score){if(sorted[j]['default.payment.next.month']===1)tp++;else fp++;j++;}points.push(`${45+fp/neg*430},${195-tp/pos*170}`);i=j;}
-  return `<article class="panel chart-card"><h3>ROC · điểm thô</h3><p class="chart-subtitle">AUC ${metrics(rows).AUC.toFixed(4)} · Nhãn hợp lệ ${known.length}</p><svg class="chart" viewBox="0 0 520 240" role="img" aria-label="Đường ROC"><path d="M45 25V195H475" fill="none" stroke="#d8e0ed"/><path d="M45 195L475 25" stroke="#b9c8dc" stroke-dasharray="5"/><polyline points="${points.join(' ')}" fill="none" stroke="#2563eb" stroke-width="2.5"/><text x="45" y="214">0</text><text x="475" y="214">1</text><text x="23" y="30">1</text><text x="180" y="236">False positive rate</text><text x="45" y="13">True positive rate</text></svg></article>`;
+  return `<article class="panel chart-card"><h3>ROC · điểm thô</h3><p class="chart-subtitle">Điểm mô hình trước hiệu chỉnh</p><svg class="chart" viewBox="0 0 520 240" role="img" aria-label="Đường ROC"><path d="M45 25V195H475" fill="none" stroke="#d8e0ed"/><path d="M45 195L475 25" stroke="#b9c8dc" stroke-dasharray="5"/><polyline class="roc-line" pathLength="100" points="${points.join(' ')}" fill="none" stroke="#2563eb" stroke-width="2.5"><title>AUC ${metrics(rows).AUC.toFixed(4)} · ${fmt(known.length)} hồ sơ có nhãn</title></polyline><text x="45" y="214">0</text><text x="475" y="214">1</text><text x="23" y="30">1</text><text x="180" y="236">False positive rate</text><text x="45" y="13">True positive rate</text></svg></article>`;
 }
 function statusChart(items){
   const groups=[['Chưa dự báo',0,'#56657d'],['Kết quả còn hiệu lực',0,'#087f83'],['Cần dự báo lại',0,'#9c6807']];
   items.forEach(({d,v,run})=>{const previous=state.runs.some(r=>r.datasetId===d.id&&r.modelHash===model()?.digest);groups[run?1:previous?2:0][1]+=v.rows.length;});
   const total=groups.reduce((sum,g)=>sum+g[1],0);let offset=0;
-  const circles=groups.map(([label,count,color])=>{const size=total?count/total*100:0;const result=`<circle cx="100" cy="100" r="70" pathLength="100" fill="none" stroke="${color}" stroke-width="20" stroke-dasharray="${size} ${100-size}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)"><title>${label}: ${fmt(count)}</title></circle>`;offset+=size;return result;}).join('');
-  return `<article class="panel chart-card status-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><svg class="status-chart" viewBox="0 0 200 200" role="img" aria-label="${escapeHTML(groups.map(g=>g[0]+': '+fmt(g[1])).join('; '))}">${circles}<text x="100" y="98" text-anchor="middle" class="status-total">${fmt(total)}</text><text x="100" y="120" text-anchor="middle">hồ sơ</text></svg><ul class="chart-legend">${groups.map(([label,count])=>`<li><span>${label}</span><strong>${fmt(count)}</strong></li>`).join('')}</ul></article>`;
+  const circles=groups.map(([label,count,color])=>{const size=total?count/total*100:0;const result=count?`<circle class="status-segment" cx="100" cy="100" r="70" pathLength="100" fill="none" stroke="${color}" stroke-width="20" stroke-dasharray="${size} ${100-size}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)"><title>${label}: ${fmt(count)}</title></circle>`:'';offset+=size;return result;}).join('');
+  return `<article class="panel chart-card status-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><svg class="status-chart" viewBox="0 0 200 200" role="img" aria-label="${escapeHTML(groups.map(g=>g[0]+': '+fmt(g[1])).join('; '))}"><circle cx="100" cy="100" r="70" fill="none" stroke="#edf1f7" stroke-width="20"/>${circles}<text x="100" y="105" text-anchor="middle">Hồ sơ</text><circle cx="100" cy="100" r="59" fill="transparent"><title>Tổng số hồ sơ: ${fmt(total)}</title></circle></svg><ul class="chart-legend">${groups.map(([label,count,color])=>`<li title="${escapeHTML(label)}: ${fmt(count)}"><span class="legend-swatch" style="background:${color}"></span>${escapeHTML(label)}</li>`).join('')}</ul></article>`;
 }
 function renderOverview() {
   const v=version(),run=activeRun(),latest=v?[{d:dataset(),v,run}]:[];
   const scope=v?`Đang phân tích: ${dataset().name} (${fmt(v.rows.length)})`:'Chưa chọn tập hồ sơ';
-  const summary=run?stats(run.rows):null;
+  const summary=run?stats(filteredRows()):null;
   $('portfolio-metrics').hidden=!v;
   $('portfolio-metrics').innerHTML=[
-    ['Hồ sơ trong tập',v?.rows.length,'overview',''],
+    ['Hồ sơ sau lọc',run?summary.rows:v?.rows.length,'overview',''],
     ['PD trung bình',summary?.mean,'performance','teal'],
     ['Hồ sơ rủi ro cao',summary?.high,'shield','danger'],
     ['Hồ sơ cảnh báo',summary?.warnings,'predict','warning']
@@ -773,7 +780,7 @@ async function explainSingle(){
     const result=await api('explain',{rows:[inputs],model:m.name});
     if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
     const max=Math.max(...result.rows.map(r=>Math.abs(r.contribution)),.00001);
-    box.innerHTML=`<h3>Vì sao mô hình đưa ra kết quả này?</h3><p>${escapeHTML(result.scale)} · ${result.rows.length} yếu tố có độ lớn đóng góp cao nhất. Đỏ (+): tăng điểm rủi ro; xanh (−): giảm điểm. Các giá trị SHAP giải thích điểm mô hình trước hiệu chỉnh, không phải phần trăm PD và không chứng minh quan hệ nhân quả.</p>${singleResult?.imputation?.filled_cells?'<p>Hồ sơ có dữ liệu được điền từ tập train. Giải thích này dựa trên đầu vào sau khi điền.</p>':''}${result.rows.map(r=>{const width=Math.abs(r.contribution)/max*50;return `<div class="contribution ${r.contribution<0?'negative':'positive'}"><div><span>${escapeHTML(featureLabel(r.feature))}<small>${escapeHTML(r.feature)}</small></span><strong>${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}<small>${r.contribution>=0?'Tăng điểm':'Giảm điểm'}</small></strong></div><svg class="shap-bar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="${r.contribution>=0?'Tăng':'Giảm'} điểm: ${r.contribution.toFixed(4)}"><rect class="shap-track" width="100" height="8" rx="2"/><rect class="shap-value" x="${r.contribution<0?50-width:50}" width="${width}" height="8"/><path class="shap-zero" d="M50 0V8"/></svg></div>`;}).join('')}`;
+    box.innerHTML=`<h3>Vì sao mô hình đưa ra kết quả này?</h3><p>${escapeHTML(result.scale)} · ${result.rows.length} yếu tố có độ lớn đóng góp cao nhất. Đỏ (+): tăng điểm rủi ro; xanh (−): giảm điểm. Các giá trị SHAP giải thích điểm mô hình trước hiệu chỉnh, không phải phần trăm PD và không chứng minh quan hệ nhân quả.</p>${singleResult?.imputation?.filled_cells?'<p>Hồ sơ có dữ liệu được điền từ tập train. Giải thích này dựa trên đầu vào sau khi điền.</p>':''}${result.rows.map(r=>{const width=Math.abs(r.contribution)/max*50;return `<div class="contribution ${r.contribution<0?'negative':'positive'}"><div><span>${escapeHTML(featureLabel(r.feature))}<small>${escapeHTML(r.feature)}</small></span><strong><small>${r.contribution>=0?'Tăng điểm':'Giảm điểm'}</small></strong></div><svg class="shap-bar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="${r.contribution>=0?'Tăng':'Giảm'} điểm: ${r.contribution.toFixed(4)}"><title>${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}</title><rect class="shap-track" width="100" height="8" rx="2"/><rect class="shap-value" x="${r.contribution<0?50-width:50}" width="${width}" height="8"/><path class="shap-zero" d="M50 0V8"/></svg></div>`;}).join('')}`;
   }catch{
     if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
     box.textContent='Chưa tải được giải thích SHAP. Kết quả dự báo đã có.';

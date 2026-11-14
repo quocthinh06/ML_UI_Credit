@@ -376,12 +376,13 @@ test('a pending single response cannot restore a cleared or edited prediction',a
   assert.equal(run("$('export-single').disabled"),true);
 });
 
-test('threshold label leaves room above the tallest bar value',()=>{
+test('bar chart keeps exact values in tooltips, including zero-height bars',()=>{
   const {run}=app();
-  const html=run("barChart('Điểm gốc','', ['30–40%','40–50%'],[9536,3018],{threshold:.42})");
-  const valueY=Number(html.match(/class="number"[^>]* y="([^"]+)"[^>]*>9\.536</)[1]);
-  const marker=html.match(/<rect[^>]* y="([^"]+)"[^>]* height="([^"]+)"[^>]*\/>(?=<text[^>]*>Ngưỡng)/);
-  assert.ok(valueY-12>Number(marker[1])+Number(marker[2]),'bar value must sit below the threshold badge');
+  const html=run("barChart('PD','', ['30–40%','40–50%'],[9536,0],{threshold:.42})");
+  assert.match(html,/<title>30–40%: 9\.536<\/title>/);
+  assert.match(html,/<title>40–50%: 0<\/title>/);
+  assert.doesNotMatch(html,/class="number"/);
+  assert.equal((html.match(/class="chart-hit"/g)||[]).length,2);
 });
 
 test('histogram threshold follows its domain and stays in bounds at either edge',()=>{
