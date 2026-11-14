@@ -392,7 +392,7 @@ test('bar tooltips distinguish the two axes, series, zero and missing values',()
   for(const color of ['red','green','blue']){
     assert.match(html,new RegExp('class="chart-bar"[^>]*fill="'+color+'"'));
   }
-  assert.doesNotMatch(html,/<text[^>]*>[^<]*%/);
+  assert.doesNotMatch(html,/<text[^>]*>(?!Ngưỡng τ = )[^<]*%/);
   assert.doesNotMatch(html,/class="number"|<title>/);
 });
 
@@ -464,7 +464,8 @@ test('histogram threshold follows its domain and stays in bounds at either edge'
   const html=run("barChart('PD','', ['0–50%','50–100%'],[1,2],{threshold:.39})");
   assert.match(html,/x1="223\.74"/);
   assert.equal(chartTooltips(html).at(-1).value,'39.00%');
-  assert.doesNotMatch(html,/<text[^>]*>[^<]*%/);
+  assert.match(html,/Ngưỡng τ = 39\.00%<\/text>/);
+  assert.doesNotMatch(html,/<text[^>]*>(?!Ngưỡng τ = )[^<]*%/);
   assert.match(run("barChart('PD','', ['all'],[1],{threshold:0})"),/x1="42"/);
   assert.match(run("barChart('PD','', ['all'],[1],{threshold:1})"),/x1="508"/);
   assert.doesNotMatch(run("barChart('PD','', ['all'],[1])"),/threshold-marker/);
