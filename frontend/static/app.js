@@ -402,10 +402,12 @@ function barChart(title, subtitle, labels, values, {percent=false, colors, axis=
   labels.forEach((label,i)=>{
     const v=Number.isFinite(values[i])?values[i]:0;
     const center=left+band*(i+.5), base=top+plotH, h=v/max*plotH;
-    const tooltip=`${escapeHTML(label)}: ${escapeHTML(percent?pct(v):fmt(v))}`;
+    const tooltip=`${escapeHTML(label)} · ${escapeHTML(axis)}: ${escapeHTML(percent?pct(v):fmt(v))}`;
+    const labelWidth=String(label).length*6.5;
+    const fitted=labelWidth>band-6?` textLength="${band-6}" lengthAdjust="spacingAndGlyphs"`: '';
     svg+=`<rect class="chart-bar" x="${center-barW/2}" y="${base-h}" width="${barW}" height="${h}" rx="3" fill="${colors?.[i]||'#2563eb'}"/>`;
     svg+=`<rect class="chart-hit" x="${left+band*i}" y="${top}" width="${band}" height="${plotH+22}" fill="transparent" data-chart-tooltip="${tooltip}"/>`;
-    svg+=`<text class="chart-label" x="${center}" y="${base+18}" text-anchor="middle"${labels.length>9?` transform="rotate(-32 ${center} ${base+18})"`:''}>${escapeHTML(label)}</text>`;
+    svg+=`<text class="chart-label" x="${center}" y="${base-h-6}" text-anchor="middle"${fitted}>${escapeHTML(label)}</text>`;
   });
   if(Number.isFinite(threshold)){
     const x=left+Math.max(0,Math.min(1,threshold))*plotW,labelX=Math.max(left+72,Math.min(width-84,x));

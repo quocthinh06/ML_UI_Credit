@@ -379,8 +379,9 @@ test('a pending single response cannot restore a cleared or edited prediction',a
 test('bar chart keeps exact values in tooltips, including zero-height bars',()=>{
   const {run}=app();
   const html=run("barChart('PD','', ['30–40%','40–50%'],[9536,0],{threshold:.42})");
-  assert.match(html,/data-chart-tooltip="30–40%: 9\.536"/);
-  assert.match(html,/data-chart-tooltip="40–50%: 0"/);
+  assert.match(html,/data-chart-tooltip="30–40% · Số hồ sơ: 9\.536"/);
+  assert.match(html,/data-chart-tooltip="40–50% · Số hồ sơ: 0"/);
+  assert.match(html,/<text class="chart-label"[^>]*>30–40%<\/text>/);
   assert.doesNotMatch(html,/class="number"|<title>/);
   assert.equal((html.match(/class="chart-hit"/g)||[]).length,2);
 });
