@@ -360,10 +360,43 @@ function renderResults() {
 }
 
 function stats(rows) { const labelled=rows.filter(r=>r['default.payment.next.month']===0||r['default.payment.next.month']===1); return {rows:rows.length,mean:rows.length?rows.reduce((s,r)=>s+r.probability,0)/rows.length:null,high:rows.filter(r=>r.risk_level==='High').length,warnings:rows.filter(r=>r.default_label===1).length,labelled,actual:labelled.length?labelled.reduce((s,r)=>s+r['default.payment.next.month'],0)/labelled.length:null}; }
-let chartTooltip;
+let chartTooltip, tooltipKey, tooltipWidth, tooltipHeight;
+const rocPoints = new WeakMap();
+
+function chartData(xTitle, x, yTitle, value, series=''){
+  return `data-chart-tooltip data-chart-data="${escapeHTML(JSON.stringify({xTitle,x,yTitle,value,series}))}"`;
+}
 
 function hideChartTooltip(){
   if(chartTooltip) chartTooltip.hidden=true;
+}
+
+function nearestRocPoint(points, x, y){
+  let best=points[0], distance=Infinity;
+  for(const point of points){
+    const squared=(point[0]-x)**2+(point[1]-y)**2;
+    if(squared<distance){best=point;distance=squared;}
+  }
+  return best;
+}
+
+function chartHoverData(target,event){
+  const data=JSON.parse(target.dataset.chartData);
+  if(target.classList.contains('roc-hit')){
+    const matrix=target.getScreenCTM();
+    if(!matrix) return null;
+    const pointer=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());
+    if(!rocPoints.has(target)) rocPoints.set(target,target.getAttribute('points').split(' ').map(point=>point.split(',').map(Number)));
+    const [x,y]=nearestRocPoint(rocPoints.get(target),pointer.x,pointer.y);
+    data.x=pct((x-45)/430);
+    data.value=pct((195-y)/170);
+  }
+  const chart=target.closest('.chart-datum')||target;
+  const mark=chart.querySelector('.chart-bar,.roc-line,.shap-value,.status-fill');
+  if(!mark) return null;
+  const style=getComputedStyle(mark);
+  const color=mark.matches('.roc-line')?style.stroke:mark.matches('.status-fill')?style.backgroundColor:style.fill;
+  return {...data,color};
 }
 
 document.addEventListener('pointermove',event=>{
@@ -372,19 +405,30 @@ document.addEventListener('pointermove',event=>{
     hideChartTooltip();
     return;
   }
+  const data=chartHoverData(target,event);
+  if(!data){hideChartTooltip();return;}
+  const key=JSON.stringify(data);
   if(!chartTooltip){
     chartTooltip=document.createElement('div');
     chartTooltip.className='chart-tooltip';
     chartTooltip.setAttribute('aria-hidden','true');
     document.body.append(chartTooltip);
   }
-  chartTooltip.textContent=target.dataset.chartTooltip;
+  const needsMeasure=chartTooltip.hidden||key!==tooltipKey;
+  if(key!==tooltipKey){
+    tooltipKey=key;
+    chartTooltip.innerHTML=`<div class="chart-tooltip-heading"><span class="chart-tooltip-color"></span>${escapeHTML(data.series||data.yTitle)}</div><div>${escapeHTML(data.xTitle)} <strong>${escapeHTML(data.x)}</strong></div><div>${escapeHTML(data.yTitle)} <strong>${escapeHTML(data.value)}</strong></div>`;
+    chartTooltip.firstElementChild.firstElementChild.style.backgroundColor=data.color;
+  }
   chartTooltip.hidden=false;
-  const gap=12, width=chartTooltip.offsetWidth, height=chartTooltip.offsetHeight;
-  const viewport=document.documentElement;
+  if(needsMeasure){
+    tooltipWidth=chartTooltip.offsetWidth;
+    tooltipHeight=chartTooltip.offsetHeight;
+  }
+  const gap=12, viewport=document.documentElement;
   const x=event.clientX+gap, y=event.clientY+gap;
-  chartTooltip.style.left=Math.max(4,x+width>viewport.clientWidth-4?event.clientX-width-gap:x)+'px';
-  chartTooltip.style.top=Math.max(4,y+height>viewport.clientHeight-4?event.clientY-height-gap:y)+'px';
+  chartTooltip.style.left=Math.max(4,Math.min(viewport.clientWidth-tooltipWidth-4,x+tooltipWidth>viewport.clientWidth-4?event.clientX-tooltipWidth-gap:x))+'px';
+  chartTooltip.style.top=Math.max(4,Math.min(viewport.clientHeight-tooltipHeight-4,y+tooltipHeight>viewport.clientHeight-4?event.clientY-tooltipHeight-gap:y))+'px';
 });
 
 document.addEventListener('pointerout',event=>{
@@ -392,21 +436,23 @@ document.addEventListener('pointerout',event=>{
   if(target&&!target.contains(event.relatedTarget)) hideChartTooltip();
 });
 document.addEventListener('scroll',hideChartTooltip,true);
+window.addEventListener('resize',hideChartTooltip);
 window.addEventListener('blur',hideChartTooltip);
 
-function barChart(title, subtitle, labels, values, {percent=false, colors, axis='Số hồ sơ', threshold=null}={}) {
+function barChart(title, subtitle, labels, values, {percent=false, colors, axis='Số hồ sơ', xAxis='Danh mục', series, threshold=null}={}) {
   const width=520,height=240,left=42,top=Number.isFinite(threshold)?64:22,bottom=65,plotH=height-top-bottom,plotW=width-left-12,max=percent?1:Math.max(1,Math.ceil(Math.max(...values.filter(Number.isFinite),1)/4))*4;
   let svg=`<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHTML(title)}">`;
   for(let i=0;i<=4;i++){const y=top+plotH-i*plotH/4;svg+=`<line class="grid" x1="${left}" x2="${width-12}" y1="${y}" y2="${y}"/><text x="${left-7}" y="${y+4}" text-anchor="end">${escapeHTML(percent?`${Math.round(max*i/4*100)}%`:fmt(max*i/4))}</text>`;}
   const band=plotW/Math.max(labels.length,1),barW=Math.min(64,band*.65);
   labels.forEach((label,i)=>{
-    const v=Number.isFinite(values[i])?values[i]:0;
+    const valid=Number.isFinite(values[i]);
+    const v=valid?values[i]:0;
     const center=left+band*(i+.5), base=top+plotH, h=v/max*plotH;
-    const tooltip=`${escapeHTML(label)} · ${escapeHTML(axis)}: ${escapeHTML(percent?pct(v):fmt(v))}`;
+    const tooltip=chartData(xAxis,label??'Thiếu danh mục',axis,valid?(percent?pct(v):fmt(v)):'Không có dữ liệu',series?.[i]);
     const labelWidth=String(label).length*6.5;
     const fitted=labelWidth>band-6?` textLength="${band-6}" lengthAdjust="spacingAndGlyphs"`: '';
-    svg+=`<rect class="chart-bar" x="${center-barW/2}" y="${base-h}" width="${barW}" height="${h}" rx="3" fill="${colors?.[i]||'#2563eb'}"/>`;
-    svg+=`<rect class="chart-hit" x="${left+band*i}" y="${top}" width="${band}" height="${plotH+22}" fill="transparent" data-chart-tooltip="${tooltip}"/>`;
+    svg+=`<g class="chart-datum"><rect class="chart-bar" x="${center-barW/2}" y="${base-h}" width="${barW}" height="${h}" rx="3" fill="${colors?.[i]||'#2563eb'}"/>`;
+    svg+=`<rect class="chart-hit" x="${center-barW/2}" y="${base-Math.max(8,h)}" width="${barW}" height="${Math.max(8,h)+4}" fill="transparent" ${tooltip}/></g>`;
     svg+=`<text class="chart-label" x="${center}" y="${base-h-6}" text-anchor="middle"${fitted}>${escapeHTML(label)}</text>`;
   });
   if(Number.isFinite(threshold)){
@@ -434,7 +480,7 @@ function rocChart(rows) {
   if(!pos||!neg)return '<article class="panel empty"><h3>ROC cần nhãn cả hai lớp</h3><p>Tập hồ sơ cần có cả nhãn thực tế 0 và 1.</p></article>';
   let tp=0,fp=0,points=['45,195'];const sorted=known.slice().sort((a,b)=>b.raw_score-a.raw_score);
   for(let i=0;i<sorted.length;){let j=i;while(j<sorted.length&&sorted[j].raw_score===sorted[i].raw_score){if(sorted[j]['default.payment.next.month']===1)tp++;else fp++;j++;}points.push(`${45+fp/neg*430},${195-tp/pos*170}`);i=j;}
-  return `<article class="panel chart-card"><h3>ROC · điểm thô</h3><p class="chart-subtitle">Điểm mô hình trước hiệu chỉnh</p><svg class="chart" viewBox="0 0 520 240" role="img" aria-label="Đường ROC"><path d="M45 25V195H475" fill="none" stroke="#d8e0ed"/><path d="M45 195L475 25" stroke="#b9c8dc" stroke-dasharray="5"/><polyline class="roc-line" pathLength="100" points="${points.join(' ')}" fill="none" stroke="#2563eb" stroke-width="2.5"/><polyline class="roc-hit" points="${points.join(' ')}" fill="none" stroke="transparent" stroke-width="16" data-chart-tooltip="AUC ${metrics(rows).AUC.toFixed(4)} · ${fmt(known.length)} hồ sơ có nhãn"/><text x="45" y="214">0</text><text x="475" y="214">1</text><text x="23" y="30">1</text><text x="180" y="236">False positive rate</text><text x="45" y="13">True positive rate</text></svg></article>`;
+  return `<article class="panel chart-card"><h3>ROC · điểm thô</h3><p class="chart-subtitle">Điểm mô hình trước hiệu chỉnh</p><svg class="chart" viewBox="0 0 520 240" role="img" aria-label="Đường ROC"><path d="M45 25V195H475" fill="none" stroke="#d8e0ed"/><path d="M45 195L475 25" stroke="#b9c8dc" stroke-dasharray="5"/><g class="chart-datum"><polyline class="roc-line" pathLength="100" points="${points.join(' ')}" fill="none" stroke="#2563eb" stroke-width="2.5"/><polyline class="roc-hit" points="${points.join(' ')}" fill="none" stroke="transparent" stroke-width="16" ${chartData('Tỷ lệ dương tính giả (FPR)','', 'Tỷ lệ dương tính thật (TPR)','',`ROC · AUC ${metrics(rows).AUC.toFixed(4)}`)}/></g><text x="45" y="214">0</text><text x="475" y="214">1</text><text x="23" y="30">1</text><text x="180" y="236">False positive rate</text><text x="45" y="13">True positive rate</text></svg></article>`;
 }
 function statusChart(items){
   const groups=[['Chưa dự báo',0,'#56657d'],['Kết quả còn hiệu lực',0,'#087f83'],['Cần dự báo lại',0,'#9c6807']];
@@ -445,7 +491,7 @@ function statusChart(items){
     const value=`${fmt(count)} hồ sơ · ${pct(share)}`;
     return `<li class="status-row">
       <div class="status-row-heading"><span>${escapeHTML(label)}</span><span>${value}</span></div>
-      <div class="status-track" aria-hidden="true"><div class="status-fill" style="width:${share*100}%;background:${color}"></div></div>
+      <div class="status-track" aria-hidden="true" ${chartData('Trạng thái hồ sơ',label,'Tỷ lệ hồ sơ',`${pct(share)} · ${fmt(count)} hồ sơ`)}><div class="status-fill" style="width:${share*100}%;background:${color}"></div></div>
     </li>`;
   }).join('');
   return `<article class="panel chart-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><ul class="status-bars">${bars}</ul></article>`;
@@ -471,26 +517,27 @@ function renderOverview() {
   $('insight-text').textContent=`PD trung bình ${pct(s.mean)}. ${fmt(s.warnings)}/${fmt(rows.length)} hồ sơ cảnh báo theo ngưỡng ${run.thresholds.decision} (${run.thresholds.basis}); ${fmt(s.high)} hồ sơ thuộc nhóm rủi ro cao. ${s.labelled.length?`Tỷ lệ vỡ nợ thực tế ${pct(s.actual)} trên ${fmt(s.labelled.length)} nhãn hợp lệ.`:'Chưa có nhãn thực tế để đánh giá chất lượng dự báo.'}`;
   let charts=[];
   if(mode==='risk'){
-    charts.push(barChart('Phân nhóm rủi ro từ PD','risk_level · Số hồ sơ theo nhóm',['Thấp','Trung bình','Cao'],['Low','Medium','High'].map(k=>rows.filter(r=>r.risk_level===k).length),{colors:['#087f83','#d49727','#bd2946']}));
+    charts.push(barChart('Phân nhóm rủi ro từ PD','risk_level · Số hồ sơ theo nhóm',['Thấp','Trung bình','Cao'],['Low','Medium','High'].map(k=>rows.filter(r=>r.risk_level===k).length),{xAxis:'Nhóm rủi ro',colors:['#087f83','#d49727','#bd2946']}));
     const pd=Array(10).fill(0);rows.forEach(r=>pd[Math.min(9,Math.floor(r.probability*10))]++);
-    charts.unshift(barChart('Phân bố xác suất vỡ nợ','PD đã hiệu chỉnh · Màu theo trung điểm khoảng: Thấp / Trung bình / Cao',pd.map((_,i)=>`${i*10}–${(i+1)*10}%`),pd,{colors:pd.map((_,i)=>(i+.5)/10<run.thresholds.low?'#087f83':(i+.5)/10>=run.thresholds.high?'#bb2745':'#9c6807'),threshold:run.thresholds.basis==='probability'?run.thresholds.decision:null}));
+    const pdGroups=pd.map((_,i)=>(i+.5)/10<run.thresholds.low?0:(i+.5)/10>=run.thresholds.high?2:1);
+    charts.unshift(barChart('Phân bố xác suất vỡ nợ','PD đã hiệu chỉnh · Màu theo trung điểm khoảng: Thấp / Trung bình / Cao',pd.map((_,i)=>`${i*10}–${(i+1)*10}%`),pd,{xAxis:'Khoảng PD',series:pdGroups.map(group=>['Thấp','Trung bình','Cao'][group]),colors:pdGroups.map(group=>['#087f83','#9c6807','#bb2745'][group]),threshold:run.thresholds.basis==='probability'?run.thresholds.decision:null}));
     if(run.thresholds.basis==='raw'){
       const counts=Array(10).fill(0);rows.forEach(r=>counts[Math.max(0,Math.min(9,Math.floor(r.raw_score*10)))]++);
-      charts.push(barChart('Ngưỡng cảnh báo trên điểm mô hình gốc','Ngưỡng điểm gốc khác ngưỡng xác suất đã hiệu chỉnh',counts.map((_,i)=>`${i*10}–${(i+1)*10}%`),counts,{threshold:run.thresholds.decision}));
+      charts.push(barChart('Ngưỡng cảnh báo trên điểm mô hình gốc','Ngưỡng điểm gốc khác ngưỡng xác suất đã hiệu chỉnh',counts.map((_,i)=>`${i*10}–${(i+1)*10}%`),counts,{xAxis:'Khoảng điểm mô hình gốc',threshold:run.thresholds.decision}));
     }
     charts.splice(1,0,statusChart(latest));
     const ages=[[18,29],[30,39],[40,49],[50,59],[60,100]],means=ages.map(([lo,hi])=>{const group=rows.filter(r=>r.AGE>=lo&&r.AGE<=hi);return group.length?stats(group).mean:0;});
-    charts.push(barChart('PD trung bình theo tuổi','AGE · Nhóm không có hồ sơ hiển thị 0',['18–29','30–39','40–49','50–59','60+'],means,{percent:true,axis:'PD (%)',colors:Array(5).fill('#087f83')}));
-    charts.push(barChart('Nhãn cảnh báo theo ngưỡng đã lưu','default_label · Cảnh báo hỗ trợ chuyên viên',['Nhãn 0','Nhãn 1'],[rows.length-s.warnings,s.warnings],{colors:['#087f83','#bd2946']}));
+    charts.push(barChart('PD trung bình theo tuổi','AGE · Nhóm không có hồ sơ hiển thị 0',['18–29','30–39','40–49','50–59','60+'],means,{percent:true,axis:'PD trung bình (%)',xAxis:'Nhóm tuổi',colors:Array(5).fill('#087f83')}));
+    charts.push(barChart('Nhãn cảnh báo theo ngưỡng đã lưu','default_label · Cảnh báo hỗ trợ chuyên viên',['Nhãn 0','Nhãn 1'],[rows.length-s.warnings,s.warnings],{xAxis:'Nhãn cảnh báo',colors:['#087f83','#bd2946']}));
   }else if(mode==='data'){
-    [['AGE','Phân bố tuổi'],['LIMIT_BAL','Phân bố hạn mức (TWD)']].forEach(([key,title])=>{const [labels,values]=histogram(rows,key,6);charts.push(barChart(title,key,labels,values));});
-    [['EDUCATION','Trình độ học vấn'],['PAY_0','Trạng thái trả nợ gần nhất']].forEach(([key,title])=>{const counts=new Map();rows.forEach(r=>counts.set(r[key],(counts.get(r[key])||0)+1));const labels=[...counts.keys()].sort((a,b)=>a-b);charts.push(barChart(title,`${key} · Mã UCI`,labels,labels.map(k=>counts.get(k)),{colors:labels.map(()=>'#087f83')}));});
+    [['AGE','Phân bố tuổi'],['LIMIT_BAL','Phân bố hạn mức (TWD)']].forEach(([key,title])=>{const [labels,values]=histogram(rows,key,6);charts.push(barChart(title,key,labels,values,{xAxis:key==='AGE'?'Khoảng tuổi':'Khoảng hạn mức (TWD)'}));});
+    [['EDUCATION','Trình độ học vấn'],['PAY_0','Trạng thái trả nợ gần nhất']].forEach(([key,title])=>{const counts=new Map();rows.forEach(r=>counts.set(r[key],(counts.get(r[key])||0)+1));const labels=[...counts.keys()].sort((a,b)=>a-b);charts.push(barChart(title,`${key} · Mã UCI`,labels,labels.map(k=>counts.get(k)),{xAxis:title,colors:labels.map(()=>'#087f83')}));});
   }else{
     const m=metrics(rows);
     if(!m){$('charts').innerHTML='<div class="panel empty"><h2>Chưa có nhãn thực tế hợp lệ</h2><p>Thêm cột default.payment.next.month với nhãn 0/1 để đánh giá model.</p></div>';return;}
-    charts.push(barChart('Ma trận nhầm lẫn · thực tế / dự báo','0: không vỡ nợ · 1: vỡ nợ',['TN (0/0)','FP (0/1)','FN (1/0)','TP (1/1)'],[m.tn,m.fp,m.fn,m.tp]));
-    charts.push(rocChart(rows));const keys=['Accuracy','Precision','Recall','F1'];charts.push(barChart('Chỉ số trên nhãn hợp lệ',`${fmt(m.labelled)} hồ sơ có nhãn thực tế`,keys,keys.map(k=>m[k]),{percent:true,axis:'Tỷ lệ (%)'}));
-    charts.push(barChart('Phân bố nhãn thực tế','default.payment.next.month',['Không vỡ nợ','Vỡ nợ'],[m.tn+m.fp,m.fn+m.tp],{colors:['#087f83','#bd2946']}));
+    charts.push(barChart('Ma trận nhầm lẫn · thực tế / dự báo','0: không vỡ nợ · 1: vỡ nợ',['TN (0/0)','FP (0/1)','FN (1/0)','TP (1/1)'],[m.tn,m.fp,m.fn,m.tp],{xAxis:'Kết quả thực tế / dự báo'}));
+    charts.push(rocChart(rows));const keys=['Accuracy','Precision','Recall','F1'];charts.push(barChart('Chỉ số trên nhãn hợp lệ',`${fmt(m.labelled)} hồ sơ có nhãn thực tế`,keys,keys.map(k=>m[k]),{percent:true,axis:'Tỷ lệ (%)',xAxis:'Chỉ số đánh giá'}));
+    charts.push(barChart('Phân bố nhãn thực tế','default.payment.next.month',['Không vỡ nợ','Vỡ nợ'],[m.tn+m.fp,m.fn+m.tp],{xAxis:'Nhãn thực tế',colors:['#087f83','#bd2946']}));
   }
   $('charts').innerHTML=charts.join('');
 }
@@ -525,9 +572,9 @@ function renderModels() {
   for(const m of models){
     const run=performanceRun(m);if(!run)continue;
     const summary=stats(run.rows),values=metrics(run.rows);
-    charts.push(barChart(`${m.name} · kết quả dự báo`,`${fmt(run.rows.length)} hồ sơ · ${run.thresholds.basis} ≥ ${run.thresholds.decision.toFixed(4)}`,['Thấp','Trung bình','Cao'],['Low','Medium','High'].map(k=>run.rows.filter(r=>r.risk_level===k).length),{colors:['#087f83','#d49727','#bd2946']}));
+    charts.push(barChart(`${m.name} · kết quả dự báo`,`${fmt(run.rows.length)} hồ sơ · ${run.thresholds.basis} ≥ ${run.thresholds.decision.toFixed(4)}`,['Thấp','Trung bình','Cao'],['Low','Medium','High'].map(k=>run.rows.filter(r=>r.risk_level===k).length),{xAxis:'Nhóm rủi ro',colors:['#087f83','#d49727','#bd2946']}));
     if(values){
-      charts.push(barChart(`${m.name} · ma trận nhầm lẫn`,`${fmt(summary.labelled.length)} nhãn thực tế hợp lệ`,['TN (0/0)','FP (0/1)','FN (1/0)','TP (1/1)'],[values.tn,values.fp,values.fn,values.tp]));
+      charts.push(barChart(`${m.name} · ma trận nhầm lẫn`,`${fmt(summary.labelled.length)} nhãn thực tế hợp lệ`,['TN (0/0)','FP (0/1)','FN (1/0)','TP (1/1)'],[values.tn,values.fp,values.fn,values.tp],{xAxis:'Kết quả thực tế / dự báo'}));
       charts.push(`<div><h3>${escapeHTML(m.name)}</h3>${rocChart(run.rows)}</div>`);
     }
   }
@@ -822,8 +869,8 @@ async function explainSingle(){
   try{
     const result=await api('explain',{rows:[inputs],model:m.name});
     if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
-    const max=Math.max(...result.rows.map(r=>Math.abs(r.contribution)),.00001);
-    box.innerHTML=`<h3>Vì sao mô hình đưa ra kết quả này?</h3><p>${escapeHTML(result.scale)} · ${result.rows.length} yếu tố có độ lớn đóng góp cao nhất. Đỏ (+): tăng điểm rủi ro; xanh (−): giảm điểm. Các giá trị SHAP giải thích điểm mô hình trước hiệu chỉnh, không phải phần trăm PD và không chứng minh quan hệ nhân quả.</p>${singleResult?.imputation?.filled_cells?'<p>Hồ sơ có dữ liệu được điền từ tập train. Giải thích này dựa trên đầu vào sau khi điền.</p>':''}${result.rows.map(r=>{const width=Math.abs(r.contribution)/max*50;return `<div class="contribution ${r.contribution<0?'negative':'positive'}"><div><span>${escapeHTML(featureLabel(r.feature))}<small>${escapeHTML(r.feature)}</small></span><strong><small>${r.contribution>=0?'Tăng điểm':'Giảm điểm'}</small></strong></div><svg class="shap-bar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="${r.contribution>=0?'Tăng':'Giảm'} điểm: ${r.contribution.toFixed(4)}" data-chart-tooltip="${escapeHTML(featureLabel(r.feature))}: ${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}"><rect class="shap-track" width="100" height="8" rx="2"/><rect class="shap-value" x="${r.contribution<0?50-width:50}" width="${width}" height="8"/><path class="shap-zero" d="M50 0V8"/></svg></div>`;}).join('')}`;
+    const max=Math.max(...result.rows.filter(r=>Number.isFinite(r.contribution)).map(r=>Math.abs(r.contribution)),.00001);
+    box.innerHTML=`<h3>Vì sao mô hình đưa ra kết quả này?</h3><p>${escapeHTML(result.scale)} · ${result.rows.length} yếu tố có độ lớn đóng góp cao nhất. Đỏ (+): tăng điểm rủi ro; xanh (−): giảm điểm. Các giá trị SHAP giải thích điểm mô hình trước hiệu chỉnh, không phải phần trăm PD và không chứng minh quan hệ nhân quả.</p>${singleResult?.imputation?.filled_cells?'<p>Hồ sơ có dữ liệu được điền từ tập train. Giải thích này dựa trên đầu vào sau khi điền.</p>':''}${result.rows.map(r=>{const valid=Number.isFinite(r.contribution);const width=valid?Math.abs(r.contribution)/max*50:0;const value=valid?`${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}`:'Không có dữ liệu';return `<div class="contribution ${r.contribution<0?'negative':'positive'}"><div><span>${escapeHTML(featureLabel(r.feature))}<small>${escapeHTML(r.feature)}</small></span><strong><small>${valid?(r.contribution>=0?'Tăng điểm':'Giảm điểm'):value}</small></strong></div><svg class="shap-bar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="Đóng góp SHAP: ${value}" ${chartData('Đặc trưng',featureLabel(r.feature),'Đóng góp SHAP',value,valid?(r.contribution<0?'Giảm điểm':'Tăng điểm'):'')}><rect class="shap-track" width="100" height="8" rx="2"/><rect class="shap-value" x="${r.contribution<0?50-width:50}" width="${width}" height="8"/><path class="shap-zero" d="M50 0V8"/></svg></div>`;}).join('')}`;
   }catch{
     if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
     box.textContent='Chưa tải được giải thích SHAP. Kết quả dự báo đã có.';

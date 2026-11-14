@@ -73,13 +73,14 @@ test('only supplementary inputs may be left blank',()=>{
 test('SHAP uses readable names and opposite directions for positive and negative values',async()=>{
   const {run}=app();
   run(`models=[{name:'RF'}];$('model-choice').value='RF';singleInputs={ID:'one'};
-    api=async()=>({scale:'Tree SHAP · điểm thô',rows:[{feature:'PAY_1',contribution:.1},{feature:'PAY_RATIO_1',contribution:-.03}]});`);
+    api=async()=>({scale:'Tree SHAP · điểm thô',rows:[{feature:'PAY_1',contribution:.1},{feature:'PAY_RATIO_1',contribution:-.03},{feature:'AGE',contribution:null}]});`);
   await run('explainSingle()');
   const html=run("$('explanation').innerHTML");
   assert.match(html,/Trạng thái trả nợ tháng gần nhất/);
   assert.match(html,/Tăng điểm/);
   assert.match(html,/Giảm điểm/);
   assert.match(html,/shap-bar/);
+  assert.deepEqual(chartTooltips(html).map(row=>[row.yTitle,row.value,row.series]),[['Đóng góp SHAP','+0.1000','Tăng điểm'],['Đóng góp SHAP','-0.0300','Giảm điểm'],['Đóng góp SHAP','Không có dữ liệu','']]);
 });
 
 test('datasets and prediction history share one management page',()=>{
@@ -376,14 +377,83 @@ test('a pending single response cannot restore a cleared or edited prediction',a
   assert.equal(run("$('export-single').disabled"),true);
 });
 
-test('bar chart keeps exact values in tooltips, including zero-height bars',()=>{
+function chartTooltips(html){
+  return [...html.matchAll(/data-chart-data="([^"]+)"/g)].map(([,data])=>
+    JSON.parse(data.replaceAll('&quot;','"').replaceAll('&amp;','&')));
+}
+
+test('bar tooltips distinguish the two axes, series, zero and missing values',()=>{
   const {run}=app();
-  const html=run("barChart('PD','', ['30–40%','40–50%'],[9536,0],{threshold:.42})");
-  assert.match(html,/data-chart-tooltip="30–40% · Số hồ sơ: 9\.536"/);
-  assert.match(html,/data-chart-tooltip="40–50% · Số hồ sơ: 0"/);
+  const html=run("barChart('PD','', ['30–40%','40–50%','50–60%'],[9536,0,null],{xAxis:'Khoảng PD',colors:['red','green','blue'],series:['Thấp','Trung bình','Cao'],threshold:.42})");
+  const data=chartTooltips(html);
+  assert.deepEqual(data[0],{xTitle:'Khoảng PD',x:'30–40%',yTitle:'Số hồ sơ',value:'9.536',series:'Thấp'});
+  assert.equal(data[1].value,'0');
+  assert.equal(data[2].value,'Không có dữ liệu');
+  for(const color of ['red','green','blue']){
+    assert.match(html,new RegExp('class="chart-bar"[^>]*fill="'+color+'"'));
+  }
   assert.match(html,/<text class="chart-label"[^>]*>30–40%<\/text>/);
   assert.doesNotMatch(html,/class="number"|<title>/);
-  assert.equal((html.match(/class="chart-hit"/g)||[]).length,2);
+});
+
+test('ROC selects the nearest plotted point and uses the rendered stroke color',()=>{
+  const {run}=app();
+  const data=run(`
+    globalThis.DOMPoint=class {constructor(x,y){this.x=x;this.y=y;} matrixTransform(){return this;}};
+    globalThis.getComputedStyle=()=>({stroke:'rgb(37, 99, 235)'});
+    const target={dataset:{chartData:JSON.stringify({xTitle:'FPR',yTitle:'TPR',series:'ROC'})},
+      classList:{contains:()=>true},getScreenCTM:()=>({inverse:()=>null}),getAttribute:()=>'45,195 45,25 475,25',
+      closest:()=>({querySelector:()=>({matches:()=>true})})};
+    chartHoverData(target,{clientX:50,clientY:28});
+  `);
+  assert.equal(data.x,'0.00%');
+  assert.equal(data.value,'100.00%');
+  assert.equal(data.color,'rgb(37, 99, 235)');
+});
+
+test('tooltip follows the pointer, uses each mark color and hides outside data',()=>{
+  const {run}=app();
+  run(`
+    document.documentElement={clientWidth:400,clientHeight:300};
+    globalThis.swatch={style:{}};
+    document.createElement=()=>({style:{},offsetWidth:120,offsetHeight:64,hidden:false,
+      firstElementChild:{firstElementChild:swatch},setAttribute(){}});
+    document.body={append(){}};
+    globalThis.getComputedStyle=mark=>mark.style;
+  `);
+  // Exercise the delegated handlers with the same SVG and HTML mark shapes as the charts.
+  const source=fs.readFileSync('frontend/static/app.js','utf8');
+  run("globalThis.chartHandlers={};document.addEventListener=(type,handler)=>chartHandlers[type]=handler;");
+  run(source.slice(source.indexOf("document.addEventListener('pointermove'"),source.indexOf('function barChart(')));
+  run(`
+    globalThis.datum=(style,kind)=>{
+      const mark={style,matches:selector=>selector===kind};
+      const target={dataset:{chartData:JSON.stringify({xTitle:'Nhóm',x:'A',yTitle:'Chỉ số',value:'2',series:'Chuỗi A'})},
+        classList:{contains:()=>false},closest:selector=>selector==='.chart-datum'?null:target,
+        querySelector:()=>mark,contains:()=>false};
+      return target;
+    };
+    globalThis.hover=(target,x,y)=>chartHandlers.pointermove({target,clientX:x,clientY:y,pointerType:'mouse'});
+    globalThis.bar=datum({fill:'rgb(7, 127, 131)'},'.chart-bar');
+    hover(bar,30,40);
+  `);
+  assert.equal(run('swatch.style.backgroundColor'),'rgb(7, 127, 131)');
+  assert.match(run('chartTooltip.innerHTML'),/Chuỗi A.*Nhóm.*Chỉ số/);
+  assert.equal(run('chartTooltip.style.left'),'42px');
+  run("hover(datum({backgroundColor:'rgb(156, 104, 7)'},'.status-fill'),390,290);");
+  assert.equal(run('swatch.style.backgroundColor'),'rgb(156, 104, 7)');
+  assert.equal(run('chartTooltip.style.left'),'258px');
+  assert.equal(run('chartTooltip.style.top'),'214px');
+  run('chartHandlers.pointerout({target:bar,relatedTarget:null});');
+  assert.equal(run('chartTooltip.hidden'),true);
+});
+
+test('status bars retain visible values and expose details for all three statuses',()=>{
+  const {run}=app();
+  const html=run("statusChart([{d:{id:'a'},v:{rows:[{},{}]},run:{}}])");
+  const data=chartTooltips(html);
+  assert.deepEqual(data.map(row=>row.value),['0.00% · 0 hồ sơ','100.00% · 2 hồ sơ','0.00% · 0 hồ sơ']);
+  assert.match(html,/2 hồ sơ · 100.00%/);
 });
 
 test('histogram threshold follows its domain and stays in bounds at either edge',()=>{

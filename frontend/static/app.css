@@ -94,6 +94,9 @@ main{padding:30px 30px 35px;max-width:1800px;width:100%;margin:auto;flex:1}
 .chart-label,.chart .threshold-marker{pointer-events:none}
 [data-chart-tooltip]{cursor:default}
 .chart-tooltip{position:fixed;z-index:1000;pointer-events:none;max-width:min(280px,calc(100vw - 16px));padding:7px 10px;border-radius:8px;background:#13243d;color:#fff;font-size:12px;font-weight:600;line-height:1.4;box-shadow:0 4px 16px #13243d33;overflow-wrap:anywhere}
+.chart-tooltip-heading{display:flex;gap:7px;align-items:center;margin-bottom:4px}
+.chart-tooltip-color{width:10px;height:10px;border-radius:2px;flex:none;outline:1px solid #ffffff70}
+.chart-tooltip strong{margin-left:4px;color:#fff}
 .chart-tooltip[hidden]{display:none}
 @media(prefers-reduced-motion:no-preference){
   .chart-tooltip{animation:chart-tooltip-in .16s ease-out both}
