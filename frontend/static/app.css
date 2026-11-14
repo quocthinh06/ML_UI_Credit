@@ -92,9 +92,15 @@ main{padding:30px 30px 35px;max-width:1800px;width:100%;margin:auto;flex:1}
 .chart{margin-top:14px;width:100%;height:auto;min-height:180px;overflow:visible}
 .chart text{font-family:'Segoe UI',system-ui,sans-serif;font-size:12px;fill:#56657d}
 .chart-label,.chart .threshold-marker{pointer-events:none}
-.chart-hit,.status-segment,.roc-line,.shap-bar{cursor:help}
+[data-chart-tooltip]{cursor:default}
+.chart-tooltip{position:fixed;z-index:1000;pointer-events:none;max-width:min(280px,calc(100vw - 16px));padding:7px 10px;border-radius:8px;background:#13243d;color:#fff;font-size:12px;font-weight:600;line-height:1.4;box-shadow:0 4px 16px #13243d33;overflow-wrap:anywhere}
+.chart-tooltip[hidden]{display:none}
+@media(prefers-reduced-motion:no-preference){
+  .chart-tooltip{animation:chart-tooltip-in .16s ease-out both}
+}
+@keyframes chart-tooltip-in{from{opacity:0;transform:translateY(4px) scale(.97)}}
 .chart-legend li .legend-swatch{width:10px;height:10px;border-radius:50%;flex:none}
-.chart-legend li[title]{justify-content:flex-start;align-items:center;cursor:help}
+.chart-legend li[data-chart-tooltip]{justify-content:flex-start;align-items:center}
 .chart-bar,.shap-value{transform-box:fill-box}
 .chart-bar{transform-origin:center bottom}
 .shap-value{transform-origin:left center}

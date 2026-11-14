@@ -360,6 +360,40 @@ function renderResults() {
 }
 
 function stats(rows) { const labelled=rows.filter(r=>r['default.payment.next.month']===0||r['default.payment.next.month']===1); return {rows:rows.length,mean:rows.length?rows.reduce((s,r)=>s+r.probability,0)/rows.length:null,high:rows.filter(r=>r.risk_level==='High').length,warnings:rows.filter(r=>r.default_label===1).length,labelled,actual:labelled.length?labelled.reduce((s,r)=>s+r['default.payment.next.month'],0)/labelled.length:null}; }
+let chartTooltip;
+
+function hideChartTooltip(){
+  if(chartTooltip) chartTooltip.hidden=true;
+}
+
+document.addEventListener('pointermove',event=>{
+  const target=event.target.closest?.('[data-chart-tooltip]');
+  if(!target||event.pointerType==='touch'){
+    hideChartTooltip();
+    return;
+  }
+  if(!chartTooltip){
+    chartTooltip=document.createElement('div');
+    chartTooltip.className='chart-tooltip';
+    chartTooltip.setAttribute('aria-hidden','true');
+    document.body.append(chartTooltip);
+  }
+  chartTooltip.textContent=target.dataset.chartTooltip;
+  chartTooltip.hidden=false;
+  const gap=12, width=chartTooltip.offsetWidth, height=chartTooltip.offsetHeight;
+  const viewport=document.documentElement;
+  const x=event.clientX+gap, y=event.clientY+gap;
+  chartTooltip.style.left=Math.max(4,x+width>viewport.clientWidth-4?event.clientX-width-gap:x)+'px';
+  chartTooltip.style.top=Math.max(4,y+height>viewport.clientHeight-4?event.clientY-height-gap:y)+'px';
+});
+
+document.addEventListener('pointerout',event=>{
+  const target=event.target.closest?.('[data-chart-tooltip]');
+  if(target&&!target.contains(event.relatedTarget)) hideChartTooltip();
+});
+document.addEventListener('scroll',hideChartTooltip,true);
+window.addEventListener('blur',hideChartTooltip);
+
 function barChart(title, subtitle, labels, values, {percent=false, colors, axis='Số hồ sơ', threshold=null}={}) {
   const width=520,height=240,left=42,top=Number.isFinite(threshold)?64:22,bottom=65,plotH=height-top-bottom,plotW=width-left-12,max=percent?1:Math.max(1,Math.ceil(Math.max(...values.filter(Number.isFinite),1)/4))*4;
   let svg=`<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHTML(title)}">`;
@@ -370,7 +404,7 @@ function barChart(title, subtitle, labels, values, {percent=false, colors, axis=
     const center=left+band*(i+.5), base=top+plotH, h=v/max*plotH;
     const tooltip=`${escapeHTML(label)}: ${escapeHTML(percent?pct(v):fmt(v))}`;
     svg+=`<rect class="chart-bar" x="${center-barW/2}" y="${base-h}" width="${barW}" height="${h}" rx="3" fill="${colors?.[i]||'#2563eb'}"/>`;
-    svg+=`<rect class="chart-hit" x="${left+band*i}" y="${top}" width="${band}" height="${plotH+22}" fill="transparent"><title>${tooltip}</title></rect>`;
+    svg+=`<rect class="chart-hit" x="${left+band*i}" y="${top}" width="${band}" height="${plotH+22}" fill="transparent" data-chart-tooltip="${tooltip}"/>`;
     svg+=`<text class="chart-label" x="${center}" y="${base+18}" text-anchor="middle"${labels.length>9?` transform="rotate(-32 ${center} ${base+18})"`:''}>${escapeHTML(label)}</text>`;
   });
   if(Number.isFinite(threshold)){
@@ -398,14 +432,14 @@ function rocChart(rows) {
   if(!pos||!neg)return '<article class="panel empty"><h3>ROC cần nhãn cả hai lớp</h3><p>Tập hồ sơ cần có cả nhãn thực tế 0 và 1.</p></article>';
   let tp=0,fp=0,points=['45,195'];const sorted=known.slice().sort((a,b)=>b.raw_score-a.raw_score);
   for(let i=0;i<sorted.length;){let j=i;while(j<sorted.length&&sorted[j].raw_score===sorted[i].raw_score){if(sorted[j]['default.payment.next.month']===1)tp++;else fp++;j++;}points.push(`${45+fp/neg*430},${195-tp/pos*170}`);i=j;}
-  return `<article class="panel chart-card"><h3>ROC · điểm thô</h3><p class="chart-subtitle">Điểm mô hình trước hiệu chỉnh</p><svg class="chart" viewBox="0 0 520 240" role="img" aria-label="Đường ROC"><path d="M45 25V195H475" fill="none" stroke="#d8e0ed"/><path d="M45 195L475 25" stroke="#b9c8dc" stroke-dasharray="5"/><polyline class="roc-line" pathLength="100" points="${points.join(' ')}" fill="none" stroke="#2563eb" stroke-width="2.5"><title>AUC ${metrics(rows).AUC.toFixed(4)} · ${fmt(known.length)} hồ sơ có nhãn</title></polyline><text x="45" y="214">0</text><text x="475" y="214">1</text><text x="23" y="30">1</text><text x="180" y="236">False positive rate</text><text x="45" y="13">True positive rate</text></svg></article>`;
+  return `<article class="panel chart-card"><h3>ROC · điểm thô</h3><p class="chart-subtitle">Điểm mô hình trước hiệu chỉnh</p><svg class="chart" viewBox="0 0 520 240" role="img" aria-label="Đường ROC"><path d="M45 25V195H475" fill="none" stroke="#d8e0ed"/><path d="M45 195L475 25" stroke="#b9c8dc" stroke-dasharray="5"/><polyline class="roc-line" pathLength="100" points="${points.join(' ')}" fill="none" stroke="#2563eb" stroke-width="2.5"/><polyline class="roc-hit" points="${points.join(' ')}" fill="none" stroke="transparent" stroke-width="16" data-chart-tooltip="AUC ${metrics(rows).AUC.toFixed(4)} · ${fmt(known.length)} hồ sơ có nhãn"/><text x="45" y="214">0</text><text x="475" y="214">1</text><text x="23" y="30">1</text><text x="180" y="236">False positive rate</text><text x="45" y="13">True positive rate</text></svg></article>`;
 }
 function statusChart(items){
   const groups=[['Chưa dự báo',0,'#56657d'],['Kết quả còn hiệu lực',0,'#087f83'],['Cần dự báo lại',0,'#9c6807']];
   items.forEach(({d,v,run})=>{const previous=state.runs.some(r=>r.datasetId===d.id&&r.modelHash===model()?.digest);groups[run?1:previous?2:0][1]+=v.rows.length;});
   const total=groups.reduce((sum,g)=>sum+g[1],0);let offset=0;
-  const circles=groups.map(([label,count,color])=>{const size=total?count/total*100:0;const result=count?`<circle class="status-segment" cx="100" cy="100" r="70" pathLength="100" fill="none" stroke="${color}" stroke-width="20" stroke-dasharray="${size} ${100-size}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)"><title>${label}: ${fmt(count)}</title></circle>`:'';offset+=size;return result;}).join('');
-  return `<article class="panel chart-card status-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><svg class="status-chart" viewBox="0 0 200 200" role="img" aria-label="${escapeHTML(groups.map(g=>g[0]+': '+fmt(g[1])).join('; '))}"><circle cx="100" cy="100" r="70" fill="none" stroke="#edf1f7" stroke-width="20"/>${circles}<text x="100" y="105" text-anchor="middle">Hồ sơ</text><circle cx="100" cy="100" r="59" fill="transparent"><title>Tổng số hồ sơ: ${fmt(total)}</title></circle></svg><ul class="chart-legend">${groups.map(([label,count,color])=>`<li title="${escapeHTML(label)}: ${fmt(count)}"><span class="legend-swatch" style="background:${color}"></span>${escapeHTML(label)}</li>`).join('')}</ul></article>`;
+  const circles=groups.map(([label,count,color])=>{const size=total?count/total*100:0;const result=count?`<circle class="status-segment" cx="100" cy="100" r="70" pathLength="100" fill="none" stroke="${color}" stroke-width="20" stroke-dasharray="${size} ${100-size}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)" data-chart-tooltip="${escapeHTML(label)}: ${fmt(count)}"/>`:'';offset+=size;return result;}).join('');
+  return `<article class="panel chart-card status-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><svg class="status-chart" viewBox="0 0 200 200" role="img" aria-label="${escapeHTML(groups.map(g=>g[0]+': '+fmt(g[1])).join('; '))}"><circle cx="100" cy="100" r="70" fill="none" stroke="#edf1f7" stroke-width="20"/>${circles}<text x="100" y="105" text-anchor="middle">Hồ sơ</text><circle cx="100" cy="100" r="59" fill="transparent" data-chart-tooltip="Tổng số hồ sơ: ${fmt(total)}"/></svg><ul class="chart-legend">${groups.map(([label,count,color])=>`<li data-chart-tooltip="${escapeHTML(label)}: ${fmt(count)}"><span class="legend-swatch" style="background:${color}"></span>${escapeHTML(label)}</li>`).join('')}</ul></article>`;
 }
 function renderOverview() {
   const v=version(),run=activeRun(),latest=v?[{d:dataset(),v,run}]:[];
@@ -780,7 +814,7 @@ async function explainSingle(){
     const result=await api('explain',{rows:[inputs],model:m.name});
     if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
     const max=Math.max(...result.rows.map(r=>Math.abs(r.contribution)),.00001);
-    box.innerHTML=`<h3>Vì sao mô hình đưa ra kết quả này?</h3><p>${escapeHTML(result.scale)} · ${result.rows.length} yếu tố có độ lớn đóng góp cao nhất. Đỏ (+): tăng điểm rủi ro; xanh (−): giảm điểm. Các giá trị SHAP giải thích điểm mô hình trước hiệu chỉnh, không phải phần trăm PD và không chứng minh quan hệ nhân quả.</p>${singleResult?.imputation?.filled_cells?'<p>Hồ sơ có dữ liệu được điền từ tập train. Giải thích này dựa trên đầu vào sau khi điền.</p>':''}${result.rows.map(r=>{const width=Math.abs(r.contribution)/max*50;return `<div class="contribution ${r.contribution<0?'negative':'positive'}"><div><span>${escapeHTML(featureLabel(r.feature))}<small>${escapeHTML(r.feature)}</small></span><strong><small>${r.contribution>=0?'Tăng điểm':'Giảm điểm'}</small></strong></div><svg class="shap-bar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="${r.contribution>=0?'Tăng':'Giảm'} điểm: ${r.contribution.toFixed(4)}"><title>${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}</title><rect class="shap-track" width="100" height="8" rx="2"/><rect class="shap-value" x="${r.contribution<0?50-width:50}" width="${width}" height="8"/><path class="shap-zero" d="M50 0V8"/></svg></div>`;}).join('')}`;
+    box.innerHTML=`<h3>Vì sao mô hình đưa ra kết quả này?</h3><p>${escapeHTML(result.scale)} · ${result.rows.length} yếu tố có độ lớn đóng góp cao nhất. Đỏ (+): tăng điểm rủi ro; xanh (−): giảm điểm. Các giá trị SHAP giải thích điểm mô hình trước hiệu chỉnh, không phải phần trăm PD và không chứng minh quan hệ nhân quả.</p>${singleResult?.imputation?.filled_cells?'<p>Hồ sơ có dữ liệu được điền từ tập train. Giải thích này dựa trên đầu vào sau khi điền.</p>':''}${result.rows.map(r=>{const width=Math.abs(r.contribution)/max*50;return `<div class="contribution ${r.contribution<0?'negative':'positive'}"><div><span>${escapeHTML(featureLabel(r.feature))}<small>${escapeHTML(r.feature)}</small></span><strong><small>${r.contribution>=0?'Tăng điểm':'Giảm điểm'}</small></strong></div><svg class="shap-bar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="${r.contribution>=0?'Tăng':'Giảm'} điểm: ${r.contribution.toFixed(4)}" data-chart-tooltip="${escapeHTML(featureLabel(r.feature))}: ${r.contribution>=0?'+':''}${r.contribution.toFixed(4)}"><rect class="shap-track" width="100" height="8" rx="2"/><rect class="shap-value" x="${r.contribution<0?50-width:50}" width="${width}" height="8"/><path class="shap-zero" d="M50 0V8"/></svg></div>`;}).join('')}`;
   }catch{
     if(generation!==singleGeneration||inputs!==singleInputs||m!==model())return;
     box.textContent='Chưa tải được giải thích SHAP. Kết quả dự báo đã có.';
