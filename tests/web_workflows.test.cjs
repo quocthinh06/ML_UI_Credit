@@ -440,7 +440,7 @@ test('tooltip follows the pointer, uses each mark color and hides outside data',
   assert.equal(run('swatch.style.backgroundColor'),'rgb(7, 127, 131)');
   assert.match(run('chartTooltip.innerHTML'),/Chuỗi A.*Nhóm.*Chỉ số/);
   assert.equal(run('chartTooltip.style.left'),'42px');
-  run("hover(datum({backgroundColor:'rgb(156, 104, 7)'},'.status-fill'),390,290);");
+  run("hover(datum({fill:'rgb(156, 104, 7)'},'.status-fill'),390,290);");
   assert.equal(run('swatch.style.backgroundColor'),'rgb(156, 104, 7)');
   assert.equal(run('chartTooltip.style.left'),'258px');
   assert.equal(run('chartTooltip.style.top'),'214px');
@@ -454,6 +454,9 @@ test('status bars retain visible values and expose details for all three statuse
   const data=chartTooltips(html);
   assert.deepEqual(data.map(row=>row.value),['0.00% · 0 hồ sơ','100.00% · 2 hồ sơ','0.00% · 0 hồ sơ']);
   assert.match(html,/2 hồ sơ · 100.00%/);
+  assert.match(html,/<rect class="status-fill" width="100%"[^>]*fill="#087f83"/);
+  assert.equal((html.match(/<rect class="status-fill" width="0%"/g)||[]).length,2);
+  assert.doesNotMatch(html,/style=/);
 });
 
 test('histogram threshold follows its domain and stays in bounds at either edge',()=>{

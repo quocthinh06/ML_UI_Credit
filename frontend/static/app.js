@@ -395,7 +395,7 @@ function chartHoverData(target,event){
   const mark=chart.querySelector('.chart-bar,.roc-line,.shap-value,.status-fill');
   if(!mark) return null;
   const style=getComputedStyle(mark);
-  const color=mark.matches('.roc-line')?style.stroke:mark.matches('.status-fill')?style.backgroundColor:style.fill;
+  const color=mark.matches('.roc-line')?style.stroke:style.fill;
   return {...data,color};
 }
 
@@ -491,7 +491,7 @@ function statusChart(items){
     const value=`${fmt(count)} hồ sơ · ${pct(share)}`;
     return `<li class="status-row">
       <div class="status-row-heading"><span>${escapeHTML(label)}</span><span>${value}</span></div>
-      <div class="status-track" aria-hidden="true" ${chartData('Trạng thái hồ sơ',label,'Tỷ lệ hồ sơ',`${pct(share)} · ${fmt(count)} hồ sơ`)}><div class="status-fill" style="width:${share*100}%;background:${color}"></div></div>
+      <div class="status-track" aria-hidden="true" ${chartData('Trạng thái hồ sơ',label,'Tỷ lệ hồ sơ',`${pct(share)} · ${fmt(count)} hồ sơ`)}><svg class="status-bar" width="100%" height="12"><rect class="status-fill" width="${share*100}%" height="12" rx="6" fill="${color}"/></svg></div>
     </li>`;
   }).join('');
   return `<article class="panel chart-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><ul class="status-bars">${bars}</ul></article>`;
