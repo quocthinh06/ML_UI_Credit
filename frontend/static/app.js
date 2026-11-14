@@ -457,7 +457,7 @@ function barChart(title, subtitle, labels, values, {percent=false, colors, axis=
   });
   if(Number.isFinite(threshold)){
     const x=left+Math.max(0,Math.min(1,threshold))*plotW,labelX=Math.max(left+72,Math.min(width-84,x));
-    svg+=`<g class="threshold-marker" ${chartData(xAxis,pct(threshold),'Ngưỡng cảnh báo',pct(threshold))}><line class="threshold-line" x1="${x}" x2="${x}" y1="${top}" y2="${top+plotH}"/><rect x="${labelX-70}" y="22" width="140" height="20" rx="5"/><text x="${labelX}" y="36" text-anchor="middle">Ngưỡng τ</text></g>`;
+    svg+=`<g class="threshold-marker" ${chartData(xAxis,pct(threshold),'Ngưỡng cảnh báo',pct(threshold))}><line class="threshold-line" x1="${x}" x2="${x}" y1="${top}" y2="${top+plotH}"/><rect x="${labelX-70}" y="22" width="140" height="20" rx="5"/><text x="${labelX}" y="36" text-anchor="middle">Ngưỡng τ = ${pct(threshold)}</text></g>`;
   }
   svg+=`<text class="axis-title" x="${left}" y="12">${escapeHTML(axis.replace(/\s*\(%\)/g,''))}</text></svg>`;
   return `<article class="panel chart-card"><h3>${escapeHTML(title)}</h3><p class="chart-subtitle">${escapeHTML(subtitle)}</p>${svg}</article>`;
