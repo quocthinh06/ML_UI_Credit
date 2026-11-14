@@ -10,7 +10,7 @@
   </title>
   <link href="static/app.css?v=20261111-groq-insights" rel="stylesheet"/>
   <link href="static/auth.css" rel="stylesheet"/>
-  <link href="static/theme-v2.css?v=20261105-layout-v2" rel="stylesheet"/>
+  <link href="static/theme-v2.css?v=20261114-dataset-heading" rel="stylesheet"/>
   <script defer="" src="static/app.js?v=20261111-groq-insights">
   </script>
   <script defer="" src="static/layout-v2.js?v=20261111-workflows">
@@ -84,6 +84,13 @@
     </span>
     Lưu riêng trên trình duyệt
    </div>
+   <a class="sidebar-logout" href="/login" id="sign-in-link">
+    <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewBox="0 0 24 24">
+     <path d="M9 4H4v16h5M14 8l4 4-4 4M8 12h10">
+     </path>
+    </svg>
+    Đăng nhập
+   </a>
    <button class="sidebar-logout" hidden="" id="logout" type="button">
     <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewbox="0 0 24 24">
      <path d="M9 4H4v16h5M14 8l4 4-4 4M8 12h10">
@@ -115,9 +122,6 @@
      </span>
     </div>
     <div class="topbar-tools">
-     <a class="button secondary compact" href="/login" id="sign-in-link">
-      Đăng nhập
-     </a>
      <button class="button secondary compact" id="workspace-settings">
       Kho dữ liệu
      </button>
@@ -280,8 +284,12 @@
         Quản lý dữ liệu lịch sử
        </h1>
        <p>
-        CSV, XLSX hoặc JSON · tối đa 4 MiB và 30.000 hồ sơ. Cần đủ LIMIT_BAL, PAY_1–6 (hoặc PAY_0 thay PAY_1), BILL_AMT1–6 và PAY_AMT1–5 ở mọi dòng. SEX, EDUCATION, MARRIAGE, AGE và PAY_AMT6 được điền từ thống kê train nếu thiếu; có báo cáo sau khi nhập. Không tự điền nhãn vỡ nợ.
+        CSV, XLSX hoặc JSON · Tối đa 4 MiB · 30.000 hồ sơ
        </p>
+       <details class="upload-requirements">
+        <summary>Yêu cầu các trường dữ liệu</summary>
+        <p>Cần đủ LIMIT_BAL, PAY_1–6 (hoặc PAY_0 thay PAY_1), BILL_AMT1–6 và PAY_AMT1–5 ở mọi dòng. SEX, EDUCATION, MARRIAGE, AGE và PAY_AMT6 được điền từ thống kê train nếu thiếu; có báo cáo sau khi nhập. Không tự điền nhãn vỡ nợ.</p>
+       </details>
       </div>
       <div class="actions">
        <a class="button secondary" href="#history">Xem lịch sử dự báo</a>
@@ -417,7 +425,7 @@
        So sánh mô hình →
       </button>
      </div>
-     <div class="panel model-banner">
+     <div class="panel model-banner" hidden>
       <span class="model-symbol" data-icon="predict">
       </span>
       <div>
