@@ -392,7 +392,7 @@ test('bar tooltips distinguish the two axes, series, zero and missing values',()
   for(const color of ['red','green','blue']){
     assert.match(html,new RegExp('class="chart-bar"[^>]*fill="'+color+'"'));
   }
-  assert.match(html,/<text class="chart-label"[^>]*>30–40%<\/text>/);
+  assert.doesNotMatch(html,/<text[^>]*>[^<]*%/);
   assert.doesNotMatch(html,/class="number"|<title>/);
 });
 
@@ -453,7 +453,7 @@ test('status bars retain visible values and expose details for all three statuse
   const html=run("statusChart([{d:{id:'a'},v:{rows:[{},{}]},run:{}}])");
   const data=chartTooltips(html);
   assert.deepEqual(data.map(row=>row.value),['0.00% · 0 hồ sơ','100.00% · 2 hồ sơ','0.00% · 0 hồ sơ']);
-  assert.match(html,/2 hồ sơ · 100.00%/);
+  assert.match(html,/<span>2 hồ sơ<\/span>/);
   assert.match(html,/<rect class="status-fill" width="100%"[^>]*fill="#087f83"/);
   assert.equal((html.match(/<rect class="status-fill" width="0%"/g)||[]).length,2);
   assert.doesNotMatch(html,/style=/);
@@ -463,7 +463,8 @@ test('histogram threshold follows its domain and stays in bounds at either edge'
   const {run}=app();
   const html=run("barChart('PD','', ['0–50%','50–100%'],[1,2],{threshold:.39})");
   assert.match(html,/x1="223\.74"/);
-  assert.match(html,/Ngưỡng τ = 39\.00%/);
+  assert.equal(chartTooltips(html).at(-1).value,'39.00%');
+  assert.doesNotMatch(html,/<text[^>]*>[^<]*%/);
   assert.match(run("barChart('PD','', ['all'],[1],{threshold:0})"),/x1="42"/);
   assert.match(run("barChart('PD','', ['all'],[1],{threshold:1})"),/x1="508"/);
   assert.doesNotMatch(run("barChart('PD','', ['all'],[1])"),/threshold-marker/);

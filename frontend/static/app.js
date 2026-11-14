@@ -392,10 +392,10 @@ function chartHoverData(target,event){
     data.value=pct((195-y)/170);
   }
   const chart=target.closest('.chart-datum')||target;
-  const mark=chart.querySelector('.chart-bar,.roc-line,.shap-value,.status-fill');
+  const mark=chart.querySelector('.chart-bar,.roc-line,.shap-value,.status-fill,.threshold-line');
   if(!mark) return null;
   const style=getComputedStyle(mark);
-  const color=mark.matches('.roc-line')?style.stroke:style.fill;
+  const color=mark.matches('.roc-line,.threshold-line')?style.stroke:style.fill;
   return {...data,color};
 }
 
@@ -442,7 +442,7 @@ window.addEventListener('blur',hideChartTooltip);
 function barChart(title, subtitle, labels, values, {percent=false, colors, axis='Số hồ sơ', xAxis='Danh mục', series, threshold=null}={}) {
   const width=520,height=240,left=42,top=Number.isFinite(threshold)?64:22,bottom=65,plotH=height-top-bottom,plotW=width-left-12,max=percent?1:Math.max(1,Math.ceil(Math.max(...values.filter(Number.isFinite),1)/4))*4;
   let svg=`<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHTML(title)}">`;
-  for(let i=0;i<=4;i++){const y=top+plotH-i*plotH/4;svg+=`<line class="grid" x1="${left}" x2="${width-12}" y1="${y}" y2="${y}"/><text x="${left-7}" y="${y+4}" text-anchor="end">${escapeHTML(percent?`${Math.round(max*i/4*100)}%`:fmt(max*i/4))}</text>`;}
+  for(let i=0;i<=4;i++){const y=top+plotH-i*plotH/4;svg+=`<line class="grid" x1="${left}" x2="${width-12}" y1="${y}" y2="${y}"/>${percent?'':`<text x="${left-7}" y="${y+4}" text-anchor="end">${fmt(max*i/4)}</text>`}`;}
   const band=plotW/Math.max(labels.length,1),barW=Math.min(64,band*.65);
   labels.forEach((label,i)=>{
     const valid=Number.isFinite(values[i]);
@@ -453,13 +453,13 @@ function barChart(title, subtitle, labels, values, {percent=false, colors, axis=
     const fitted=labelWidth>band-6?` textLength="${band-6}" lengthAdjust="spacingAndGlyphs"`: '';
     svg+=`<g class="chart-datum"><rect class="chart-bar" x="${center-barW/2}" y="${base-h}" width="${barW}" height="${h}" rx="3" fill="${colors?.[i]||'#2563eb'}"/>`;
     svg+=`<rect class="chart-hit" x="${center-barW/2}" y="${base-Math.max(8,h)}" width="${barW}" height="${Math.max(8,h)+4}" fill="transparent" ${tooltip}/></g>`;
-    svg+=`<text class="chart-label" x="${center}" y="${base-h-6}" text-anchor="middle"${fitted}>${escapeHTML(label)}</text>`;
+    if(!String(label).includes('%')) svg+=`<text class="chart-label" x="${center}" y="${base-h-6}" text-anchor="middle"${fitted}>${escapeHTML(label)}</text>`;
   });
   if(Number.isFinite(threshold)){
     const x=left+Math.max(0,Math.min(1,threshold))*plotW,labelX=Math.max(left+72,Math.min(width-84,x));
-    svg+=`<g class="threshold-marker"><line x1="${x}" x2="${x}" y1="${top}" y2="${top+plotH}"/><rect x="${labelX-70}" y="22" width="140" height="20" rx="5"/><text x="${labelX}" y="36" text-anchor="middle">Ngưỡng τ = ${pct(threshold)}</text></g>`;
+    svg+=`<g class="threshold-marker" ${chartData(xAxis,pct(threshold),'Ngưỡng cảnh báo',pct(threshold))}><line class="threshold-line" x1="${x}" x2="${x}" y1="${top}" y2="${top+plotH}"/><rect x="${labelX-70}" y="22" width="140" height="20" rx="5"/><text x="${labelX}" y="36" text-anchor="middle">Ngưỡng τ</text></g>`;
   }
-  svg+=`<text class="axis-title" x="${left}" y="12">${escapeHTML(axis)}</text></svg>`;
+  svg+=`<text class="axis-title" x="${left}" y="12">${escapeHTML(axis.replace(/\s*\(%\)/g,''))}</text></svg>`;
   return `<article class="panel chart-card"><h3>${escapeHTML(title)}</h3><p class="chart-subtitle">${escapeHTML(subtitle)}</p>${svg}</article>`;
 }
 function histogram(rows, key, bins) {
@@ -488,7 +488,7 @@ function statusChart(items){
   const total=groups.reduce((sum,[,count])=>sum+count,0);
   const bars=groups.map(([label,count,color])=>{
     const share=total?count/total:0;
-    const value=`${fmt(count)} hồ sơ · ${pct(share)}`;
+    const value=`${fmt(count)} hồ sơ`;
     return `<li class="status-row">
       <div class="status-row-heading"><span>${escapeHTML(label)}</span><span>${value}</span></div>
       <div class="status-track" aria-hidden="true" ${chartData('Trạng thái hồ sơ',label,'Tỷ lệ hồ sơ',`${pct(share)} · ${fmt(count)} hồ sơ`)}><svg class="status-bar" width="100%" height="12"><rect class="status-fill" width="${share*100}%" height="12" rx="6" fill="${color}"/></svg></div>
