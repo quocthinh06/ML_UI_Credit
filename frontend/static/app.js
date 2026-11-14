@@ -442,9 +442,9 @@ function statusChart(items){
   const total=groups.reduce((sum,[,count])=>sum+count,0);
   const bars=groups.map(([label,count,color])=>{
     const share=total?count/total:0;
-    const detail=`${label} · ${fmt(count)} hồ sơ (${pct(share)})`;
-    return `<li class="status-row" data-chart-tooltip="${escapeHTML(detail)}" aria-label="${escapeHTML(detail)}">
-      <span>${escapeHTML(label)}</span>
+    const value=`${fmt(count)} hồ sơ · ${pct(share)}`;
+    return `<li class="status-row">
+      <div class="status-row-heading"><span>${escapeHTML(label)}</span><span>${value}</span></div>
       <div class="status-track" aria-hidden="true"><div class="status-fill" style="width:${share*100}%;background:${color}"></div></div>
     </li>`;
   }).join('');

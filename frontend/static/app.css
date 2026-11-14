@@ -101,6 +101,8 @@ main{padding:30px 30px 35px;max-width:1800px;width:100%;margin:auto;flex:1}
 @keyframes chart-tooltip-in{from{opacity:0;transform:translateY(4px) scale(.97)}}
 .status-bars{display:grid;gap:16px;list-style:none;padding:0;margin:22px 0 0}
 .status-row{display:grid;gap:6px;font-size:13px;font-weight:600}
+.status-row-heading{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 12px}
+.status-row-heading span:last-child{color:#56657d;font-variant-numeric:tabular-nums}
 .status-track{height:12px;overflow:hidden;border-radius:999px;background:#edf1f7}
 .status-fill{height:100%;border-radius:inherit;transform-origin:left center}
 .chart-bar,.shap-value{transform-box:fill-box}
