@@ -99,8 +99,10 @@ main{padding:30px 30px 35px;max-width:1800px;width:100%;margin:auto;flex:1}
   .chart-tooltip{animation:chart-tooltip-in .16s ease-out both}
 }
 @keyframes chart-tooltip-in{from{opacity:0;transform:translateY(4px) scale(.97)}}
-.chart-legend li .legend-swatch{width:10px;height:10px;border-radius:50%;flex:none}
-.chart-legend li[data-chart-tooltip]{justify-content:flex-start;align-items:center}
+.status-bars{display:grid;gap:16px;list-style:none;padding:0;margin:22px 0 0}
+.status-row{display:grid;gap:6px;font-size:13px;font-weight:600}
+.status-track{height:12px;overflow:hidden;border-radius:999px;background:#edf1f7}
+.status-fill{height:100%;border-radius:inherit;transform-origin:left center}
 .chart-bar,.shap-value{transform-box:fill-box}
 .chart-bar{transform-origin:center bottom}
 .shap-value{transform-origin:left center}
@@ -108,12 +110,10 @@ main{padding:30px 30px 35px;max-width:1800px;width:100%;margin:auto;flex:1}
 @media(prefers-reduced-motion:no-preference){
   .chart-bar{animation:chart-bar-grow .45s ease-out both}
   .roc-line{animation:chart-line-draw .65s ease-out both;stroke-dasharray:100}
-  .status-segment{animation:chart-segment-in .5s ease-out both}
-  .shap-value{animation:chart-shap-grow .4s ease-out both}
+  .shap-value,.status-fill{animation:chart-shap-grow .4s ease-out both}
 }
 @keyframes chart-bar-grow{from{transform:scaleY(0)}}
 @keyframes chart-line-draw{from{stroke-dashoffset:100}}
-@keyframes chart-segment-in{from{opacity:0;stroke-width:10}}
 @keyframes chart-shap-grow{from{transform:scaleX(0)}}
 .chart .grid{stroke:#edf1f7;stroke-width:1}
 .chart .axis-title{font-size:12px;fill:#56657d}
@@ -344,10 +344,6 @@ h1{font-size:24px}
 .chart .threshold-marker line{stroke:var(--red);stroke-width:2;stroke-dasharray:6 4;vector-effect:non-scaling-stroke}
 .chart .threshold-marker rect{fill:white;stroke:var(--red)}
 .chart .threshold-marker text{fill:var(--red);font-size:12px;font-weight:600}
-.status-chart{display:block;width:min(100%,210px);height:auto;margin:12px auto}
-.status-chart text{fill:var(--muted);font-size:13px}
-.chart-legend{list-style:none;padding:0;margin:0;display:grid;gap:8px;font-size:12px}
-.chart-legend li{display:flex;justify-content:space-between;gap:12px}
 .metric-label{padding-inline-end:35px}
 .topbar{flex-wrap:wrap;gap:12px}
 .topbar>.button{margin-left:0}

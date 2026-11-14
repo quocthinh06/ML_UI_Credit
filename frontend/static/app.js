@@ -439,9 +439,16 @@ function rocChart(rows) {
 function statusChart(items){
   const groups=[['Chưa dự báo',0,'#56657d'],['Kết quả còn hiệu lực',0,'#087f83'],['Cần dự báo lại',0,'#9c6807']];
   items.forEach(({d,v,run})=>{const previous=state.runs.some(r=>r.datasetId===d.id&&r.modelHash===model()?.digest);groups[run?1:previous?2:0][1]+=v.rows.length;});
-  const total=groups.reduce((sum,g)=>sum+g[1],0);let offset=0;
-  const circles=groups.map(([label,count,color])=>{const size=total?count/total*100:0;const result=count?`<circle class="status-segment" cx="100" cy="100" r="70" pathLength="100" fill="none" stroke="${color}" stroke-width="20" stroke-dasharray="${size} ${100-size}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)" data-chart-tooltip="${escapeHTML(label)}: ${fmt(count)}"/>`:'';offset+=size;return result;}).join('');
-  return `<article class="panel chart-card status-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><svg class="status-chart" viewBox="0 0 200 200" role="img" aria-label="${escapeHTML(groups.map(g=>g[0]+': '+fmt(g[1])).join('; '))}"><circle cx="100" cy="100" r="70" fill="none" stroke="#edf1f7" stroke-width="20"/>${circles}<text x="100" y="105" text-anchor="middle">Hồ sơ</text><circle cx="100" cy="100" r="59" fill="transparent" data-chart-tooltip="Tổng số hồ sơ: ${fmt(total)}"/></svg><ul class="chart-legend">${groups.map(([label,count,color])=>`<li data-chart-tooltip="${escapeHTML(label)}: ${fmt(count)}"><span class="legend-swatch" style="background:${color}"></span>${escapeHTML(label)}</li>`).join('')}</ul></article>`;
+  const total=groups.reduce((sum,[,count])=>sum+count,0);
+  const bars=groups.map(([label,count,color])=>{
+    const share=total?count/total:0;
+    const detail=`${label} · ${fmt(count)} hồ sơ (${pct(share)})`;
+    return `<li class="status-row" data-chart-tooltip="${escapeHTML(detail)}" aria-label="${escapeHTML(detail)}">
+      <span>${escapeHTML(label)}</span>
+      <div class="status-track" aria-hidden="true"><div class="status-fill" style="width:${share*100}%;background:${color}"></div></div>
+    </li>`;
+  }).join('');
+  return `<article class="panel chart-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><ul class="status-bars">${bars}</ul></article>`;
 }
 function renderOverview() {
   const v=version(),run=activeRun(),latest=v?[{d:dataset(),v,run}]:[];
