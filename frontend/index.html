@@ -8,10 +8,10 @@
   <title>
    CreditRisk AI · Dự báo rủi ro tín dụng
   </title>
-  <link href="static/app.css?v=20261111-groq-insights" rel="stylesheet"/>
+  <link href="static/app.css?v=20261115-dashboard-c" rel="stylesheet"/>
   <link href="static/auth.css" rel="stylesheet"/>
   <link href="static/theme-v2.css?v=20261105-layout-v2" rel="stylesheet"/>
-  <script defer="" src="static/app.js?v=20261111-groq-insights">
+  <script defer="" src="static/app.js?v=20261115-action-icons">
   </script>
   <script defer="" src="static/layout-v2.js?v=20261111-workflows">
   </script>
@@ -27,7 +27,7 @@
     <span>
      CreditRisk AI
      <small>
-      QUẢN LÝ RỦI RO TÍN DỤNG
+      RỦI RO TÍN DỤNG
      </small>
     </span>
    </a>
@@ -46,9 +46,9 @@
      <span data-icon="database">
      </span>
      <span>
-      Quản lý dữ liệu lịch sử
+      Quản lý dữ liệu
       <small>
-       Tập hồ sơ &amp; lịch sử dự báo
+       Tập dữ liệu và hồ sơ
       </small>
      </span>
     </a>
@@ -61,6 +61,10 @@
        Chấm điểm từng hồ sơ
       </small>
      </span>
+    </a>
+    <a data-page="history" href="#history">
+     <span data-icon="history"></span>
+     <span>Lịch sử dự báo<small>Các lượt chạy đã lưu</small></span>
     </a>
     <a data-page="models" href="#models">
      <span data-icon="performance">
@@ -147,95 +151,36 @@
     <div class="alert" hidden="" id="alert" role="alert">
     </div>
     <section class="page" id="page-overview">
-     <div class="panel selection-bar needs-data">
-      <label>
-       Tập hồ sơ đang phân tích
-       <select class="dataset-select" id="overview-dataset">
-       </select>
-      </label>
-      <div class="selection-info" id="overview-context">
-       Chưa có dữ liệu
-      </div>
-      <button class="button secondary" id="analyze-selected">
-       Phân tích tệp đã chọn
-      </button>
+     <div class="page-heading dashboard-heading">
+      <div><h1>Tổng quan rủi ro tín dụng</h1></div>
      </div>
-     <div class="page-heading">
-      <div>
-       <h1>
-        Tổng quan rủi ro tín dụng
-       </h1>
-       <p>
-        Hiểu danh mục. Nhận diện rủi ro. Theo dõi từng lần dự báo.
-       </p>
+     <section class="panel run-sheet" aria-labelledby="run-sheet-title">
+      <h2 class="workflow-heading" id="run-sheet-title"><span class="workflow-step" aria-hidden="true">1</span>Chọn tập hồ sơ</h2>
+      <div class="run-selection">
+       <label for="overview-dataset">Tập dữ liệu</label>
+       <select class="dataset-select" id="overview-dataset"></select>
+       <p id="overview-context" aria-live="polite">Chưa có dữ liệu</p>
+       <button class="button secondary compact" data-action="upload" type="button">Tải tệp dữ liệu</button>
       </div>
-      <div class="actions">
-       <button class="button secondary" data-action="export">
-        <span data-icon="download">
-        </span>
-        Xuất báo cáo
-       </button>
-       <button class="button" data-action="upload">
-        <span data-icon="plus">
-        </span>
-        Tải tệp dữ liệu
-       </button>
+      <div class="run-configuration">
+       <dl class="run-facts">
+        <div><dt>Mô hình</dt><dd id="overview-model">—</dd></div>
+        <div><dt>Ngưỡng cảnh báo</dt><dd id="overview-threshold">—</dd></div>
+        <div><dt>Số trường đầu vào</dt><dd id="overview-fields">—</dd></div>
+       </dl>
+       <button class="button" id="run-batch" type="button"><span data-icon="predict"></span>Chạy dự báo &amp; lưu</button>
       </div>
-     </div>
+     </section>
      <div class="empty panel" id="dashboard-empty">
-      <h2>
-       Bắt đầu trong 3 bước
-      </h2>
-      <p>
-       Chọn một tập hồ sơ và bấm Phân tích tập đã chọn để xem chỉ số dự báo.
-      </p>
-      <ol class="steps">
-       <li>
-        <b>
-         Tải tệp dữ liệu
-        </b>
-        <span>
-         CSV, Excel hoặc JSON · 18 trường bắt buộc, 5 trường có thể điền từ thống kê train.
-        </span>
-       </li>
-       <li>
-        <b>
-         Chạy dự báo
-        </b>
-        <span>
-         Mô hình đang chọn ở thanh trên sẽ chấm điểm từng hồ sơ.
-        </span>
-       </li>
-       <li>
-        <b>
-         Xem kết quả
-        </b>
-        <span>
-         Biểu đồ, hồ sơ rủi ro cao và lịch sử hiện ra tại đây.
-        </span>
-       </li>
-      </ol>
-      <div class="actions">
-       <button class="button" data-action="upload">
-        Tải tệp dữ liệu
-       </button>
-       <button class="button secondary" data-action="sample">
-        Khám phá dữ liệu mẫu
-       </button>
-      </div>
+      <h2>Chưa có tập hồ sơ</h2>
+      <p>Tải CSV, Excel hoặc JSON bằng nút “Tải tệp dữ liệu” phía trên, hoặc khám phá dữ liệu mẫu để bắt đầu.</p>
+      <p class="fine-print">18 trường bắt buộc; 5 trường bổ sung có thể điền từ thống kê train. Không tự điền nhãn thực tế.</p>
+      <button class="button secondary" data-action="sample" type="button">Khám phá dữ liệu mẫu</button>
      </div>
-     <div class="metrics needs-data" id="portfolio-metrics">
-     </div>
-     <p class="notice" id="dashboard-awaiting" hidden>Chưa có kết quả cho tập hồ sơ và cấu hình đang chọn. Bấm “Phân tích tập đã chọn” để chạy dự báo.</p>
-     <div hidden="" id="dashboard-content">
-      <div class="section-heading">
-       <div>
-        <h2>
-         Dashboard của tập hồ sơ
-        </h2>
-        <p id="dashboard-caption">
-        </p>
-       </div>
+     <section class="panel dashboard-results" aria-labelledby="dashboard-results-title">
+      <div class="dashboard-result-heading">
+       <h2 class="workflow-heading" id="dashboard-results-title"><span class="workflow-step" aria-hidden="true">2</span>Đọc kết quả</h2>
+       <p id="dashboard-run-status" role="status"></p>
        <select aria-label="Chế độ biểu đồ" id="chart-mode">
         <option value="risk">
          Rủi ro dự báo
@@ -248,36 +193,77 @@
         </option>
        </select>
       </div>
-      <div class="panel insight-panel">
-       <span data-icon="shield">
-       </span>
-       <div>
-        <h3>
-         Insight từ model đã chọn
-        </h3>
-        <p id="insight-text">
-        </p>
+      <div class="metrics" id="portfolio-metrics"></div>
+      <p class="notice" id="dashboard-awaiting" hidden>Chưa có kết quả cho tập hồ sơ và cấu hình đang chọn. Bấm “Chạy dự báo &amp; lưu” để phân tích.</p>
+      <div id="dashboard-preview" class="chart-grid">
+       <article class="chart-card dashboard-chart-empty"><h3>Phân bố PD</h3><p>Kết quả hiển thị sau khi chạy dự báo.</p></article>
+       <article class="chart-card dashboard-chart-empty"><h3>Cơ cấu mức rủi ro</h3><p>Chưa có kết quả để phân nhóm Thấp / Trung bình / Cao.</p></article>
+      </div>
+      <div hidden id="dashboard-content">
+       <div class="chart-grid" id="charts"></div>
+       <details class="dashboard-more-charts" id="dashboard-more-charts"><summary>Phân tích bổ sung và thông tin lượt chạy</summary><p id="dashboard-caption"></p>       <div class="insight-panel dashboard-insight"><span data-icon="shield"></span><div><h3>Insight từ model đã chọn</h3><p id="insight-text"></p></div></div><div class="chart-grid" id="supplementary-charts"></div></details>
+
+      </div>
+     </section>
+     <section class="panel" id="batch-panel" aria-labelledby="lookup-title">
+      <div class="panel-heading">
+       <h2 class="workflow-heading" id="lookup-title" tabindex="-1"><span class="workflow-step" aria-hidden="true">3</span>Tra cứu hồ sơ</h2>
+       <button class="button secondary" data-action="export" type="button"><span data-icon="download"></span>Xuất kết quả đã lọc</button>
+      </div>
+       <details class="advanced-filters" id="dashboard-filters">
+        <summary>Bộ lọc kết quả <span id="filter-summary">Chưa áp dụng bộ lọc</span></summary>
+       <div class="filters">
+        <select id="result-search" aria-label="Mã khách hàng"><option value="">Tất cả mã hồ sơ</option></select>
+        <fieldset class="category-filter"><legend>Mức rủi ro</legend><label><input type="checkbox" data-filter-field="risk_level" value="Low"/>Thấp</label><label><input type="checkbox" data-filter-field="risk_level" value="Medium"/>Trung bình</label><label><input type="checkbox" data-filter-field="risk_level" value="High"/>Cao</label></fieldset>
+        <label>
+         PD từ (%)
+         <input id="min-pd" max="100" min="0" type="range" value="0"/><output id="min-pd-value" for="min-pd"></output>
+        </label>
+        <label>
+         PD đến (%)
+         <input id="max-pd" max="100" min="0" type="range" value="100"/><output id="max-pd-value" for="max-pd"></output>
+        </label>
        </div>
-      </div>
-      <div class="chart-grid" id="charts">
-      </div>
-     </div>
-     <div class="section-heading">
-      <h2>
-       Hoạt động dự báo gần đây
-      </h2>
-      <a href="#history">
-       Xem toàn bộ lịch sử →
-      </a>
-     </div>
-     <div class="panel table-wrap" id="recent-runs">
-     </div>
+        <div class="filters">
+         <label>
+          Tuổi từ
+          <input id="min-age" max="100" min="18" type="range" value="18"/><output id="min-age-value" for="min-age"></output>
+         </label>
+         <label>
+          Tuổi đến
+          <input id="max-age" max="100" min="18" type="range" value="100"/><output id="max-age-value" for="max-age"></output>
+         </label>
+         <label>
+          Hạn mức từ (TWD)
+          <input id="min-limit" max="10000000" step="1" min="0" type="range" value="0"/><output id="min-limit-value" for="min-limit"></output>
+         </label>
+         <label>
+          Hạn mức đến
+          <input id="max-limit" max="10000000" step="1" min="0" type="range" value="10000000"/><output id="max-limit-value" for="max-limit"></output>
+         </label>
+         <fieldset class="category-filter"><legend>Trả nợ gần nhất</legend><label><input type="checkbox" data-filter-field="PAY_0" value="-2"/>Không phát sinh</label><label><input type="checkbox" data-filter-field="PAY_0" value="-1"/>Trả đúng hạn</label><label><input type="checkbox" data-filter-field="PAY_0" value="0"/>Tín dụng quay vòng</label><label><input type="checkbox" data-filter-field="PAY_0" value="1"/>Trễ 1 tháng</label><label><input type="checkbox" data-filter-field="PAY_0" value="2"/>Trễ 2 tháng</label><label><input type="checkbox" data-filter-field="PAY_0" value="3"/>Trễ 3 tháng</label><label><input type="checkbox" data-filter-field="PAY_0" value="4"/>Trễ 4 tháng</label><label><input type="checkbox" data-filter-field="PAY_0" value="5"/>Trễ 5 tháng</label><label><input type="checkbox" data-filter-field="PAY_0" value="6"/>Trễ 6 tháng</label><label><input type="checkbox" data-filter-field="PAY_0" value="7"/>Trễ 7 tháng</label><label><input type="checkbox" data-filter-field="PAY_0" value="8"/>Trễ 8 tháng</label></fieldset>
+         <fieldset class="category-filter"><legend>Nhãn cảnh báo</legend><label><input type="checkbox" data-filter-field="default_label" value="0"/>Nhãn 0</label><label><input type="checkbox" data-filter-field="default_label" value="1"/>Nhãn 1</label></fieldset>
+        </div>
+        <div class="filters"><fieldset class="category-filter"><legend>Giới tính</legend><label><input type="checkbox" data-filter-field="SEX" value="1"/>Nam</label><label><input type="checkbox" data-filter-field="SEX" value="2"/>Nữ</label></fieldset><fieldset class="category-filter"><legend>Hôn nhân</legend><label><input type="checkbox" data-filter-field="MARRIAGE" value="0"/>Chưa xác định</label><label><input type="checkbox" data-filter-field="MARRIAGE" value="1"/>Đã kết hôn</label><label><input type="checkbox" data-filter-field="MARRIAGE" value="2"/>Độc thân</label><label><input type="checkbox" data-filter-field="MARRIAGE" value="3"/>Khác</label></fieldset><fieldset class="category-filter"><legend>Học vấn</legend><label><input type="checkbox" data-filter-field="EDUCATION" value="0"/>Chưa xác định</label><label><input type="checkbox" data-filter-field="EDUCATION" value="1"/>Sau đại học</label><label><input type="checkbox" data-filter-field="EDUCATION" value="2"/>Đại học</label><label><input type="checkbox" data-filter-field="EDUCATION" value="3"/>Trung học</label><label><input type="checkbox" data-filter-field="EDUCATION" value="4"/>Khác</label><label><input type="checkbox" data-filter-field="EDUCATION" value="5"/>Chưa xác định (5)</label><label><input type="checkbox" data-filter-field="EDUCATION" value="6"/>Chưa xác định (6)</label></fieldset></div>
+        <p class="fine-print">Không tick giá trị nào: hiển thị tất cả. Bộ lọc áp dụng cho chỉ số, biểu đồ, bảng và tệp xuất; không thay đổi dữ liệu gốc.</p>
+        <button class="button secondary compact" id="reset-filters">
+         Xóa bộ lọc
+        </button>
+       </details>
+       <div class="results-caption" id="results-caption">
+        Chưa có kết quả phù hợp với cấu hình hiện tại.
+       </div>
+       <div class="table-wrap" id="results-table">
+       </div>
+       <div class="table-footer" id="results-footer">
+       </div>
+     </section>
     </section>
     <section class="page" hidden="" id="page-datasets">
      <div class="page-heading">
       <div>
        <h1>
-        Quản lý dữ liệu lịch sử
+        Quản lý dữ liệu
        </h1>
        <p>
         CSV, XLSX hoặc JSON · tối đa 4 MiB và 30.000 hồ sơ. Cần đủ LIMIT_BAL, PAY_1–6 (hoặc PAY_0 thay PAY_1), BILL_AMT1–6 và PAY_AMT1–5 ở mọi dòng. SEX, EDUCATION, MARRIAGE, AGE và PAY_AMT6 được điền từ thống kê train nếu thiếu; có báo cáo sau khi nhập. Không tự điền nhãn vỡ nợ.
@@ -308,7 +294,7 @@
         <h2 id="data-title" tabindex="-1">
          Nội dung tập hồ sơ
         </h2>
-        <p id="data-caption">
+        <p aria-live="polite" id="data-caption">
          Chọn một tập hồ sơ để xem.
         </p>
        </div>
@@ -370,11 +356,13 @@
        Khôi phục
       </button>
      </div>
+    </section>
+    <section class="page" hidden="" id="page-history">
      <div class="page-heading">
       <div>
-       <h2 id="history-title" tabindex="-1">
+       <h1 id="history-title" tabindex="-1">
         Lịch sử dự báo
-       </h2>
+       </h1>
        <p>
         Lưu vết phiên bản dữ liệu, model, ngưỡng và thời điểm của mỗi lần chạy.
        </p>
@@ -535,16 +523,19 @@
        <p class="fine-print" id="draft-status" role="status"></p>
        <div class="result-actions">
         <button class="button" disabled="" id="save-single" title="Đưa hồ sơ vào tập chính thức và ghi lượt dự báo vào lịch sử">
+         <span data-icon="save"></span>
          Lưu hồ sơ vào lịch sử dự báo
         </button>
         <button class="button secondary" disabled="" id="export-single">
+         <span data-icon="spreadsheet"></span>
          Xuất Excel
         </button>
         <button class="button secondary" disabled="" id="explain-single" hidden>
          Thử tải lại SHAP
         </button>
         <button class="button secondary" disabled="" id="transfer-single">
-         Thêm đầu vào vào tập hồ sơ
+         <span data-icon="table-add"></span>
+         Thêm vào tập hồ sơ đã dự báo
         </button>
        </div>
        <div hidden="" id="explanation" aria-live="polite">
@@ -558,109 +549,6 @@
         Nhãn 1 là cảnh báo rủi ro. Hệ thống không tự phê duyệt hoặc từ chối tín dụng.
        </p>
       </aside>
-     </div>
-     <div aria-labelledby="tab-batch" hidden="" id="batch-panel" role="tabpanel">
-      <div class="panel">
-       <div class="panel-heading">
-        <div>
-         <h2>
-          Dự báo tập hồ sơ
-         </h2>
-         <p>
-          Chọn dữ liệu → chạy model → lọc và xuất kết quả.
-         </p>
-        </div>
-        <button class="button secondary" data-action="upload">
-         Tải tệp dữ liệu
-        </button>
-       </div>
-       <div class="action-toolbar">
-        <select aria-label="Dataset dự báo" class="dataset-select" id="batch-dataset">
-        </select>
-        <button class="button" id="run-batch">
-         Chạy dự báo &amp; lưu
-        </button>
-        <button class="button secondary" data-action="export">
-         <span data-icon="download">
-         </span>
-         Xuất kết quả đã lọc
-        </button>
-       </div>
-       <details class="advanced-filters">
-        <summary class="button">Bộ lọc kết quả</summary>
-       <div class="filters">
-        <select id="result-search" aria-label="Mã khách hàng"><option value="">Tất cả mã hồ sơ</option></select>
-        <select aria-label="Mức rủi ro" id="risk-filter">
-         <option value="">
-          Tất cả mức rủi ro
-         </option>
-         <option value="Low">
-          Thấp
-         </option>
-         <option value="Medium">
-          Trung bình
-         </option>
-         <option value="High">
-          Cao
-         </option>
-        </select>
-        <label>
-         PD từ (%)
-         <input id="min-pd" max="100" min="0" type="range" value="0"/><output id="min-pd-value" for="min-pd"></output>
-        </label>
-        <label>
-         PD đến (%)
-         <input id="max-pd" max="100" min="0" type="range" value="100"/><output id="max-pd-value" for="max-pd"></output>
-        </label>
-       </div>
-        <div class="filters">
-         <label>
-          Tuổi từ
-          <input id="min-age" max="100" min="18" type="range" value="18"/><output id="min-age-value" for="min-age"></output>
-         </label>
-         <label>
-          Tuổi đến
-          <input id="max-age" max="100" min="18" type="range" value="100"/><output id="max-age-value" for="max-age"></output>
-         </label>
-         <label>
-          Hạn mức từ (TWD)
-          <input id="min-limit" max="10000000" step="1" min="0" type="range" value="0"/><output id="min-limit-value" for="min-limit"></output>
-         </label>
-         <label>
-          Hạn mức đến
-          <input id="max-limit" max="10000000" step="1" min="0" type="range" value="10000000"/><output id="max-limit-value" for="max-limit"></output>
-         </label>
-         <label>
-          Trạng thái trả nợ gần nhất (PAY_0)
-          <select id="min-delay"><option value="">Tất cả trạng thái</option><option value="-2">Không phát sinh</option><option value="-1">Trả đúng hạn</option><option value="0">Tín dụng quay vòng</option><option value="1">Trễ 1 tháng</option><option value="2">Trễ 2 tháng</option><option value="3">Trễ 3 tháng</option><option value="4">Trễ 4 tháng</option><option value="5">Trễ 5 tháng</option><option value="6">Trễ 6 tháng</option><option value="7">Trễ 7 tháng</option><option value="8">Trễ 8 tháng</option></select>
-         </label>
-         <label>
-          Nhãn cảnh báo
-          <select id="warning-filter">
-           <option value="">
-            Tất cả
-           </option>
-           <option value="0">
-            Nhãn 0
-           </option>
-           <option value="1">
-            Nhãn 1
-           </option>
-          </select>
-         </label>
-        </div>
-        <button class="button secondary compact" id="reset-filters">
-         Xóa bộ lọc
-        </button>
-       </details>
-       <div class="results-caption" id="results-caption">
-        Chưa có kết quả phù hợp với cấu hình hiện tại.
-       </div>
-       <div class="table-wrap" id="results-table">
-       </div>
-       <div class="table-footer" id="results-footer">
-       </div>
-      </div>
      </div>
     </section>
     <section class="page" hidden="" id="page-models">

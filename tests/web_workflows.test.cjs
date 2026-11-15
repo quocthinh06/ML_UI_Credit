@@ -73,26 +73,32 @@ test('only supplementary inputs may be left blank',()=>{
 test('SHAP uses readable names and opposite directions for positive and negative values',async()=>{
   const {run}=app();
   run(`models=[{name:'RF'}];$('model-choice').value='RF';singleInputs={ID:'one'};
-    api=async()=>({scale:'Tree SHAP · điểm thô',rows:[{feature:'PAY_1',contribution:.1},{feature:'PAY_RATIO_1',contribution:-.03}]});`);
+    api=async()=>({scale:'Tree SHAP · điểm thô',rows:[{feature:'PAY_1',contribution:.1},{feature:'PAY_RATIO_1',contribution:-.03},{feature:'AGE',contribution:null}]});`);
   await run('explainSingle()');
   const html=run("$('explanation').innerHTML");
   assert.match(html,/Trạng thái trả nợ tháng gần nhất/);
   assert.match(html,/Tăng điểm/);
   assert.match(html,/Giảm điểm/);
   assert.match(html,/shap-bar/);
+  assert.deepEqual(chartTooltips(html).map(row=>[row.yTitle,row.value,row.series]),[['Đóng góp SHAP','+0.1000','Tăng điểm'],['Đóng góp SHAP','-0.0300','Giảm điểm'],['Đóng góp SHAP','Không có dữ liệu','']]);
 });
 
-test('datasets and prediction history share one management page',()=>{
+test('datasets and prediction history have separate pages and sidebar links',()=>{
   const html=fs.readFileSync('frontend/index.html','utf8');
   const management=html.split('id="page-datasets"')[1].split('</section>')[0];
   assert.match(management,/id="datasets-table"/);
-  assert.match(management,/id="history-table"/);
-  assert.match(management,/Quản lý dữ liệu lịch sử/);
-  assert.doesNotMatch(html,/data-page="history"|id="page-history"/);
+  assert.doesNotMatch(management,/id="history-table"/);
+  assert.match(management,/Quản lý dữ liệu/);
+  const history=html.split('id="page-history"')[1].split('</section>')[0];
+  assert.match(history,/id="history-table"/);
+  assert.match(history,/id="history-search"/);
+  assert.doesNotMatch(history,/id="datasets-table"|id="data-table"/);
+  assert.match(html,/data-page="datasets" href="#datasets"/);
+  assert.match(html,/data-page="history" href="#history"/);
   assert.doesNotMatch(html,/Đơn lẻ &amp; hàng loạt/);
 });
 
-test('old history links open the combined management page and its history',()=>{
+test('history links open the dedicated history page',()=>{
   const {run,elements}=app();
   run("$('sidebar').classList={remove(){}};$('menu-toggle').setAttribute=()=>{};location.hash='#history'");
   let scrolled=false;
@@ -100,7 +106,7 @@ test('old history links open the combined management page and its history',()=>{
   elements.get('history-title').scrollIntoView=()=>{scrolled=true;};
   elements.get('history-title').focus=()=>{};
   run('navigate()');
-  assert.equal(run('document.title'),'Quản lý dữ liệu lịch sử · CreditRisk AI');
+  assert.equal(run('document.title'),'Lịch sử dự báo · CreditRisk AI');
   assert.equal(scrolled,true);
 });
 
@@ -116,6 +122,18 @@ test('view dataset selects its latest version and brings its content into view',
   assert.equal(run('selectedVersion'),'v2');
   assert.equal(run('dataPage'),0);
   assert.deepEqual(calls,[['focus',true],['scroll','center']]);
+});
+
+test('choosing a profile reveals its ID and enables editing without rebuilding the table',()=>{
+  const {run}=app();
+  run(`globalThis.profileSelect=null;globalThis.profileTableRenders=0;
+    table=(id,columns,rows,options)=>{if(id==='data-table'){profileSelect=options.select;profileTableRenders++;}};
+    pagination=()=>{};renderDatasets();`);
+  assert.equal(run("$('edit-customer').disabled"),true);
+  run("profileSelect({ID:'old'});");
+  assert.match(run("$('data-caption').textContent"),/Đang chọn hồ sơ old/);
+  assert.equal(run("$('edit-customer').disabled"),false);
+  assert.equal(run('profileTableRenders'),1);
 });
 
 test('single transfer asks for destination and appends inputs to its latest version', async()=>{
@@ -252,9 +270,14 @@ test('history opens the selected run even when a newer run has the same model an
   run(`models=[{name:'RF',digest:'hash'}];$('model-choice').value='RF';
     configuration=()=>({decision:.5,low:.2,high:.5,basis:'raw'});
     state.runs=['new','old'].map(id=>({id,datasetId:'a',versionId:'v1',modelName:'RF',modelHash:'hash',thresholds:configuration(),rows:[]}));
-    setModelInfo=()=>{};resetFilters=()=>{};invalidateSingle=()=>{};batchTab=()=>{};
+    setModelInfo=()=>{};resetFilters=()=>{};invalidateSingle=()=>{};batchTab=()=>{};navigate=()=>{};
+    globalThis.opened=[];
+    $('lookup-title').focus=options=>opened.push(['focus',options.preventScroll]);
+    $('lookup-title').scrollIntoView=options=>opened.push(['scroll',options.block]);
     openRun(state.runs[1]);`);
   assert.equal(run('activeRun().id'),'old');
+  assert.equal(run('location.hash'),'overview');
+  assert.deepEqual(Array.from(run('opened'),row=>Array.from(row)),[['focus',true],['scroll','center']]);
 });
 
 test('performance compares unlabelled inputs, saves separate runs and reuses them',async()=>{
@@ -376,19 +399,95 @@ test('a pending single response cannot restore a cleared or edited prediction',a
   assert.equal(run("$('export-single').disabled"),true);
 });
 
-test('threshold label leaves room above the tallest bar value',()=>{
+function chartTooltips(html){
+  return [...html.matchAll(/data-chart-data="([^"]+)"/g)].map(([,data])=>
+    JSON.parse(data.replaceAll('&quot;','"').replaceAll('&amp;','&')));
+}
+
+test('bar tooltips distinguish the two axes, series, zero and missing values',()=>{
   const {run}=app();
-  const html=run("barChart('Điểm gốc','', ['30–40%','40–50%'],[9536,3018],{threshold:.42})");
-  const valueY=Number(html.match(/class="number"[^>]* y="([^"]+)"[^>]*>9\.536</)[1]);
-  const marker=html.match(/<rect[^>]* y="([^"]+)"[^>]* height="([^"]+)"[^>]*\/>(?=<text[^>]*>Ngưỡng)/);
-  assert.ok(valueY-12>Number(marker[1])+Number(marker[2]),'bar value must sit below the threshold badge');
+  const html=run("barChart('PD','', ['30–40%','40–50%','50–60%'],[9536,0,null],{xAxis:'Khoảng PD',colors:['red','green','blue'],series:['Thấp','Trung bình','Cao'],threshold:.42})");
+  const data=chartTooltips(html);
+  assert.deepEqual(data[0],{xTitle:'Khoảng PD',x:'30–40%',yTitle:'Số hồ sơ',value:'9.536',series:'Thấp'});
+  assert.equal(data[1].value,'0');
+  assert.equal(data[2].value,'Không có dữ liệu');
+  for(const color of ['red','green','blue']){
+    assert.match(html,new RegExp('class="chart-bar"[^>]*fill="'+color+'"'));
+  }
+  assert.match(html,/<text class="chart-label"[^>]*>[^<]*%<\/text>/);
+  assert.doesNotMatch(html,/class="number"|<title>/);
+});
+
+test('ROC selects the nearest plotted point and uses the rendered stroke color',()=>{
+  const {run}=app();
+  const data=run(`
+    globalThis.DOMPoint=class {constructor(x,y){this.x=x;this.y=y;} matrixTransform(){return this;}};
+    globalThis.getComputedStyle=()=>({stroke:'rgb(37, 99, 235)'});
+    const target={dataset:{chartData:JSON.stringify({xTitle:'FPR',yTitle:'TPR',series:'ROC'})},
+      classList:{contains:()=>true},getScreenCTM:()=>({inverse:()=>null}),getAttribute:()=>'45,195 45,25 475,25',
+      closest:()=>({querySelector:()=>({matches:()=>true})})};
+    chartHoverData(target,{clientX:50,clientY:28});
+  `);
+  assert.equal(data.x,'0.00%');
+  assert.equal(data.value,'100.00%');
+  assert.equal(data.color,'rgb(37, 99, 235)');
+});
+
+test('tooltip follows the pointer, uses each mark color and hides outside data',()=>{
+  const {run}=app();
+  run(`
+    document.documentElement={clientWidth:400,clientHeight:300};
+    globalThis.swatch={style:{}};
+    document.createElement=()=>({style:{},offsetWidth:120,offsetHeight:64,hidden:false,
+      firstElementChild:{firstElementChild:swatch},setAttribute(){}});
+    document.body={append(){}};
+    globalThis.getComputedStyle=mark=>mark.style;
+  `);
+  // Exercise the delegated handlers with the same SVG and HTML mark shapes as the charts.
+  const source=fs.readFileSync('frontend/static/app.js','utf8');
+  run("globalThis.chartHandlers={};document.addEventListener=(type,handler)=>chartHandlers[type]=handler;");
+  run(source.slice(source.indexOf("document.addEventListener('pointermove'"),source.indexOf('function barChart(')));
+  run(`
+    globalThis.datum=(style,kind)=>{
+      const mark={style,matches:selector=>selector===kind};
+      const target={dataset:{chartData:JSON.stringify({xTitle:'Nhóm',x:'A',yTitle:'Chỉ số',value:'2',series:'Chuỗi A'})},
+        classList:{contains:()=>false},closest:selector=>selector==='.chart-datum'?null:target,
+        querySelector:()=>mark,contains:()=>false};
+      return target;
+    };
+    globalThis.hover=(target,x,y)=>chartHandlers.pointermove({target,clientX:x,clientY:y,pointerType:'mouse'});
+    globalThis.bar=datum({fill:'rgb(7, 127, 131)'},'.chart-bar');
+    hover(bar,30,40);
+  `);
+  assert.equal(run('swatch.style.backgroundColor'),'rgb(7, 127, 131)');
+  assert.match(run('chartTooltip.innerHTML'),/Chuỗi A.*Nhóm.*Chỉ số/);
+  assert.equal(run('chartTooltip.style.left'),'42px');
+  run("hover(datum({fill:'rgb(156, 104, 7)'},'.status-fill'),390,290);");
+  assert.equal(run('swatch.style.backgroundColor'),'rgb(156, 104, 7)');
+  assert.equal(run('chartTooltip.style.left'),'258px');
+  assert.equal(run('chartTooltip.style.top'),'214px');
+  run('chartHandlers.pointerout({target:bar,relatedTarget:null});');
+  assert.equal(run('chartTooltip.hidden'),true);
+});
+
+test('status bars retain visible values and expose details for all three statuses',()=>{
+  const {run}=app();
+  const html=run("statusChart([{d:{id:'a'},v:{rows:[{},{}]},run:{}}])");
+  const data=chartTooltips(html);
+  assert.deepEqual(data.map(row=>row.value),['0.00% · 0 hồ sơ','100.00% · 2 hồ sơ','0.00% · 0 hồ sơ']);
+  assert.match(html,/<span>2 hồ sơ<\/span>/);
+  assert.match(html,/<rect class="status-fill" width="100%"[^>]*fill="#087f83"/);
+  assert.equal((html.match(/<rect class="status-fill" width="0%"/g)||[]).length,2);
+  assert.doesNotMatch(html,/style=/);
 });
 
 test('histogram threshold follows its domain and stays in bounds at either edge',()=>{
   const {run}=app();
   const html=run("barChart('PD','', ['0–50%','50–100%'],[1,2],{threshold:.39})");
   assert.match(html,/x1="223\.74"/);
-  assert.match(html,/Ngưỡng τ = 39\.00%/);
+  assert.equal(chartTooltips(html).at(-1).value,'39.00%');
+  assert.match(html,/Ngưỡng τ = 39\.00%<\/text>/);
+  assert.match(html,/<text class="chart-label"[^>]*>[^<]*%<\/text>/);
   assert.match(run("barChart('PD','', ['all'],[1],{threshold:0})"),/x1="42"/);
   assert.match(run("barChart('PD','', ['all'],[1],{threshold:1})"),/x1="508"/);
   assert.doesNotMatch(run("barChart('PD','', ['all'],[1])"),/threshold-marker/);
@@ -425,10 +524,10 @@ test('overview only shows results for the selected dataset and version',()=>{
     $('decision').value=39;$('low').value=20;$('high').value=50;$('decision-basis').value='raw';
     $('chart-mode').value='data';histogram=()=>[[],[]];barChart=()=> '';
     state.runs=[{id:'run-a',datasetId:'a',versionId:'v1',modelName:'RF',modelHash:'hash',
-      thresholds:configuration(),rows:[{probability:.75,risk_level:'High',default_label:1}]}];
+      thresholds:configuration(),rows:[{ID:'one',AGE:30,LIMIT_BAL:20000,probability:.75,risk_level:'High',default_label:1}]}];
     state.datasets[1].versions[0].id='v1';
     state.datasets[1].versions[0].rows=[{ID:'1'},{ID:'2'}];
-    renderOverview();`);
+    renderResults=()=>{};resetFilters();renderOverview();`);
   assert.match(run("$('portfolio-metrics').innerHTML"),/75\.00%/);
   run("selectDataset('b');renderOverview()");
   const metrics=run("$('portfolio-metrics').innerHTML");
@@ -436,4 +535,77 @@ test('overview only shows results for the selected dataset and version',()=>{
   assert.doesNotMatch(metrics,/75\.00%|A \(1\)/);
   assert.equal(run("$('dashboard-content').hidden"),true);
   assert.equal(run("$('dashboard-awaiting').hidden"),false);
+});
+
+
+test('overview hosts batch controls and filters categories with OR within a field and AND between fields',()=>{
+  const {run}=app();
+  run(`activeRun=()=>({rows:[
+    {ID:'a',AGE:30,LIMIT_BAL:20000,probability:.3,SEX:1,MARRIAGE:1},
+    {ID:'b',AGE:40,LIMIT_BAL:30000,probability:.5,SEX:2,MARRIAGE:2},
+    {ID:'c',AGE:60,LIMIT_BAL:40000,probability:.8,SEX:1,MARRIAGE:2}]});
+    renderResults=()=>{};renderOverview=()=>{};resetFilters();
+    document.querySelectorAll=selector=>selector==='[data-filter-field]:checked'?[
+      {dataset:{filterField:'SEX'},value:'1'},
+      {dataset:{filterField:'SEX'},value:'2'},
+      {dataset:{filterField:'MARRIAGE'},value:'2'}]:[];
+    $('max-age').value=50;`);
+  assert.deepEqual(Array.from(run('filteredRows().map(r=>r.ID)')),['b']);
+  run("$('max-age').value=100");
+  assert.deepEqual(Array.from(run('filteredRows().map(r=>r.ID)')),['b','c']);
+  run("document.querySelectorAll=()=>[]");
+  assert.equal(run('filteredRows().length'),3);
+  const html=fs.readFileSync('frontend/index.html','utf8');
+  const overview=html.slice(html.indexOf('id="page-overview"'),html.indexOf('id="page-datasets"'));
+  for(const id of ['batch-panel','run-batch','results-table','min-age','max-age'])assert.ok(overview.includes(`id="${id}"`));
+  for(const key of ['SEX','MARRIAGE','EDUCATION'])assert.ok(overview.includes(`data-filter-field="${key}"`));
+});
+
+
+test('overview export uses the same filtered rows as the dashboard',async()=>{
+  const {run}=app();
+  run(`location.hash='#overview';activeRun=()=>({rows:[{ID:'all'}],thresholds:{decision:.42}});
+    filteredRows=()=>[{ID:'selected'}];globalThis.exported=null;
+    exportRows=async(rows,thresholds)=>{exported={rows,thresholds};};`);
+  await run('exportCurrent()');
+  assert.equal(run('exported.rows[0].ID'),'selected');
+  assert.equal(run('exported.thresholds.decision'),.42);
+});
+
+test('empty dashboard filters show an empty state instead of plotting invalid values',()=>{
+  const {run}=app();
+  run(`activeRun=()=>({rows:[],modelName:'RF',thresholds:{decision:.42,basis:'raw'}});
+    filteredRows=()=>[];renderOverview();`);
+  assert.match(run("$('charts').innerHTML"),/Không có hồ sơ phù hợp/);
+  assert.doesNotMatch(run("$('charts').innerHTML"),/NaN|Infinity/);
+});
+
+
+test('dashboard C has one run sheet before results and collapsed lookup filters',()=>{
+  const html=fs.readFileSync('frontend/index.html','utf8');
+  const overview=html.slice(html.indexOf('id="page-overview"'),html.indexOf('id="page-datasets"'));
+  assert.equal((overview.match(/class="dataset-select"/g)||[]).length,1);
+  assert.doesNotMatch(overview,/id="analyze-selected"|id="batch-dataset"/);
+  assert.ok(overview.indexOf('id="run-batch"')<overview.indexOf('id="portfolio-metrics"'));
+  assert.ok(overview.indexOf('id="portfolio-metrics"')<overview.indexOf('id="results-table"'));
+  assert.doesNotMatch(overview,/<details[^>]*id="dashboard-filters"[^>]*\bopen/);
+});
+
+test('dashboard filter summary reveals active ranges and categories even when folded',()=>{
+  const {run}=app();
+  run(`renderResults=()=>{};renderOverview=()=>{};resetFilters();renderFilterSummary();`);
+  assert.equal(run("$('filter-summary').textContent"),'Chưa áp dụng bộ lọc');
+  run(`$('min-pd').value=25;document.querySelectorAll=selector=>selector==='[data-filter-field]:checked'?[{dataset:{filterField:'risk_level'},value:'High'}]:[];renderFilterSummary();`);
+  assert.match(run("$('filter-summary').textContent"),/PD 25–100%/);
+  assert.match(run("$('filter-summary').textContent"),/Mức rủi ro: Cao/);
+});
+
+
+test('PD charts retain percentage bin labels, axes and a keyboard-scrollable viewport',()=>{
+  const {run}=app();
+  const html=run(`barChart('PD','Distribution',['0–10%','10–20%'],[1,2],{xAxis:'Khoảng PD'})`);
+  assert.match(html,/<text class="chart-label"[^>]*>0–10%<\/text>/);
+  assert.match(html,/<text class="chart-label"[^>]*>10–20%<\/text>/);
+  assert.match(html,/>Khoảng PD<\/text>/);
+  assert.match(html,/class="chart-scroll" tabindex="0"/);
 });
