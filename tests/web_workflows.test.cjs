@@ -470,15 +470,48 @@ test('tooltip follows the pointer, uses each mark color and hides outside data',
   assert.equal(run('chartTooltip.hidden'),true);
 });
 
-test('status bars retain visible values and expose details for all three statuses',()=>{
+test('status proportions retain all categories and count each version once',()=>{
   const {run}=app();
-  const html=run("statusChart([{d:{id:'a'},v:{rows:[{},{}]},run:{}}])");
+  run("models=[{digest:'rf',name:'RF'}];$('model-choice').value='RF';state.runs=[{datasetId:'b',modelHash:'rf'}]");
+  const html=run("statusChart([{d:{id:'a'},v:{rows:[{}]},run:null},{d:{id:'b'},v:{rows:[{},{}]},run:null},{d:{id:'c'},v:{rows:[{}]},run:{}}])");
   const data=chartTooltips(html);
-  assert.deepEqual(data.map(row=>row.value),['0.00% · 0 hồ sơ','100.00% · 2 hồ sơ','0.00% · 0 hồ sơ']);
-  assert.match(html,/<span>2 hồ sơ<\/span>/);
-  assert.match(html,/<rect class="status-fill" width="100%"[^>]*fill="#087f83"/);
-  assert.equal((html.match(/<rect class="status-fill" width="0%"/g)||[]).length,2);
-  assert.doesNotMatch(html,/style=/);
+  assert.deepEqual(data.map(row=>row.value),['25.00% · 1 hồ sơ','25.00% · 1 hồ sơ','50.00% · 2 hồ sơ']);
+  assert.match(html,/pie-chart/);
+  assert.match(html,/Phiên bản đang chọn · Model đang chọn · Không áp dụng bộ lọc/);
+});
+
+test('pie charts show exact shares, zero categories, a full circle and an empty state',()=>{
+  const {run}=app();
+  const html=run("pieChart('Cơ cấu','Sau lọc',['Thấp','Cao','Không có'],[3,1,0],{colors:['#087f83','#bd2946','#56657d']})");
+  assert.deepEqual(chartTooltips(html).map(row=>row.value),['75.00% · 3 hồ sơ','25.00% · 1 hồ sơ']);
+  assert.match(html,/stroke-dasharray="75 100"/);
+  assert.match(html,/stroke-dashoffset="-75"/);
+  assert.match(html,/Không có.*0 hồ sơ.*0.00%/s);
+  assert.match(html,/aria-label="Cơ cấu · 4 hồ sơ"/);
+  assert.match(run("pieChart('Một nhóm','',['Có'],[1])"),/stroke-dasharray="100 100"/);
+  const empty=run("pieChart('<script>','',['Không có'],[0])");
+  assert.match(empty,/Chưa có hồ sơ/);
+  assert.doesNotMatch(empty,/NaN|Infinity|class="pie-slice"|<script>/);
+});
+
+test('overview proportions follow filtered rows and actual labels use only valid targets',()=>{
+  const {run}=app();
+  run(`activeRun=()=>({modelName:'RF',thresholds:{decision:.39,basis:'raw',low:.2,high:.5},rows:[]});
+    filteredRows=()=>[
+      {AGE:30,LIMIT_BAL:20000,EDUCATION:2,SEX:1,MARRIAGE:1,PAY_0:0,probability:.1,raw_score:.1,risk_level:'Low',default_label:0,'default.payment.next.month':0},
+      {AGE:40,LIMIT_BAL:30000,EDUCATION:4,SEX:2,MARRIAGE:2,PAY_0:2,probability:.8,raw_score:.8,risk_level:'High',default_label:1,'default.payment.next.month':null},
+      {AGE:50,LIMIT_BAL:40000,EDUCATION:4,SEX:2,MARRIAGE:2,PAY_0:3,probability:.9,raw_score:.9,risk_level:'High',default_label:1,'default.payment.next.month':1}];
+    $('chart-mode').value='risk';renderOverview();`);
+  assert.match(run("$('charts').innerHTML"),/pie-chart/);
+  assert.match(run("$('charts').innerHTML"),/66.67% · 2 hồ sơ/);
+  assert.match(run("$('supplementary-charts').innerHTML"),/Nhãn cảnh báo.*pie-chart/s);
+  run("$('chart-mode').value='data';renderOverview()");
+  assert.equal((run("$('charts').innerHTML").match(/class="pie-chart"/g)||[]).length,3);
+  assert.match(run("$('charts').innerHTML"),/Sau đại học|Đại học/);
+  run("$('chart-mode').value='evaluation';renderOverview()");
+  const html=run("$('charts').innerHTML");
+  assert.match(html,/2 nhãn 0\/1 hợp lệ.*1 hồ sơ chưa có nhãn/s);
+  assert.deepEqual(chartTooltips(html).filter(row=>row.yTitle==='Tỷ trọng hồ sơ').map(row=>row.value),['50.00% · 1 hồ sơ','50.00% · 1 hồ sơ']);
 });
 
 test('histogram threshold follows its domain and stays in bounds at either edge',()=>{

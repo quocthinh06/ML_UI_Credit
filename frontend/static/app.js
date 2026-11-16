@@ -436,10 +436,10 @@ function chartHoverData(target,event){
     data.value=pct((195-y)/170);
   }
   const chart=target.closest('.chart-datum')||target;
-  const mark=chart.querySelector('.chart-bar,.roc-line,.shap-value,.status-fill,.threshold-line');
+  const mark=chart.querySelector('.chart-bar,.pie-slice,.roc-line,.shap-value,.status-fill,.threshold-line');
   if(!mark) return null;
   const style=getComputedStyle(mark);
-  const color=mark.matches('.roc-line,.threshold-line')?style.stroke:style.fill;
+  const color=mark.matches('.roc-line,.threshold-line,.pie-slice')?style.stroke:style.fill;
   return {...data,color};
 }
 
@@ -506,6 +506,19 @@ function barChart(title, subtitle, labels, values, {percent=false, colors, axis=
   svg+=`<text class="axis-title" x="${left}" y="12">${escapeHTML(axis)}</text><text class="axis-title" x="${left+plotW/2}" y="${height-8}" text-anchor="middle">${escapeHTML(xAxis)}</text></svg>`;
   return `<article class="panel chart-card"><h3>${escapeHTML(title)}</h3><p class="chart-subtitle">${escapeHTML(subtitle)}</p><div class="chart-scroll" tabindex="0" role="region" aria-label="${escapeHTML(title)} · cuộn ngang để xem đầy đủ">${svg}</div></article>`;
 }
+function pieChart(title, subtitle, labels, values, {colors=['#2563eb','#087f83','#9c6807','#7957a6']}={}) {
+  const total=values.reduce((sum,count)=>sum+count,0);
+  let offset=0;
+  const slices=labels.map((label,i)=>{
+    if(!values[i]||!total)return '';
+    const share=values[i]/total*100;
+    const slice=`<g class="chart-datum" ${chartData('Nhóm',label,'Tỷ trọng hồ sơ',`${pct(values[i]/total)} · ${fmt(values[i])} hồ sơ`)}><circle class="pie-slice" cx="100" cy="100" r="74" fill="none" stroke="${colors[i%colors.length]}" stroke-width="30" pathLength="100" stroke-dasharray="${share} 100" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)"/></g>`;
+    offset+=share;
+    return slice;
+  }).join('');
+  const legend=labels.map((label,i)=>`<li><span class="pie-legend-label"><svg width="12" height="12" aria-hidden="true"><rect width="12" height="12" rx="2" fill="${colors[i%colors.length]}"/></svg>${escapeHTML(label)}</span><span class="pie-legend-value">${fmt(values[i])} hồ sơ <strong>${pct(total?values[i]/total:0)}</strong></span></li>`).join('');
+  return `<article class="panel chart-card"><h3>${escapeHTML(title)}</h3><p class="chart-subtitle">${escapeHTML(subtitle)}</p><div class="pie-layout"><svg class="pie-chart" viewBox="0 0 200 200" role="img" aria-label="${escapeHTML(title)} · ${fmt(total)} hồ sơ"><circle cx="100" cy="100" r="74" fill="none" stroke="#edf1f7" stroke-width="30"/>${slices}<text class="pie-total" x="100" y="98" text-anchor="middle">${fmt(total)}</text><text class="pie-caption" x="100" y="119" text-anchor="middle">${total?'hồ sơ':'Chưa có hồ sơ'}</text></svg><ul class="pie-legend">${legend}</ul></div></article>`;
+}
 function histogram(rows, key, bins) {
   const numbers=rows.map(r=>Number(r[key])).filter(Number.isFinite),lo=Math.min(...numbers),hi=Math.max(...numbers),step=(hi-lo||1)/bins,counts=Array(bins).fill(0);
   numbers.forEach(n=>counts[Math.min(bins-1,Math.floor((n-lo)/step))]++);
@@ -529,16 +542,7 @@ function rocChart(rows) {
 function statusChart(items){
   const groups=[['Chưa dự báo',0,'#56657d'],['Kết quả còn hiệu lực',0,'#087f83'],['Cần dự báo lại',0,'#9c6807']];
   items.forEach(({d,v,run})=>{const previous=state.runs.some(r=>r.datasetId===d.id&&r.modelHash===model()?.digest);groups[run?1:previous?2:0][1]+=v.rows.length;});
-  const total=groups.reduce((sum,[,count])=>sum+count,0);
-  const bars=groups.map(([label,count,color])=>{
-    const share=total?count/total:0;
-    const value=`${fmt(count)} hồ sơ`;
-    return `<li class="status-row">
-      <div class="status-row-heading"><span>${escapeHTML(label)}</span><span>${value}</span></div>
-      <div class="status-track" aria-hidden="true" ${chartData('Trạng thái hồ sơ',label,'Tỷ lệ hồ sơ',`${pct(share)} · ${fmt(count)} hồ sơ`)}><svg class="status-bar" width="100%" height="12"><rect class="status-fill" width="${share*100}%" height="12" rx="6" fill="${color}"/></svg></div>
-    </li>`;
-  }).join('');
-  return `<article class="panel chart-card"><h3>Trạng thái hồ sơ danh mục</h3><p class="chart-subtitle">Phiên bản mới nhất · Model đang chọn</p><ul class="status-bars">${bars}</ul></article>`;
+  return pieChart('Trạng thái hồ sơ danh mục','Phiên bản đang chọn · Model đang chọn · Không áp dụng bộ lọc',groups.map(([label])=>label),groups.map(([,count])=>count),{colors:groups.map(([,,color])=>color)});
 }
 function renderOverview() {
   const v=version(),run=activeRun(),latest=v?[{d:dataset(),v,run}]:[];
@@ -570,7 +574,7 @@ function renderOverview() {
   if(!rows.length){$('charts').innerHTML='<div class="panel empty"><h2>Không có hồ sơ phù hợp</h2><p>Thử mở rộng khoảng hoặc xóa bộ lọc.</p></div>';return;}
   let charts=[];
   if(mode==='risk'){
-    charts.push(`<article class="chart-card dashboard-risk"><h3>Cơ cấu mức rủi ro</h3><p class="chart-subtitle">PD đã hiệu chỉnh · ${fmt(rows.length)} hồ sơ sau lọc</p><ul class="risk-breakdown">${['Low','Medium','High'].map(key=>{const count=rows.filter(r=>r.risk_level===key).length;return `<li><span class="tag ${key.toLowerCase()}">${riskNames[key]}</span><meter min="0" max="${rows.length}" value="${count}" aria-label="Rủi ro ${riskNames[key]}">${count}/${rows.length}</meter><span>${fmt(count)} · ${pct(count/rows.length)}</span></li>`;}).join('')}</ul></article>`);
+    charts.push(pieChart('Cơ cấu mức rủi ro',`PD đã hiệu chỉnh · ${fmt(rows.length)} hồ sơ sau lọc`,['Thấp','Trung bình','Cao'],['Low','Medium','High'].map(key=>rows.filter(r=>r.risk_level===key).length),{colors:['#087f83','#9c6807','#bb2745']}));
     const pd=Array(10).fill(0);rows.forEach(r=>pd[Math.min(9,Math.floor(r.probability*10))]++);
     const pdGroups=pd.map((_,i)=>(i+.5)/10<run.thresholds.low?0:(i+.5)/10>=run.thresholds.high?2:1);
     charts.unshift(barChart('Phân bố xác suất vỡ nợ','PD đã hiệu chỉnh · Màu theo trung điểm khoảng: Thấp / Trung bình / Cao',pd.map((_,i)=>`${i*10}–${(i+1)*10}%`),pd,{xAxis:'Khoảng PD',series:pdGroups.map(group=>['Thấp','Trung bình','Cao'][group]),colors:pdGroups.map(group=>['#087f83','#9c6807','#bb2745'][group]),threshold:run.thresholds.basis==='probability'?run.thresholds.decision:null}));
@@ -581,17 +585,21 @@ function renderOverview() {
     }
     const ages=[[18,29],[30,39],[40,49],[50,59],[60,100]],means=ages.map(([lo,hi])=>{const group=rows.filter(r=>r.AGE>=lo&&r.AGE<=hi);return group.length?stats(group).mean:0;});
     secondary.push(barChart('PD trung bình theo tuổi','AGE · Nhóm không có hồ sơ hiển thị 0',['18–29','30–39','40–49','50–59','60+'],means,{percent:true,axis:'PD trung bình (%)',xAxis:'Nhóm tuổi',colors:Array(5).fill('#087f83')}));
-    secondary.push(barChart('Nhãn cảnh báo theo ngưỡng đã lưu','default_label · Cảnh báo hỗ trợ chuyên viên',['Nhãn 0','Nhãn 1'],[rows.length-s.warnings,s.warnings],{xAxis:'Nhãn cảnh báo',colors:['#087f83','#bd2946']}));
+    secondary.push(pieChart('Nhãn cảnh báo theo ngưỡng đã lưu','default_label · Hồ sơ sau lọc · Cảnh báo hỗ trợ chuyên viên',['Nhãn 0 · Không cảnh báo','Nhãn 1 · Cảnh báo'],[rows.length-s.warnings,s.warnings],{colors:['#087f83','#bd2946']}));
     $('supplementary-charts').innerHTML=secondary.join('');
   }else if(mode==='data'){
     [['AGE','Phân bố tuổi'],['LIMIT_BAL','Phân bố hạn mức (TWD)']].forEach(([key,title])=>{const [labels,values]=histogram(rows,key,6);charts.push(barChart(title,key,labels,values,{xAxis:key==='AGE'?'Khoảng tuổi':'Khoảng hạn mức (TWD)'}));});
-    [['EDUCATION','Trình độ học vấn'],['PAY_0','Trạng thái trả nợ gần nhất']].forEach(([key,title])=>{const counts=new Map();rows.forEach(r=>counts.set(r[key],(counts.get(r[key])||0)+1));const labels=[...counts.keys()].sort((a,b)=>a-b);charts.push(barChart(title,`${key} · Mã UCI`,labels,labels.map(k=>counts.get(k)),{xAxis:title,colors:labels.map(()=>'#087f83')}));});
+    [['EDUCATION','Trình độ học vấn',['Sau đại học','Đại học','Trung học','Khác']],['SEX','Giới tính',['Nam','Nữ']],['MARRIAGE','Tình trạng hôn nhân',['Đã kết hôn','Độc thân','Khác']]].forEach(([key,title,labels])=>{
+      charts.push(pieChart(title,`${key} · Mã UCI đã chuẩn hóa · Hồ sơ sau lọc`,labels,labels.map((_,i)=>rows.filter(r=>r[key]===i+1).length)));
+    });
+    const counts=new Map();rows.forEach(r=>counts.set(r.PAY_0,(counts.get(r.PAY_0)||0)+1));const labels=[...counts.keys()].sort((a,b)=>a-b);
+    charts.push(barChart('Trạng thái trả nợ gần nhất','PAY_0 · Mã UCI',labels,labels.map(k=>counts.get(k)),{xAxis:'Trạng thái trả nợ gần nhất',colors:labels.map(()=>'#087f83')}));
   }else{
     const m=metrics(rows);
     if(!m){$('charts').innerHTML='<div class="panel empty"><h2>Chưa có nhãn thực tế hợp lệ</h2><p>Thêm cột default.payment.next.month với nhãn 0/1 để đánh giá model.</p></div>';return;}
     charts.push(barChart('Ma trận nhầm lẫn · thực tế / dự báo','0: không vỡ nợ · 1: vỡ nợ',['TN (0/0)','FP (0/1)','FN (1/0)','TP (1/1)'],[m.tn,m.fp,m.fn,m.tp],{xAxis:'Kết quả thực tế / dự báo'}));
     charts.push(rocChart(rows));const keys=['Accuracy','Precision','Recall','F1'];charts.push(barChart('Chỉ số trên nhãn hợp lệ',`${fmt(m.labelled)} hồ sơ có nhãn thực tế`,keys,keys.map(k=>m[k]),{percent:true,axis:'Tỷ lệ (%)',xAxis:'Chỉ số đánh giá'}));
-    charts.push(barChart('Phân bố nhãn thực tế','default.payment.next.month',['Không vỡ nợ','Vỡ nợ'],[m.tn+m.fp,m.fn+m.tp],{xAxis:'Nhãn thực tế',colors:['#087f83','#bd2946']}));
+    charts.push(pieChart('Phân bố nhãn thực tế',`Sau lọc · ${fmt(m.labelled)} nhãn 0/1 hợp lệ · Loại ${fmt(rows.length-m.labelled)} hồ sơ chưa có nhãn hợp lệ`,['Không vỡ nợ','Vỡ nợ'],[m.tn+m.fp,m.fn+m.tp],{colors:['#087f83','#bd2946']}));
   }
   $('charts').innerHTML=charts.join('');
   $('dashboard-more-charts').hidden=false;

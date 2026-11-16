@@ -5,13 +5,14 @@
 ## Chạy local
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
-.venv\Scripts\python tools/download_model.py
-.venv\Scripts\python main.py
+$webPython = Join-Path $env:USERPROFILE '.creditrisk-ai\web-venv\Scripts\python.exe'
+python -m venv (Join-Path $env:USERPROFILE '.creditrisk-ai\web-venv')
+& $webPython -m pip install -r requirements.txt
+& $webPython tools/download_model.py
+& $webPython main.py
 ```
 
-Mở http://127.0.0.1:5000. Trên Windows nên tạo venv trong đường dẫn không dấu nếu thư viện BLAS không tải được DLL.
+Chạy các lệnh trên trong thư mục `ML_UI_Credit`, rồi mở http://127.0.0.1:5000. Môi trường web nằm ngoài thư mục dự án để tránh lỗi `threadpoolctl`/OpenBLAS khi đường dẫn có dấu tiếng Việt; tách riêng môi trường desktop. Những lần sau chỉ cần khai báo lại `$webPython` và chạy `& $webPython main.py`.
 
 ## Chỉnh sửa giao diện HTML
 
@@ -55,7 +56,7 @@ Mỗi dòng trong bảng dữ liệu và kết quả hàng loạt có nút **Xem
 
 Đăng nhập hai vai trò, quyền dữ liệu riêng theo tài khoản và Admin Console đã có trong mã nguồn. Xem [cấu hình đăng nhập và Admin](docs/AUTH_ADMIN.md). Cần MongoDB Atlas, khóa phiên và tài khoản Admin ban đầu để bật `AUTH_ENABLED=1`; chưa tự bật khi các giá trị này chưa được cấu hình.
 
-- Tổng quan: danh mục theo model, phân bố rủi ro/PD, thống kê theo tuổi, khám phá dữ liệu, ma trận nhầm lẫn và ROC khi đủ nhãn.
+- Tổng quan: danh mục theo model, phân bố PD, thống kê theo tuổi, khám phá dữ liệu, ma trận nhầm lẫn và ROC khi đủ nhãn. Biểu đồ tròn dạng vành khuyên hiển thị cơ cấu rủi ro, cảnh báo, trạng thái dự báo, học vấn, giới tính, hôn nhân và nhãn thực tế; có số hồ sơ và tỷ trọng từng nhóm. Biểu đồ kết quả theo bộ lọc; trạng thái dự báo tính toàn bộ phiên bản đang chọn. Nhãn thực tế chỉ tính trên nhãn 0/1 hợp lệ.
 - Dữ liệu: tải CSV/XLSX/JSON, giữ ID dạng chuỗi, chuẩn hóa UCI, xem/sửa/bổ sung/xóa hồ sơ theo phiên bản, lưu bản sao.
 - Dự báo: 23 trường UCI đơn lẻ hoặc hàng loạt, chọn RF/LR/XGBoost, tùy chỉnh ngưỡng raw/PD. Batch chia nhóm 500 dòng để phù hợp request Vercel.
 - Lịch sử: bản chụp riêng cho từng lần chạy, model, SHA256, dữ liệu và ngưỡng; mở lại kết quả lịch sử.

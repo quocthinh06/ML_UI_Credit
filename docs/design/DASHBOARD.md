@@ -1,5 +1,15 @@
 # Dashboard Tổng quan — triển khai và kiểm chứng
 
+## Bổ sung biểu đồ tròn — 2026-11-16
+
+- Dùng SVG vành khuyên cho cơ cấu rủi ro, nhãn cảnh báo, trạng thái dự báo, học vấn (4 mã chuẩn hóa), giới tính và hôn nhân; phân bố nhãn thực tế chỉ dùng nhãn 0/1 hợp lệ, ghi rõ số hồ sơ bị loại khỏi mẫu số.
+- Chú giải luôn có tên nhóm, số hồ sơ và tỷ trọng, kể cả nhóm bằng 0. Hover trên lát tròn có chi tiết và màu tương ứng; điện thoại đọc trực tiếp chú giải. Nhóm chiếm 100% vẽ đủ vòng; không có hồ sơ thì không vẽ lát.
+- Biểu đồ kết quả dùng hồ sơ sau lọc. Trạng thái dự báo dùng toàn bộ phiên bản đang chọn và model hiện tại, ghi rõ không áp dụng bộ lọc. Không thay công thức dự báo hoặc nhãn, API, lưu trữ, bản desktop và báo cáo Excel.
+- Giữ biểu đồ cột/đường cho PD, tuổi, hạn mức, PAY_0, PD trung bình theo tuổi, ma trận nhầm lẫn, ROC và các metric; các thang đo/chỉ số này không phải các phần của một tổng phù hợp với biểu đồ tròn.
+- Kiểm thử JavaScript: 50/50 đạt, bao gồm tỷ trọng, nhóm 0/100%, trạng thái và phạm vi nhãn hợp lệ. Kiểm thử API bằng `.venv`: 25 đạt, 1 lỗi tại tải model thật (`/api/models`), trùng giới hạn môi trường đã ghi bên dưới. Kiểm tra trình duyệt dùng dữ liệu kiểm thử riêng, không lưu vào kho và không coi là kết quả dự báo thật.
+- Trình duyệt: đã kiểm tra cả ba chế độ tại 1440px và 390px, không tràn ngang toàn trang; hover lát tròn trả đúng nhóm, số hồ sơ và tỷ trọng. Đã sửa xung đột chiều cao SVG với quy tắc icon chung. Ảnh local tại `docs/screenshots/dashboard-pie-desktop.png` và `dashboard-pie-mobile.png`.
+- Khắc phục môi trường backend cùng ngày: tạo `%USERPROFILE%\.creditrisk-ai\web-venv`, cài `requirements.txt` để DLL NumPy nằm trong đường dẫn không dấu. Chạy lại `tests/test_web.py` và `tests/test_real_model.py` bằng môi trường này: **28/28 đạt**, gồm tải đủ RF/LR/XGBoost, dự báo và giải thích thật. Có một cảnh báo `qt_api` vì môi trường web không cài plugin Qt. Cập nhật lệnh local trong README; không thay mô hình hoặc mã suy luận.
+
 Ngày ghi nhận: 2026-11-15. Đây là tài liệu cho phần mở rộng dashboard theo mock C đã được duyệt (`.impeccable/mocks/dashboard-c.png`), trong hệ thống “Sổ tay phân tích” hiện hữu. `PRODUCT.md`, `DESIGN.md` và `.impeccable/design.json` tiếp tục là nguồn quy ước chung; lượt tài liệu hóa này không sửa các tệp đó.
 
 ## Bố cục và hành vi đã triển khai
